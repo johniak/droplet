@@ -31,3 +31,9 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   (`TaskResultStatus.SUCCESSFUL`). Test w `core/tests/test_tasks.py` używa poprawnej
   nazwy. Migracje backendu DB pojawiają się pod etykietą aplikacji
   `django_tasks_database` (pakiet `django_tasks_db`).
+- **M0 Task 8 — harness e2e**: `docker-compose.yml` wymaga zmiennych
+  (`${DJANGO_SECRET_KEY:?set me}` itd.) już na etapie interpolacji, zanim compose
+  scali override, więc `scripts/e2e_backend.sh` eksportuje te zmienne przed
+  wywołaniem compose'a (i tak nadpisuje je `docker-compose.e2e.yml`). Dodatkowo
+  pytest odpalany jest w subshellu, żeby trap `down -v` widział pliki compose'a
+  z korzenia repo.

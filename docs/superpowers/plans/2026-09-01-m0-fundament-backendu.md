@@ -18,6 +18,8 @@
 - JSON w snake_case (defaulty DRF, bez kamelizacji).
 - Testy: `pytest` z `pytest-django`; w testach backend Tasks = `django_tasks.backends.immediate.ImmediateBackend`.
 - **Pokrycie 100%**: `pytest` odpalany z `--cov --cov-fail-under=100` (konfiguracja w Task 1); wyłączenia tylko techniczne (migracje, settings, manage.py, wsgi, katalog `e2e/`). Bramka obowiązuje przy zamykaniu KAŻDEGO zadania — kod bez testu nie przechodzi.
+- **Biegi częściowe**: `pytest <jeden plik>` mierzy pokrycie całego kodu, więc sam z siebie „obleje" bramkę — kroki „uruchom ten test" wykonuj z `--no-cov` (`pytest core/tests/test_x.py -v --no-cov`). Bramką jest wyłącznie pełny `pytest` na końcu zadania.
+- Testy API (od M1) używają wspólnej fixture `auth_client` z `backend/conftest.py` (Task 7a) — nie kopiuj jej do plików testowych.
 - **E2E**: automatyczna suita `backend/e2e/` (pytest + requests) uruchamiana skryptem `scripts/e2e_backend.sh` przeciwko realnemu deploymentowi z docker compose; e2e nie liczy się do pokrycia (`--no-cov`). Zielone e2e = kryterium zamknięcia milestone'u.
 - Commity po każdym zadaniu; komunikaty `feat:`/`test:`/`chore:` po angielsku.
 
@@ -688,6 +690,141 @@ git commit -m "docs: TrueNAS deployment guide"
 
 ---
 
+### Task 7a: Utwardzenie testów i deploymentu (przed M1)
+
+**Files:**
+- Modify: `backend/droplet/settings.py`, `backend/droplet/settings_test.py`, `backend/conftest.py`, `backend/requirements.txt`, `docker-compose.yml`
+- Test: `backend/core/tests/test_settings.py`, `backend/core/tests/test_auth.py`
+
+**Interfaces:**
+- Produces:
+  - fixture `auth_client` w `backend/conftest.py` — `APIClient` zalogowany tokenem użytkownika `jan`/`s3`; **wszystkie testy API w M1–M3 używają tej fixture** zamiast własnych kopii.
+  - throttling logowania jest no-op w testach (`DummyCache`) — bez tego suita unit robi >10 logowań na proces i zaczyna dostawać `429`, a fixture wywala się na `KeyError: 'token'`.
+  - statyki admina serwowane przez WhiteNoise — bez tego przy `DEBUG=0` (produkcja) admin, czyli jedyne UI administracyjne, jest bez CSS.
+  - `DJANGO_CSRF_TRUSTED_ORIGINS` (CSV) → `CSRF_TRUSTED_ORIGINS` — potrzebne, gdy admin stanie za reverse proxy z HTTPS; puste = brak wpisów.
+  - compose: `restart: unless-stopped` na obu serwisach; `worker` startuje dopiero po zdrowym `web` (web robi migracje — worker bez tabel crashuje na starcie).
+
+- [ ] **Step 1: Failing testy**
+
+Dopisz do `backend/core/tests/test_settings.py`:
+
+```python
+def test_throttle_cache_is_dummy_in_tests():
+    assert settings.CACHES["default"]["BACKEND"].endswith("DummyCache")
+
+
+def test_whitenoise_enabled():
+    assert "whitenoise.middleware.WhiteNoiseMiddleware" in settings.MIDDLEWARE
+
+
+def test_csv_env_helper(monkeypatch):
+    from droplet.settings import _csv_env
+
+    monkeypatch.setenv("X_CSV", " https://a.example, https://b.example ,")
+    assert _csv_env("X_CSV") == ["https://a.example", "https://b.example"]
+    monkeypatch.delenv("X_CSV")
+    assert _csv_env("X_CSV") == []
+```
+
+Dopisz do `backend/core/tests/test_auth.py`:
+
+```python
+def test_many_logins_not_throttled_in_tests(user):
+    client = APIClient()
+    for _ in range(15):
+        resp = client.post(
+            "/api/auth/token/", {"username": "jan", "password": "sekret123"}
+        )
+        assert resp.status_code == 200
+
+
+def test_shared_auth_client_fixture(auth_client):
+    assert auth_client.get("/api/me/").json() == {"username": "jan"}
+```
+
+- [ ] **Step 2: FAIL** — `pytest core/tests/test_settings.py core/tests/test_auth.py -v --no-cov`
+
+- [ ] **Step 3: Implementacja**
+
+`backend/requirements.txt` += `whitenoise>=6.7`, potem `pip install -r requirements.txt`.
+
+`backend/droplet/settings.py`:
+
+```python
+def _csv_env(name: str) -> list[str]:
+    return [v.strip() for v in os.environ.get(name, "").split(",") if v.strip()]
+
+
+CSRF_TRUSTED_ORIGINS = _csv_env("DJANGO_CSRF_TRUSTED_ORIGINS")
+
+# MIDDLEWARE: WhiteNoise zaraz po SecurityMiddleware
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    # ...reszta jak wygenerował Django
+]
+
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
+```
+
+(`CompressedStaticFilesStorage`, nie `Manifest…` — wariant Manifest wywala `collectstatic` na brakujących referencjach w CSS admina/DRF.)
+
+`backend/droplet/settings_test.py` += :
+
+```python
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}
+```
+
+`backend/conftest.py` (zastąp):
+
+```python
+import pytest
+from django.contrib.auth.models import User
+from rest_framework.test import APIClient
+
+
+@pytest.fixture
+def auth_client(db):
+    User.objects.create_user(username="jan", password="s3")
+    client = APIClient()
+    token = client.post(
+        "/api/auth/token/", {"username": "jan", "password": "s3"}
+    ).json()["token"]
+    client.credentials(HTTP_AUTHORIZATION=f"Token {token}")
+    return client
+```
+
+`docker-compose.yml` (jeśli Task 6 już to ma — pomiń dany punkt):
+
+```yaml
+services:
+  web:
+    restart: unless-stopped
+    environment: &env
+      # ...jak dotąd, plus:
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/api/health/')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+  worker:
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+```
+
+- [ ] **Step 4: PASS** — `cd backend && pytest -v` (całość, 100%). Deployment: `docker compose up -d --build`, potem `curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/static/admin/css/base.css` → `200`; `docker compose ps` → worker wystartował po web; `docker compose down`.
+
+- [ ] **Step 5: Commit** — `git add backend docker-compose.yml && git commit -m "chore: shared auth fixture, no-op throttle in tests, whitenoise and compose resilience"`
+
+---
+
 ### Task 8: Harness e2e + testy e2e M0
 
 **Files:**
@@ -699,7 +836,7 @@ git commit -m "docs: TrueNAS deployment guide"
   - `scripts/e2e_backend.sh` — `compose up -d --build` z overridem → czeka na health (max 60 s) → `pytest e2e -v --no-cov` → `compose down -v`; exit code z pytest.
   - `backend/e2e/conftest.py` — fixtures: `base_url` (env `E2E_BASE_URL`, default `http://localhost:8800`), `token` (login przez API), `auth` (dict nagłówków).
 
-- [ ] **Step 1: Napisz failing testy e2e**
+- [x] **Step 1: Napisz failing testy e2e**
 
 `backend/e2e/conftest.py`:
 
@@ -760,9 +897,15 @@ def test_bad_login_rejected(base_url):
         timeout=10,
     )
     assert resp.status_code == 400
+
+
+def test_admin_static_served(base_url):
+    # WhiteNoise (Task 7a): admin ma CSS także przy DEBUG=0
+    resp = requests.get(f"{base_url}/static/admin/css/base.css", timeout=10)
+    assert resp.status_code == 200
 ```
 
-- [ ] **Step 2: Napisz harness**
+- [x] **Step 2: Napisz harness**
 
 `docker-compose.e2e.yml`:
 
@@ -770,18 +913,18 @@ def test_bad_login_rejected(base_url):
 services:
   web:
     ports: !override ["8800:8000"]
-    environment:
+    environment: &e2e_env
       DJANGO_SECRET_KEY: e2e-secret
       DROPLET_ADMIN_USER: e2e
       DROPLET_ADMIN_PASSWORD: e2e-pass-123
+      # e2e nie wychodzi do internetu: wyłącza automatyczne dopasowanie okładek
+      # po skanie (ustawienie czytane od M2; wcześniej ignorowane)
+      DROPLET_AUTO_COVERS: "0"
     volumes: !override
       - droplet-e2e-data:/data
       - ./backend/e2e/fixture-library:/library:ro
   worker:
-    environment:
-      DJANGO_SECRET_KEY: e2e-secret
-      DROPLET_ADMIN_USER: e2e
-      DROPLET_ADMIN_PASSWORD: e2e-pass-123
+    environment: *e2e_env
     volumes: !override
       - droplet-e2e-data:/data
       - ./backend/e2e/fixture-library:/library:ro
@@ -795,6 +938,12 @@ volumes:
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Bazowy compose wymaga tych zmiennych (":?set me") — interpolacja dzieje się
+# PRZED scaleniem override'u, więc muszą być ustawione także w biegu e2e.
+export LIBRARY_PATH="$PWD/backend/e2e/fixture-library"
+export DJANGO_SECRET_KEY=e2e-secret
+export DROPLET_ADMIN_USER=e2e
+export DROPLET_ADMIN_PASSWORD=e2e-pass-123
 COMPOSE="docker compose -f docker-compose.yml -f docker-compose.e2e.yml"
 cleanup() { $COMPOSE down -v; }
 trap cleanup EXIT
@@ -803,17 +952,18 @@ for i in $(seq 1 60); do
   curl -sf http://localhost:8800/api/health/ >/dev/null && break
   sleep 1
 done
+curl -sf http://localhost:8800/api/health/ >/dev/null || { echo "backend e2e nie wstał"; $COMPOSE logs --tail=50; exit 1; }
 cd backend && pytest e2e -v --no-cov
 ```
 
 `chmod +x scripts/e2e_backend.sh`. Uwaga: `!override` wymaga compose >= 2.24; przy starszym — zamiast override zdubluj pełne definicje serwisów w pliku e2e.
 
-- [ ] **Step 3: Uruchom e2e**
+- [x] **Step 3: Uruchom e2e**
 
 Run: `./scripts/e2e_backend.sh`
-Expected: 4 testy PASS, kontenery posprzątane po biegu.
+Expected: 5 testów PASS, kontenery posprzątane po biegu.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docker-compose.e2e.yml scripts/e2e_backend.sh backend/e2e

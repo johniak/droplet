@@ -18,6 +18,7 @@
 - Identyczność gry: `(system, normalized_title)`; dla Switcha dodatkowo scala po title-id (prefiks 12 hex).
 - Skan przyrostowy i idempotentny: drugi bieg bez zmian na dysku = zero zapisów poza `ScanRun`.
 - Błąd pojedynczego pliku/katalogu trafia do `ScanRun.errors`, nie przerywa skanu.
+- Biegi częściowe (`pytest <plik>`) z `--no-cov`; bramka = pełny `pytest`. Testy API używają fixture `auth_client` z `backend/conftest.py` (M0 Task 7a).
 
 ---
 
@@ -482,6 +483,27 @@ def test_hidden_files_skipped(tmp_path):
     root = tmp_path
     _write(root / "snes" / ".DS_Store")
     assert group_system_dir(root / "snes", root, is_switch=False) == []
+
+
+def test_m3u_missing_entry_is_skipped(tmp_path):
+    root = tmp_path
+    d = root / "psx"
+    _write(d / "FF7 (Disc 1).cue", b'FILE "FF7 (Disc 1).bin" BINARY\n')
+    _write(d / "FF7 (Disc 1).bin")
+    _write(d / "FF7.m3u", b"FF7 (Disc 1).cue\nFF7 (Disc 2).cue\n")  # Disc 2 nie istnieje
+    groups = group_system_dir(d, root, is_switch=False)
+    assert len(groups) == 1
+    assert [f.disc_number for f in groups[0].files if f.role == "disc"] == [1]
+
+
+def test_switch_without_title_id_groups_by_title(tmp_path):
+    root = tmp_path
+    d = root / "switch"
+    _write(d / "Celeste.nsp")
+    _write(d / "Celeste (UPD) (v1.2.6).nsp")
+    groups = group_system_dir(d, root, is_switch=True)
+    assert len(groups) == 1
+    assert sorted(f.role for f in groups[0].files) == ["base", "update"]
 ```
 
 - [ ] **Step 2: FAIL** — `pytest library/tests/test_grouping.py -v`
@@ -534,12 +556,13 @@ def group_system_dir(system_dir: Path, library_root: Path, *, is_switch: bool) -
         p for p in system_dir.rglob("*")
         if p.is_file() and not any(part.startswith(".") for part in p.parts)
     )
+    file_set = set(all_files)
     claimed: set[Path] = set()
     groups: list[GameGroup] = []
 
     def resolve(base: Path, name: str) -> Path | None:
-        cand = (base.parent / name)
-        return cand if cand in set(all_files) else None
+        cand = base.parent / name
+        return cand if cand in file_set else None
 
     # 1. m3u
     for m3u in [p for p in all_files if p.suffix.lower() == ".m3u"]:
@@ -799,6 +822,45 @@ def test_unknown_directory_flagged(tmp_path):
     with override_settings(LIBRARY_ROOT=tmp_path):
         run_scan()
     assert System.objects.get(directory="Dziwny Folder").needs_config is True
+
+
+@pytest.mark.django_db
+def test_switch_family_with_and_without_title_id_is_one_game(tmp_path):
+    # base z title-id (klucz = prefiks), update bez title-id (klucz = tytuł):
+    # bez fallbacku po normalized_title drugi create łamie UniqueConstraint
+    # i wywraca cały skan.
+    d = tmp_path / "switch"
+    d.mkdir()
+    (d / "Celeste [01002B30028F6000][v0].nsp").write_bytes(b"a")
+    (d / "Celeste (UPD) (v1.2.6).nsp").write_bytes(b"b")
+    with override_settings(LIBRARY_ROOT=tmp_path):
+        run = run_scan()
+    assert run.status == ScanRun.Status.SUCCESS
+    game = Game.objects.get(system__code="switch")
+    assert game.switch_title_prefix == "01002B30028F"
+    assert sorted(game.files.values_list("role", flat=True)) == ["base", "update"]
+
+
+@pytest.mark.django_db
+def test_missing_library_root_marks_run_failed(tmp_path):
+    with override_settings(LIBRARY_ROOT=tmp_path / "nie-ma"):
+        run = run_scan()
+    assert run.status == ScanRun.Status.FAILED
+    assert run.errors and run.finished_at is not None
+
+
+@pytest.mark.django_db
+def test_system_error_is_recorded_and_scan_continues(library, monkeypatch):
+    import library.scanner.scan as scan_module
+
+    def boom(*args, **kwargs):
+        raise OSError("dysk odpięty")
+
+    monkeypatch.setattr(scan_module, "group_system_dir", boom)
+    with override_settings(LIBRARY_ROOT=library):
+        run = run_scan()
+    assert run.status == ScanRun.Status.SUCCESS
+    assert any("dysk odpięty" in e for e in run.errors)
 ```
 
 - [ ] **Step 2: FAIL** — `pytest library/tests/test_scan.py -v`

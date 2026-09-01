@@ -1,0 +1,20 @@
+services:
+  web:
+    ports: !override ["8800:8000"]
+    environment:
+      DJANGO_SECRET_KEY: e2e-secret
+      DROPLET_ADMIN_USER: e2e
+      DROPLET_ADMIN_PASSWORD: e2e-pass-123
+    volumes: !override
+      - droplet-e2e-data:/data
+      - ./backend/e2e/fixture-library:/library:ro
+  worker:
+    environment:
+      DJANGO_SECRET_KEY: e2e-secret
+      DROPLET_ADMIN_USER: e2e
+      DROPLET_ADMIN_PASSWORD: e2e-pass-123
+    volumes: !override
+      - droplet-e2e-data:/data
+      - ./backend/e2e/fixture-library:/library:ro
+volumes:
+  droplet-e2e-data:
