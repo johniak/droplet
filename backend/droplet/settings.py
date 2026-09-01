@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "django_tasks_db",
     "core",
     "library",
+    "covers",
 ]
 
 MIDDLEWARE = [
@@ -101,6 +102,8 @@ REST_FRAMEWORK = {
 }
 
 TASKS = {"default": {"BACKEND": "django_tasks_db.DatabaseBackend"}}
+
+COVERS_AUTO_MATCH = os.environ.get("DROPLET_AUTO_COVERS", "1") == "1"
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"

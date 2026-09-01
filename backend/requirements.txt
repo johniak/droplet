@@ -7,3 +7,6 @@ pytest>=8.0
 pytest-django>=4.9
 pytest-cov>=5.0
 whitenoise>=6.7
+rapidfuzz>=3.9
+Pillow>=10.4
+responses>=0.25
