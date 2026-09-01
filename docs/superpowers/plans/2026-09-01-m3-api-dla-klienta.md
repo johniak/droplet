@@ -560,7 +560,7 @@ def file_download(request, pk: int):
 **Interfaces:**
 - Consumes: harness M0, fixture-library M1 (Mario/snes, Tekken cue+bin/psx, Hollow Knight base+update/switch, Dziwny Folder).
 
-- [ ] **Step 1: Napisz testy e2e**
+- [x] **Step 1: Napisz testy e2e**
 
 `backend/e2e/test_api_e2e.py`:
 
@@ -648,9 +648,9 @@ def test_scan_result_contents(base_url, auth):
     assert {"Super Mario World", "Tekken", "Hollow Knight"} <= titles
 ```
 
-- [ ] **Step 2: Uruchom** — `./scripts/e2e_backend.sh` → wszystkie e2e PASS.
+- [x] **Step 2: Uruchom** — `./scripts/e2e_backend.sh` → wszystkie e2e PASS.
 
-- [ ] **Step 3: Commit** — `git add backend/e2e && git commit -m "test: full API e2e flow with range resume"`
+- [x] **Step 3: Commit** — `git add backend/e2e && git commit -m "test: full API e2e flow with range resume"`
 
 ---
 
