@@ -1,0 +1,17 @@
+[run]
+source = .
+omit =
+    */migrations/*
+    droplet/settings.py
+    droplet/settings_test.py
+    droplet/wsgi.py
+    droplet/asgi.py
+    manage.py
+    conftest.py
+    e2e/*
+    .venv/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING:

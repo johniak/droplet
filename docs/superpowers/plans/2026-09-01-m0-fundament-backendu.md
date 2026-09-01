@@ -32,7 +32,7 @@
 **Interfaces:**
 - Produces: pakiet projektu `droplet` z `settings.py` czytającym env wg Global Constraints; stałe `settings.LIBRARY_ROOT: Path` i `settings.DATA_DIR: Path`; app `core` zarejestrowany w `INSTALLED_APPS`.
 
-- [ ] **Step 1: Środowisko i zależności**
+- [x] **Step 1: Środowisko i zależności**
 
 ```bash
 mkdir -p backend && cd backend
@@ -63,7 +63,7 @@ db.sqlite3*
 /data/
 ```
 
-- [ ] **Step 2: Napisz settings czytające env**
+- [x] **Step 2: Napisz settings czytające env**
 
 Zastąp wygenerowane `backend/droplet/settings.py` (kluczowe fragmenty — reszta jak wygenerował Django):
 
@@ -128,7 +128,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 Uwaga wykonawcza: jeśli nazwy modułów `django_tasks` różnią się w zainstalowanej wersji, sprawdź `pip show django-tasks` + dokumentację (context7) i popraw ścieżki backendu — reszta planu zakłada powyższe.
 
-- [ ] **Step 3: Konfiguracja pytest + settings testowe**
+- [x] **Step 3: Konfiguracja pytest + settings testowe**
 
 `backend/pytest.ini`:
 
@@ -180,7 +180,7 @@ LIBRARY_ROOT = BASE_DIR / ".test-library"
 import pytest  # noqa: F401
 ```
 
-- [ ] **Step 4: Napisz test smoke settings**
+- [x] **Step 4: Napisz test smoke settings**
 
 `backend/core/tests/test_settings.py`:
 
@@ -202,12 +202,12 @@ def test_drf_defaults_require_auth():
     )
 ```
 
-- [ ] **Step 5: Uruchom testy i check**
+- [x] **Step 5: Uruchom testy i check**
 
 Run: `cd backend && pytest core/tests/test_settings.py -v && python manage.py check`
 Expected: 2 testy PASS, check bez błędów.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend .gitignore
