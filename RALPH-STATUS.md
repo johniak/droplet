@@ -103,3 +103,6 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   rzucony w providerze jest opakowany w `ProviderException` (typ nieeksportowany
   z `flutter_riverpod`). Kod uzywa `.value`, a test sprawdza komunikat wyjatku
   zamiast `throwsStateError`.
+- **M4 Task 5 - typ `Override`**: `flutter_riverpod` 3.3.2 nie eksportuje typu
+  `Override`, wiec helper testowy przyjmuje samo `ApiClientFactory` zamiast listy
+  nadpisan.

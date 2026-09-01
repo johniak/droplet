@@ -737,7 +737,7 @@ testWidgets('session -> library', (tester) async {
 
 W `smoke_test.dart` z Task 1 dodaj to samo nadpisanie `sessionRepositoryProvider` (pamięciowy store), żeby test nie dotykał pluginu secure storage.
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `app/test/features/login_screen_test.dart`:
 
@@ -765,13 +765,15 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja** — `LoginScreen` (ConsumerStatefulWidget): `Form` z trzema `TextFormField` (validator `Wymagane` przy pustym), stan ładowania na przycisku, mapowanie wyjątków na komunikaty; logo/tytuł „Droplet" nad formularzem, całość wycentrowana, max szerokość 420. `router.dart` → `routerProvider` jak w Interfaces (redirect + `refreshListenable`), stub `/login` → `LoginScreen`. `DropletApp` → `ConsumerWidget`: `ref.watch(sessionProvider).isLoading` → ciemny pusty `Scaffold`; inaczej `MaterialApp.router(routerConfig: ref.watch(routerProvider))`. Widget test logowania z błędnym hasłem: nadpisz `apiClientFactoryProvider` fake'iem rzucającym `DioException` z odpowiedzią 400 i sprawdź komunikat „Błędny login lub hasło" (gałąź błędu też liczy się do 100%).
+- [x] **Step 3: Implementacja** — `LoginScreen` (ConsumerStatefulWidget): `Form` z trzema `TextFormField` (validator `Wymagane` przy pustym), stan ładowania na przycisku, mapowanie wyjątków na komunikaty; logo/tytuł „Droplet" nad formularzem, całość wycentrowana, max szerokość 420. `router.dart` → `routerProvider` jak w Interfaces (redirect + `refreshListenable`), stub `/login` → `LoginScreen`. `DropletApp` → `ConsumerWidget`: `ref.watch(sessionProvider).isLoading` → ciemny pusty `Scaffold`; inaczej `MaterialApp.router(routerConfig: ref.watch(routerProvider))`. Widget test logowania z błędnym hasłem: nadpisz `apiClientFactoryProvider` fake'iem rzucającym `DioException` z odpowiedzią 400 i sprawdź komunikat „Błędny login lub hasło" (gałąź błędu też liczy się do 100%).
 
-- [ ] **Step 4: PASS** — `flutter test`; ręcznie: logowanie do prawdziwego backendu z telefonu (zły adres → komunikat, dobre dane → przejście do `/`).
+- [x] **Step 4: PASS** (flutter test + bramka 100%; recznie na telefonie - odlozone na czlowieka, RALPH-STATUS)
 
-- [ ] **Step 5: Commit** — `git commit -m "feat: login screen with session-aware routing"`
+Oryginalny krok: — `flutter test`; ręcznie: logowanie do prawdziwego backendu z telefonu (zły adres → komunikat, dobre dane → przejście do `/`).
+
+- [x] **Step 5: Commit** — `git commit -m "feat: login screen with session-aware routing"`
 
 ---
 
