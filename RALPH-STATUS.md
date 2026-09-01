@@ -106,3 +106,9 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
 - **M4 Task 5 - typ `Override`**: `flutter_riverpod` 3.3.2 nie eksportuje typu
   `Override`, wiec helper testowy przyjmuje samo `ApiClientFactory` zamiast listy
   nadpisan.
+- **M4 Task 6 - brak `StateProvider` w Riverpod 3**: `selectedSystemProvider`
+  i `searchQueryProvider` to `NotifierProvider` z jawnymi metodami (`select`,
+  `update`) zamiast `StateProvider` (usunietego z glownego API Riverpoda 3).
+- **M4 Task 6 - `GameCard` bez sesji**: karta czyta `apiClientProvider` tylko dla
+  gry z okladka (`hasCover`), dzieki czemu test widgetowy z planu (gry bez okladek,
+  bez nadpisanej sesji) dziala i nie strzela po HTTP.

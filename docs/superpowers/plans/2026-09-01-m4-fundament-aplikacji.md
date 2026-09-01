@@ -791,7 +791,7 @@ Oryginalny krok: — `flutter test`; ręcznie: logowanie do prawdziwego backendu
   - `GameCard(game)` — okładka 3:4, zaokrąglenie 12, tytuł pod spodem, `onTap` → `/game/:id`.
   - `LibraryScreen` — AppBar z szukajką (`SearchBar`), poziomy `ListView` chipów systemów („Wszystkie" + z `systemsProvider`), `GridView` kart (2 kolumny portret), pull-to-refresh (`ref.invalidate(gamesProvider)`), ikona ustawień → `/settings`.
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `app/test/features/library_screen_test.dart`:
 
@@ -861,9 +861,9 @@ void main() {
 
 (`gamesProvider` w produkcji czyta `apiClientProvider`; test paginacji „pobiera kolejne strony aż `hasNext == false`" zrób osobno w `test/features/library_providers_test.dart` przez `ProviderContainer` z nadpisanym `apiClientFactoryProvider` na fake zwracający 2 strony — ta pętla też musi być pokryta.)
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja** — wg Interfaces. `gamesProvider`:
+- [x] **Step 3: Implementacja** — wg Interfaces. `gamesProvider`:
 
 ```dart
 final gamesProvider = FutureProvider<List<GameSummary>>((ref) async {
@@ -884,9 +884,11 @@ final gamesProvider = FutureProvider<List<GameSummary>>((ref) async {
 
 Placeholder okładki bez sieci w testach: `CoverImage` renderuje `CachedNetworkImage` tylko gdy `hasCover`, inaczej od razu placeholder — dzięki temu widget testy nie strzelają po HTTP. Stan błędu listy: tekst z `humanizeError` (od M6; do tego czasu `error.toString()`) + przycisk „Ponów" (`ref.invalidate(gamesProvider)`). `GameCard.onTap` → `context.go('/game/${game.id}')`.
 
-- [ ] **Step 4: PASS** — `flutter test`; ręcznie na telefonie: przewijanie pełnej biblioteki, filtr systemem, szukajka.
+- [x] **Step 4: PASS** (flutter test + bramka 100%; recznie na telefonie - odlozone na czlowieka)
 
-- [ ] **Step 5: Commit** — `git commit -m "feat: library grid with system filter and search"`
+Oryginalny krok: — `flutter test`; ręcznie na telefonie: przewijanie pełnej biblioteki, filtr systemem, szukajka.
+
+- [x] **Step 5: Commit** — `git commit -m "feat: library grid with system filter and search"`
 
 ---
 

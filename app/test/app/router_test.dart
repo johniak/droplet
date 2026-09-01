@@ -1,15 +1,22 @@
 import 'package:droplet/core/session/providers.dart';
 import 'package:droplet/core/session/session_repository.dart';
+import 'package:droplet/core/api/models.dart';
 import 'package:droplet/features/auth/login_screen.dart';
+import 'package:droplet/features/library/library_screen.dart';
+import 'package:droplet/features/library/providers.dart';
 import 'package:droplet/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+// The library screen is stubbed out at the data level so routing tests stay
+// about routing (and never touch the network).
 Widget _app(KeyValueStore store) => ProviderScope(
       overrides: [
         sessionRepositoryProvider.overrideWithValue(SessionRepository(store)),
+        gamesProvider.overrideWith((ref) async => <GameSummary>[]),
+        systemsProvider.overrideWith((ref) async => <SystemModel>[]),
       ],
       child: const DropletApp(),
     );
@@ -31,13 +38,13 @@ void main() {
   testWidgets('session -> library', (tester) async {
     await tester.pumpWidget(_app(await _signedIn()));
     await tester.pumpAndSettle();
-    expect(find.text('Biblioteka'), findsOneWidget);
+    expect(find.byType(LibraryScreen), findsOneWidget);
   });
 
   testWidgets('nested routes render below the library', (tester) async {
     await tester.pumpWidget(_app(await _signedIn()));
     await tester.pumpAndSettle();
-    final context = tester.element(find.text('Biblioteka'));
+    final context = tester.element(find.byType(LibraryScreen));
 
     context.go('/game/7');
     await tester.pumpAndSettle();
@@ -54,7 +61,11 @@ void main() {
     late ProviderContainer container;
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sessionRepositoryProvider.overrideWithValue(repo)],
+        overrides: [
+          sessionRepositoryProvider.overrideWithValue(repo),
+          gamesProvider.overrideWith((ref) async => <GameSummary>[]),
+          systemsProvider.overrideWith((ref) async => <SystemModel>[]),
+        ],
         child: Consumer(
           builder: (context, ref, _) {
             container = ProviderScope.containerOf(context);
@@ -70,6 +81,6 @@ void main() {
     container.read(sessionProvider.notifier).state =
         const AsyncData(Session(serverUrl: 'http://nas:8000', token: 't'));
     await tester.pumpAndSettle();
-    expect(find.text('Biblioteka'), findsOneWidget);
+    expect(find.byType(LibraryScreen), findsOneWidget);
   });
 }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/session/providers.dart';
 import '../features/auth/login_screen.dart';
+import '../features/library/library_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier(0);
@@ -23,7 +24,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(
         path: '/',
-        builder: (_, __) => const _Stub('Biblioteka'),
+        builder: (_, __) => const LibraryScreen(),
         routes: [
           // Nested: go('/game/7') builds the stack [/, /game/7], so the
           // system back button returns to the library instead of exiting.
