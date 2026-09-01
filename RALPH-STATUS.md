@@ -37,3 +37,7 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   wywołaniem compose'a (i tak nadpisuje je `docker-compose.e2e.yml`). Dodatkowo
   pytest odpalany jest w subshellu, żeby trap `down -v` widział pliki compose'a
   z korzenia repo.
+- **Zasada ogólna (od M1 Task 1)**: gdy fragmenty kodu z planu nie są w całości pokryte
+  testami z planu (np. metody `__str__` modeli), dopisuję minimalny, prawdziwy test
+  zamiast wyłączenia pokrycia. Puste stuby generowane przez `startapp`
+  (`library/views.py`) usuwam, bo tworzą je dopiero późniejsze taski.

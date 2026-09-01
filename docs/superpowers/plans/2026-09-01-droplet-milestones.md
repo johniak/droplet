@@ -122,13 +122,14 @@ i ścieżkę ręcznej poprawki.
 **Zadania:**
 1. `GET /api/systems/` — lista z licznikami gier i metadanymi wyglądu (kolor/ikona).
 2. `GET /api/games/` — paginacja, filtr po systemie, szukajka (tytuł znormalizowany),
-   sortowanie (alfabetycznie, ostatnio dodane), pole `coverThumbUrl`.
+   sortowanie (alfabetycznie, ostatnio dodane), pole `has_cover` (okładka przez
+   `GET /api/games/{id}/cover`).
 3. `GET /api/games/{id}/` — manifest: pliki z rolami, rozmiarami, wersjami,
-   numerami płyt; flaga `hasCover`.
+   numerami płyt; flaga `has_cover`.
 4. `GET /api/files/{id}/download` — streaming z obsługą **HTTP Range** (wznawianie),
    `Content-Length`, poprawne nazwy plików; tylko ścieżki z indeksu.
 5. Wersjonowanie odpowiedzi pod przyszłe rozszerzenia (spokojnie: jedno pole
-   `apiVersion` w `/api/health/` wystarczy dla jednego klienta).
+   `api_version` w `/api/health/` wystarczy dla jednego klienta).
 6. Testy: paginacja/filtry, Range (pełny plik, wznowienie od offsetu, zły zakres),
    401 bez tokenu na wszystkim, próba pobrania ścieżki spoza indeksu.
 

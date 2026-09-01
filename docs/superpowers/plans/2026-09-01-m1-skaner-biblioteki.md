@@ -75,7 +75,7 @@ class ScanRun(models.Model):
     errors = models.JSONField(default=list)
 ```
 
-- [ ] **Step 1: Failing test**
+- [x] **Step 1: Failing test**
 
 `backend/library/tests/test_models.py`:
 
@@ -103,9 +103,9 @@ def test_gamefile_path_unique():
         GameFile.objects.create(game=g, relative_path="snes/mario.sfc", size=2, mtime_ns=2)
 ```
 
-- [ ] **Step 2: Uruchom — FAIL** (`pytest library -v` → import errors)
+- [x] **Step 2: Uruchom — FAIL** (`pytest library -v` → import errors)
 
-- [ ] **Step 3: Implementacja** — `startapp library`, modele jak w Interfaces, `INSTALLED_APPS += ["library"]`, `python manage.py makemigrations library`. W `library/admin.py` na razie proste rejestracje:
+- [x] **Step 3: Implementacja** — `startapp library`, modele jak w Interfaces, `INSTALLED_APPS += ["library"]`, `python manage.py makemigrations library`. W `library/admin.py` na razie proste rejestracje:
 
 ```python
 from django.contrib import admin
@@ -118,9 +118,9 @@ admin.site.register(GameFile)
 admin.site.register(ScanRun)
 ```
 
-- [ ] **Step 4: Testy zielone** — `pytest library -v` PASS.
+- [x] **Step 4: Testy zielone** — `pytest library -v` PASS.
 
-- [ ] **Step 5: Commit** — `git add backend/library backend/droplet/settings.py && git commit -m "feat: library models for systems, games, files and scan runs"`
+- [x] **Step 5: Commit** — `git add backend/library backend/droplet/settings.py && git commit -m "feat: library models for systems, games, files and scan runs"`
 
 ---
 
