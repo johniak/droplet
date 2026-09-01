@@ -45,7 +45,7 @@ GET /api/files/{id}/download -> 200 pełny plik / 206 przy Range / 416 zły zakr
 - Consumes: modele z M1.
 - Produces: `SystemSerializer` (pola: `id, code, name, game_count, sort_order`); endpoint zwraca systemy posortowane po `sort_order, name`, tylko te z co najmniej 1 grą; bez paginacji (lista jest krótka).
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `backend/library/tests/test_api_systems.py`:
 
@@ -81,9 +81,9 @@ def test_systems_require_auth(db):
     assert APIClient().get("/api/systems/").status_code == 401
 ```
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `backend/library/serializers.py`:
 
@@ -125,7 +125,7 @@ class SystemListView(ListAPIView):
 
 `urls.py`: `path("systems/", api.SystemListView.as_view(), name="systems"),`
 
-- [ ] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: systems endpoint with game counts"`
+- [x] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: systems endpoint with game counts"`
 
 ---
 

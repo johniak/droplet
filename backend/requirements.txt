@@ -10,3 +10,4 @@ whitenoise>=6.7
 rapidfuzz>=3.9
 Pillow>=10.4
 responses>=0.25
+django-filter>=24.0
