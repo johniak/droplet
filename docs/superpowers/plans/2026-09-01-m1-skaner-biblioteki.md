@@ -225,7 +225,7 @@ parse_switch(stem: str) -> SwitchInfo
 title_prefix(title_id: str) -> str  # pierwsze 12 hex — wspólne dla base/UPD/DLC
 ```
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `backend/library/tests/test_switch.py`:
 
@@ -254,9 +254,9 @@ def test_title_prefix_groups_family():
     assert title_prefix("0100633007D48000") == title_prefix("0100633007D48800")
 ```
 
-- [ ] **Step 2: FAIL** — `pytest library/tests/test_switch.py -v`
+- [x] **Step 2: FAIL** — `pytest library/tests/test_switch.py -v`
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `backend/library/scanner/switch.py`:
 
@@ -295,7 +295,7 @@ def parse_switch(stem: str) -> SwitchInfo:
     return SwitchInfo(title_id=tid, role=role, version=version)
 ```
 
-- [ ] **Step 4: PASS**, **Step 5: Commit** — `git add ... && git commit -m "feat: switch filename tag parser"`
+- [x] **Step 4: PASS**, **Step 5: Commit** — `git add ... && git commit -m "feat: switch filename tag parser"`
 
 ---
 

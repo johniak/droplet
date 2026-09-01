@@ -765,7 +765,7 @@ void main() {
 
 - [ ] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja** — `LoginScreen` (ConsumerStatefulWidget): `Form` z trzema `TextFormField` (validator `Wymagane` przy pustym), stan ładowania na przycisku, mapowanie wyjątków na komunikaty; logo/tytuł „Droplet" nad formularzem, całość wycentrowana, max szerokość 420. W `router.dart` dodaj `redirect` czytający `sessionProvider` (router jako provider — `buildRouter(Ref ref)` w `routerProvider`), podmień stub `/login` na `LoginScreen`.
+- [ ] **Step 3: Implementacja** — `LoginScreen` (ConsumerStatefulWidget): `Form` z trzema `TextFormField` (validator `Wymagane` przy pustym), stan ładowania na przycisku, mapowanie wyjątków na komunikaty; logo/tytuł „Droplet" nad formularzem, całość wycentrowana, max szerokość 420. `router.dart` → `routerProvider` jak w Interfaces (redirect + `refreshListenable`), stub `/login` → `LoginScreen`. `DropletApp` → `ConsumerWidget`: `ref.watch(sessionProvider).isLoading` → ciemny pusty `Scaffold`; inaczej `MaterialApp.router(routerConfig: ref.watch(routerProvider))`. Widget test logowania z błędnym hasłem: nadpisz `apiClientFactoryProvider` fake'iem rzucającym `DioException` z odpowiedzią 400 i sprawdź komunikat „Błędny login lub hasło" (gałąź błędu też liczy się do 100%).
 
 - [ ] **Step 4: PASS** — `flutter test`; ręcznie: logowanie do prawdziwego backendu z telefonu (zły adres → komunikat, dobre dane → przejście do `/`).
 
@@ -822,12 +822,40 @@ void main() {
   testWidgets('shows games and system chips', (tester) async {
     await tester.pumpWidget(build());
     await tester.pumpAndSettle();
-    expect(find.text('Super Mario World'), findsOneWidget);
+    // tytuł może wystąpić 2x (placeholder okładki + podpis karty) — nie findsOneWidget
+    expect(find.text('Super Mario World'), findsWidgets);
     expect(find.text('SNES'), findsOneWidget);
     expect(find.text('Wszystkie'), findsOneWidget);
   });
+
+  testWidgets('system chip filters and search updates provider', (tester) async {
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('PSX'));
+    await tester.pump();
+    final container = ProviderScope.containerOf(
+        tester.element(find.byType(LibraryScreen)));
+    expect(container.read(selectedSystemProvider), 'psx');
+    await tester.enterText(find.byType(TextField).first, 'tek');
+    await tester.pump();
+    expect(container.read(searchQueryProvider), 'tek');
+  });
+
+  testWidgets('error state shows retry', (tester) async {
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        gamesProvider.overrideWith((ref) async => throw StateError('x')),
+        systemsProvider.overrideWith((ref) async => systems),
+      ],
+      child: const MaterialApp(home: LibraryScreen()),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('Ponów'), findsOneWidget);
+  });
 }
 ```
+
+(`gamesProvider` w produkcji czyta `apiClientProvider`; test paginacji „pobiera kolejne strony aż `hasNext == false`" zrób osobno w `test/features/library_providers_test.dart` przez `ProviderContainer` z nadpisanym `apiClientFactoryProvider` na fake zwracający 2 strony — ta pętla też musi być pokryta.)
 
 - [ ] **Step 2: FAIL**
 
@@ -850,7 +878,7 @@ final gamesProvider = FutureProvider<List<GameSummary>>((ref) async {
 });
 ```
 
-Placeholder okładki bez sieci w testach: `CoverImage` renderuje `CachedNetworkImage` tylko gdy `hasCover`, inaczej od razu placeholder — dzięki temu widget testy nie strzelają po HTTP.
+Placeholder okładki bez sieci w testach: `CoverImage` renderuje `CachedNetworkImage` tylko gdy `hasCover`, inaczej od razu placeholder — dzięki temu widget testy nie strzelają po HTTP. Stan błędu listy: tekst z `humanizeError` (od M6; do tego czasu `error.toString()`) + przycisk „Ponów" (`ref.invalidate(gamesProvider)`). `GameCard.onTap` → `context.go('/game/${game.id}')`.
 
 - [ ] **Step 4: PASS** — `flutter test`; ręcznie na telefonie: przewijanie pełnej biblioteki, filtr systemem, szukajka.
 
@@ -1034,6 +1062,8 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
+    // czysty stan na urządzeniu: poprzedni (np. przerwany) bieg mógł zostawić sesję
+    await const FlutterSecureStorage().deleteAll();
     // seed: skan fixture-library przez API, żeby biblioteka nie była pusta
     final client = ApiClient(baseUrl: server);
     final token = await client.login('e2e', 'e2e-pass-123');
@@ -1054,17 +1084,17 @@ void main() {
     await tester.tap(find.text('Zaloguj'));
     await tester.pumpAndSettle(const Duration(seconds: 10));
 
-    // biblioteka z fixture-library
-    expect(find.text('Super Mario World'), findsOneWidget);
+    // biblioteka z fixture-library (tytuł może być 2x: placeholder + podpis)
+    expect(find.text('Super Mario World'), findsWidgets);
 
     // filtr systemem
     await tester.tap(find.text('Nintendo Switch'));
     await tester.pumpAndSettle();
-    expect(find.text('Hollow Knight'), findsOneWidget);
+    expect(find.text('Hollow Knight'), findsWidgets);
     expect(find.text('Super Mario World'), findsNothing);
 
     // karta gry z rolami
-    await tester.tap(find.text('Hollow Knight'));
+    await tester.tap(find.text('Hollow Knight').first);
     await tester.pumpAndSettle();
     expect(find.text('Aktualizacja'), findsOneWidget);
 
@@ -1099,12 +1129,21 @@ Future<void> triggerScan() async {
 set -euo pipefail
 cd "$(dirname "$0")/.."
 E2E_SERVER=${E2E_SERVER:?ustaw np. E2E_SERVER=http://192.168.1.10:8800 (IP hosta widoczne z telefonu)}
+# te same zmienne co w scripts/e2e_backend.sh — bazowy compose ich wymaga
+export LIBRARY_PATH="$PWD/backend/e2e/fixture-library"
+export DJANGO_SECRET_KEY=e2e-secret
+export DROPLET_ADMIN_USER=e2e
+export DROPLET_ADMIN_PASSWORD=e2e-pass-123
 COMPOSE="docker compose -f docker-compose.yml -f docker-compose.e2e.yml"
 cleanup() { $COMPOSE down -v; }
 trap cleanup EXIT
 $COMPOSE up -d --build
 for i in $(seq 1 60); do curl -sf localhost:8800/api/health/ >/dev/null && break; sleep 1; done
-cd app && flutter test integration_test --dart-define=E2E_SERVER="$E2E_SERVER"
+curl -sf localhost:8800/api/health/ >/dev/null || { echo "backend e2e nie wstał"; exit 1; }
+adb devices | grep -qw device || { echo "brak podłączonego urządzenia Android"; exit 1; }
+# E2E=true: aplikacja nie pokazuje systemowych dialogów uprawnień (M5) — test nie umie ich kliknąć
+cd app && flutter test integration_test \
+  --dart-define=E2E_SERVER="$E2E_SERVER" --dart-define=E2E=true
 ```
 
 `chmod +x scripts/e2e_app.sh`.
