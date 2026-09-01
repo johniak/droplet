@@ -52,7 +52,7 @@ class StorageSettingsRepository {
 //            storageSettingsProvider = FutureProvider<StorageSettings>
 ```
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `app/test/core/storage_settings_test.dart`:
 
@@ -100,11 +100,11 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: FAIL** — `flutter test test/core/storage_settings_test.dart`
+- [x] **Step 2: FAIL** — `flutter test test/core/storage_settings_test.dart`
 
-- [ ] **Step 3: Implementacja** — czysta klasa + repozytorium na `SharedPreferencesAsync` (klucze `storage.base_dir`, `storage.system_dirs` jako JSON). Provider'y w tym samym pliku (`storageSettingsProvider` czyta `storageSettingsRepositoryProvider`). `shared_preferences_platform_interface` jest zależnością tranzytywną — dodaj jawnie do `dev_dependencies` (`flutter pub add --dev shared_preferences_platform_interface`).
+- [x] **Step 3: Implementacja** — czysta klasa + repozytorium na `SharedPreferencesAsync` (klucze `storage.base_dir`, `storage.system_dirs` jako JSON). Provider'y w tym samym pliku (`storageSettingsProvider` czyta `storageSettingsRepositoryProvider`). `shared_preferences_platform_interface` jest zależnością tranzytywną — dodaj jawnie do `dev_dependencies` (`flutter pub add --dev shared_preferences_platform_interface`).
 
-- [ ] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: storage settings with per-system directories"`
+- [x] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: storage settings with per-system directories"`
 
 ---
 
