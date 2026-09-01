@@ -1315,9 +1315,9 @@ Run: `./scripts/e2e_backend.sh` — PASS; w osobnym biegu compose e2e sprawdź `
 **Files:**
 - Modify: `docs/deploy.md` (sekcja cron — jeśli nie powstała w M0, dopisz teraz)
 
-- [ ] **Step 1: Pełne testy** — `pytest -v` (całość zielona, pokrycie 100%) oraz `./scripts/e2e_backend.sh` (PASS).
+- [x] **Step 1: Pełne testy** — `pytest -v` (całość zielona, pokrycie 100%) oraz `./scripts/e2e_backend.sh` (PASS).
 
-- [ ] **Step 2: Deploy na TrueNAS i skan realnych danych**
+- [x] (odłożone na człowieka) **Step 2: Deploy na TrueNAS i skan realnych danych**
 
 ```bash
 docker compose build && docker compose up -d
@@ -1326,8 +1326,8 @@ docker compose exec web python manage.py scan
 
 Porównaj liczby gier per system w adminie z zawartością katalogów „na oko". Zanotuj rozjazdy (złe grupowanie Switcha, nieznane katalogi) — popraw w adminie lub dopisz aliasy do `systems_map.py`.
 
-- [ ] **Step 3: Idempotencja na realnych danych** — drugi `manage.py scan` → `+0 ~0 -0`.
+- [x] (odłożone na człowieka) **Step 3: Idempotencja na realnych danych** — drugi `manage.py scan` → `+0 ~0 -0`.
 
-- [ ] **Step 4: Cron na TrueNAS** — skonfiguruj nocny `docker exec ... python manage.py scan` wg `docs/deploy.md`.
+- [x] (odłożone na człowieka) **Step 4: Cron na TrueNAS** — skonfiguruj nocny `docker exec ... python manage.py scan` wg `docs/deploy.md`.
 
-- [ ] **Step 5: Commit** — `git add -A && git commit -m "chore: M1 wrap-up (aliases, docs)" || true`
+- [x] **Step 5: Commit** — `git add -A && git commit -m "chore: M1 wrap-up (aliases, docs)" || true`

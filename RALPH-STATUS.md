@@ -4,7 +4,16 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
 
 ## Czeka na Jana
 
-(brak)
+- **M1 Task 11 kroki 2–4 — skan prawdziwej biblioteki na TrueNAS.** Wymaga realnego
+  NAS-a z Twoimi ROMami:
+  1. `docker compose build && docker compose up -d`, potem
+     `docker compose exec web python manage.py scan`.
+  2. Porównaj liczby gier per system w adminie z zawartością katalogów „na oko";
+     rozjazdy (złe grupowanie Switcha, nieznane katalogi) popraw w adminie albo
+     dopisz aliasy do `backend/library/scanner/systems_map.py`.
+  3. Drugi `manage.py scan` musi dać `+0 ~0 -0` (idempotencja na realnych danych).
+  4. Ustaw nocny cron na TrueNAS wg `docs/deploy.md` §5
+     (`docker exec <kontener-web> python manage.py scan`, 03:00).
 
 ## Blokery
 
