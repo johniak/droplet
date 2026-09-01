@@ -253,7 +253,7 @@ class GamePage { int count; List<GameSummary> results; bool hasNext; }
 
 Każda klasa ma `factory ....fromJson(Map<String, dynamic>)`; `FileRole` parsowany z nieznaną wartością → `other`.
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `app/test/core/models_test.dart`:
 
@@ -301,9 +301,9 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: FAIL** — `flutter test test/core/models_test.dart`
+- [x] **Step 2: FAIL** — `flutter test test/core/models_test.dart`
 
-- [ ] **Step 3: Implementacja** — `models.dart` z klasami wg Interfaces; wzorzec parsowania:
+- [x] **Step 3: Implementacja** — `models.dart` z klasami wg Interfaces; wzorzec parsowania:
 
 ```dart
 enum FileRole { base, update, dlc, disc, support, other }
@@ -338,7 +338,7 @@ class GameFileModel {
 
 (analogicznie `SystemModel`, `GameSummary`, `GameDetail` — z `system_name` i listą `files` — oraz `GamePage` z `hasNext: j['next'] != null`).
 
-- [ ] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: API models mirroring backend contract"`
+- [x] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: API models mirroring backend contract"`
 
 ---
 
