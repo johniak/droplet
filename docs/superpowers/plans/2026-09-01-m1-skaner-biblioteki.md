@@ -1257,7 +1257,7 @@ Uwaga: `autocomplete_fields` wymaga `search_fields` w `GameAdmin` — jest.
 - Consumes: harness e2e z M0 (fixture-library montowana jako `/library:ro` w biegu e2e).
 - Produces: fixture'owa biblioteka w repo (małe pliki-atrapy, commitowane) pokrywająca wszystkie ścieżki grupowania; test e2e pełnej pętli: trigger skanu przez API → poprawny indeks.
 
-- [ ] **Step 1: Zbuduj fixture-library**
+- [x] **Step 1: Zbuduj fixture-library**
 
 ```bash
 cd backend/e2e/fixture-library
@@ -1271,7 +1271,7 @@ printf 'X' > "Dziwny Folder/tajemniczy.rom"
 rm .gitkeep
 ```
 
-- [ ] **Step 2: Napisz failing test e2e**
+- [x] **Step 2: Napisz failing test e2e**
 
 `backend/e2e/test_scan_e2e.py`:
 
@@ -1302,11 +1302,11 @@ liczbę i role (M3 Task 5 ma to w zakresie). W M1 weryfikację zawartości zrób
 przez `docker compose exec web python manage.py shell -c "from library.models import Game; print(Game.objects.count())"`
 w Step 3.
 
-- [ ] **Step 3: Uruchom e2e + weryfikacja zawartości**
+- [x] **Step 3: Uruchom e2e + weryfikacja zawartości**
 
 Run: `./scripts/e2e_backend.sh` — PASS; w osobnym biegu compose e2e sprawdź `Game.objects.count() == 4` (3 znane + 1 z Dziwnego Folderu) jak w uwadze wyżej.
 
-- [ ] **Step 4: Commit** — `git add backend/e2e && git commit -m "test: e2e scan flow on fixture library"`
+- [x] **Step 4: Commit** — `git add backend/e2e && git commit -m "test: e2e scan flow on fixture library"`
 
 ---
 
