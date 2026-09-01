@@ -11,6 +11,21 @@ class SystemAdmin(admin.ModelAdmin):
     list_filter = ["needs_config"]
 
 
+class HasCoverFilter(admin.SimpleListFilter):
+    title = "okładka"
+    parameter_name = "has_cover"
+
+    def lookups(self, request, model_admin):
+        return [("yes", "jest"), ("no", "brak")]
+
+    def queryset(self, request, queryset):
+        if self.value() == "yes":
+            return queryset.filter(cover__isnull=False)
+        if self.value() == "no":
+            return queryset.filter(cover__isnull=True)
+        return queryset
+
+
 class GameFileInline(admin.TabularInline):
     model = GameFile
     fields = ["relative_path", "role", "disc_number", "version", "size"]
@@ -21,9 +36,21 @@ class GameFileInline(admin.TabularInline):
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
     list_display = ["title", "system", "file_count"]
-    list_filter = ["system"]
+    list_filter = ["system", HasCoverFilter]
     search_fields = ["title", "normalized_title"]
     inlines = [GameFileInline]
+    actions = ["show_cover_candidates"]
+
+    @admin.action(description="Pokaż kandydatów okładki (top 5)")
+    def show_cover_candidates(self, request, queryset):
+        from covers.matching import top_candidates
+        from covers.thumbnails import fetch_index
+
+        for game in queryset.select_related("system")[:10]:
+            names = fetch_index(game.system.thumbnail_repo)
+            tops = top_candidates(game.normalized_title, names)
+            listing = "; ".join(f"{t.name} ({t.score:.0f})" for t in tops)
+            self.message_user(request, f"{game.title}: {listing}")
 
     @admin.display(description="pliki")
     def file_count(self, obj):
