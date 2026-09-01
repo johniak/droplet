@@ -977,23 +977,23 @@ git commit -m "feat: e2e harness with compose override and auth e2e tests"
 **Files:**
 - Modify: brak (weryfikacja)
 
-- [ ] **Step 1: Całość testów unit + bramka 100%**
+- [x] **Step 1: Całość testów unit + bramka 100%**
 
 Run: `cd backend && pytest -v`
 Expected: wszystkie testy PASS i `Required test coverage of 100% reached` (jeśli nie — dopisz brakujące testy, nie wyłączenia).
 
-- [ ] **Step 2: E2E**
+- [x] **Step 2: E2E**
 
 Run: `./scripts/e2e_backend.sh`
 Expected: PASS.
 
-- [ ] **Step 3: Ręczny sanity-check kryteriów M0**
+- [x] **Step 3: Ręczny sanity-check kryteriów M0**
 
 - `docker compose up` → `/api/health/` 200 bez auth.
 - `GET /api/me/` bez tokenu → 401; z tokenem → 200.
 - `/admin/` przyjmuje login z env.
 
-- [ ] **Step 4: Commit (jeśli były poprawki)**
+- [x] **Step 4: Commit (jeśli były poprawki)**
 
 ```bash
 git add -A && git commit -m "chore: M0 wrap-up fixes" || echo "nothing to commit"

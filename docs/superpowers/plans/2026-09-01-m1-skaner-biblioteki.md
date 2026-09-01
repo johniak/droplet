@@ -880,15 +880,30 @@ from .grouping import group_system_dir
 from .systems_map import lookup_system
 
 
-def _sync_group(system: System, group, run: ScanRun, seen: set[str]) -> None:
+def _find_game(system: System, group) -> Game | None:
+    """Najpierw po title-id (Switch), potem po znormalizowanym tytule.
+
+    Fallback po tytule jest konieczny: grupa z title-id i grupa bez niego
+    (np. update nazwany bez tagu) mają ten sam normalized_title, a
+    UniqueConstraint (system, normalized_title) nie pozwoli na dwie gry.
+    """
     if group.switch_title_prefix:
         game = Game.objects.filter(
             system=system, switch_title_prefix=group.switch_title_prefix
         ).first()
-    else:
-        game = Game.objects.filter(
-            system=system, normalized_title=group.normalized_title
-        ).first()
+        if game is not None:
+            return game
+    game = Game.objects.filter(
+        system=system, normalized_title=group.normalized_title
+    ).first()
+    if game is not None and group.switch_title_prefix and not game.switch_title_prefix:
+        game.switch_title_prefix = group.switch_title_prefix
+        game.save(update_fields=["switch_title_prefix"])
+    return game
+
+
+def _sync_group(system: System, group, run: ScanRun, seen: set[str]) -> None:
+    game = _find_game(system, group)
     if game is None:
         game = Game.objects.create(
             system=system,
@@ -949,9 +964,16 @@ def run_scan() -> ScanRun:
                     _sync_group(system, group, run, seen)
             except OSError as exc:
                 run.errors.append(f"{system_dir.name}: {exc}")
-        stale = GameFile.objects.exclude(relative_path__in=seen)
-        run.files_deleted = stale.count()
-        stale.delete()
+        # różnica liczona po stronie Pythona — `exclude(relative_path__in=seen)`
+        # przy dużej bibliotece przekracza limit parametrów zapytania SQLite
+        stale_ids = [
+            pk
+            for pk, path in GameFile.objects.values_list("pk", "relative_path")
+            if path not in seen
+        ]
+        run.files_deleted = len(stale_ids)
+        for i in range(0, len(stale_ids), 500):
+            GameFile.objects.filter(pk__in=stale_ids[i : i + 500]).delete()
         Game.objects.filter(files__isnull=True).delete()
         run.status = ScanRun.Status.SUCCESS
     except Exception as exc:  # awaria całego skanu
@@ -987,21 +1009,13 @@ def run_scan() -> ScanRun:
 
 ```python
 import pytest
-from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.test import override_settings
 from rest_framework.test import APIClient
 
 from library.models import ScanRun
 
-
-@pytest.fixture
-def auth_client(db):
-    User.objects.create_user(username="jan", password="s3")
-    client = APIClient()
-    token = client.post("/api/auth/token/", {"username": "jan", "password": "s3"}).json()["token"]
-    client.credentials(HTTP_AUTHORIZATION=f"Token {token}")
-    return client
+# fixture `auth_client` pochodzi z backend/conftest.py (M0 Task 7a)
 
 
 @pytest.mark.django_db
@@ -1133,9 +1147,38 @@ def admin_client_(client, db):
 )
 def test_admin_pages_render(admin_client_, url):
     assert admin_client_.get(url).status_code == 200
+
+
+@pytest.mark.django_db
+def test_game_list_shows_file_count(admin_client_):
+    from library.models import Game, GameFile, System
+
+    s = System.objects.create(code="snes", name="SNES", directory="snes")
+    g = Game.objects.create(system=s, title="Mario", normalized_title="mario")
+    GameFile.objects.create(game=g, relative_path="snes/m.sfc", size=1, mtime_ns=1)
+    resp = admin_client_.get("/admin/library/game/")
+    assert resp.status_code == 200
+    assert b"Mario" in resp.content  # kolumna file_count renderuje się bez błędu
+
+
+@pytest.mark.django_db
+def test_run_scan_action_enqueues(admin_client_, tmp_path):
+    from django.test import override_settings
+
+    from library.models import ScanRun
+
+    old = ScanRun.objects.create()
+    with override_settings(LIBRARY_ROOT=tmp_path):
+        resp = admin_client_.post(
+            "/admin/library/scanrun/",
+            {"action": "run_scan_action", "_selected_action": [old.pk]},
+            follow=True,
+        )
+    assert resp.status_code == 200
+    assert ScanRun.objects.count() == 2  # ImmediateBackend wykonał skan od razu
 ```
 
-- [ ] **Step 2: FAIL/PASS baseline** — jeśli przechodzi na prostych rejestracjach, i tak wykonaj Step 3 (test chroni przed regresją po zmianach).
+- [ ] **Step 2: FAIL** — `pytest library/tests/test_admin.py -v --no-cov` (testy akcji i kolumny nie przechodzą na prostych rejestracjach).
 
 - [ ] **Step 3: Implementacja**
 
