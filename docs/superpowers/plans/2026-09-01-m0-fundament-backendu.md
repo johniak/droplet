@@ -309,7 +309,7 @@ git commit -m "feat: add unauthenticated health endpoint"
 **Interfaces:**
 - Produces: `python manage.py createinitialuser` — tworzy superusera z env `DROPLET_ADMIN_USER`/`DROPLET_ADMIN_PASSWORD`; idempotentna (drugi bieg nic nie zmienia); brak env = wyraźny błąd.
 
-- [ ] **Step 1: Napisz failing testy**
+- [x] **Step 1: Napisz failing testy**
 
 `backend/core/tests/test_createinitialuser.py`:
 
@@ -344,12 +344,12 @@ def test_missing_env_raises(monkeypatch):
         call_command("createinitialuser")
 ```
 
-- [ ] **Step 2: Uruchom — FAIL**
+- [x] **Step 2: Uruchom — FAIL**
 
 Run: `pytest core/tests/test_createinitialuser.py -v`
 Expected: FAIL (unknown command).
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `backend/core/management/commands/createinitialuser.py`:
 
@@ -375,11 +375,11 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Created user {username}"))
 ```
 
-- [ ] **Step 4: Testy zielone**
+- [x] **Step 4: Testy zielone**
 
 Run: `pytest core/tests/test_createinitialuser.py -v` — PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/core/management backend/core/tests/test_createinitialuser.py
