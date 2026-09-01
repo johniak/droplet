@@ -368,7 +368,7 @@ Future<Map<String, int>> scanSystemDir(String dirPath); // {} gdy katalog nie is
 
 Reguły `diffGame`: rozpatrywana jest tylko domyślna selekcja (`defaultSelection`); plik „jest" gdy nazwa i rozmiar się zgadzają; wszystkie są → `installed`; żaden → `none`; część → `partial`; `updateAvailable` gdy base obecny, a najnowszy update nieobecny; `presentPaths` obejmuje też pliki spoza selekcji (np. stary update na dysku) — to lista do usuwania.
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `app/test/core/local_state_test.dart`:
 
@@ -438,11 +438,11 @@ void main() {
 
 (`import 'dart:io';` + `import 'package:droplet/core/downloads/local_scanner.dart';` na górze.)
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja** — `diffGame` wg reguł (korzysta z `defaultSelection` i `settings.pathFor`); `scanSystemDir` przez `Directory(dirPath).list()` → mapa `basename -> length` (tylko `File`, katalogi pomijane; brak katalogu → `{}`).
+- [x] **Step 3: Implementacja** — `diffGame` wg reguł (korzysta z `defaultSelection` i `settings.pathFor`); `scanSystemDir` przez `Directory(dirPath).list()` → mapa `basename -> length` (tylko `File`, katalogi pomijane; brak katalogu → `{}`).
 
-- [ ] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: manifest-to-disk diff with install status"`
+- [x] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: manifest-to-disk diff with install status"`
 
 ---
 
