@@ -35,6 +35,13 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   Zweryfikowane automatycznie: `flutter test`, bramka pokrycia 100%
   (`./scripts/check_coverage_app.sh`) i `flutter build apk --debug` (APK sie buduje).
 
+- **M4 Task 8 krok 5 - odbior M4 na urzadzeniu (akceptacja wygladu).** Zbuduj i wgraj
+  APK (`cd app && flutter build apk --debug`, plik w `app/build/app/outputs/flutter-apk/`),
+  potem przejdz checkliste: logowanie po lokalnym IP; restart aplikacji nie wymaga
+  ponownego logowania; biblioteka przewija sie plynnie z okladkami; filtr systemem
+  i szukajka dzialaja; karta gry pokazuje komplet plikow z rolami i rozmiarami;
+  wylogowanie wraca do ekranu logowania. **Akceptacja wygladu jest bramka zamkniecia M4.**
+
 ## Blokery
 
 (brak)

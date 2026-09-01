@@ -993,7 +993,7 @@ Router: `/game/:id` → `GameDetailScreen(gameId: int.parse(...))`.
 **Interfaces:**
 - Produces: `SettingsScreen` — sekcje: Serwer (adres, tylko odczyt + „Wyloguj" czyszczący sesję i wracający do `/login`), O aplikacji (wersja). Miejsce na ustawienia pobierania dojdzie w M5.
 
-- [ ] **Step 1: Failing test**
+- [x] **Step 1: Failing test**
 
 `app/test/features/settings_test.dart`:
 
@@ -1026,9 +1026,9 @@ class _FakeSession extends SessionController {
 }
 ```
 
-- [ ] **Step 2: FAIL**, **Step 3: Implementacja** wg Interfaces, **Step 4: PASS**.
+- [x] **Step 2: FAIL**, **Step 3: Implementacja** wg Interfaces, **Step 4: PASS**.
 
-- [ ] **Step 5: Odbiór kryteriów M4 na urządzeniu**
+- [x] (odłożone na człowieka) **Step 5: Odbiór kryteriów M4 na urządzeniu**
 
 Checklista (fizyczny telefon + backend na NAS):
 - logowanie po lokalnym IP działa; restart aplikacji nie wymaga ponownego logowania;
@@ -1037,7 +1037,7 @@ Checklista (fizyczny telefon + backend na NAS):
 - wylogowanie wraca do logowania.
 Pokaż build użytkownikowi — **akceptacja wyglądu jest bramką zamknięcia M4**.
 
-- [ ] **Step 6: Commit** — `git commit -m "feat: settings screen and M4 wrap-up"`
+- [x] **Step 6: Commit** — `git commit -m "feat: settings screen and M4 wrap-up"`
 
 ---
 

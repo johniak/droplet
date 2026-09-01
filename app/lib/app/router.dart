@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,6 +6,7 @@ import '../core/session/providers.dart';
 import '../features/auth/login_screen.dart';
 import '../features/game/game_detail_screen.dart';
 import '../features/library/library_screen.dart';
+import '../features/settings/settings_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier(0);
@@ -37,19 +38,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: 'settings',
-            builder: (_, __) => const _Stub('Ustawienia'),
+            builder: (_, __) => const SettingsScreen(),
           ),
         ],
       ),
     ],
   );
 });
-
-class _Stub extends StatelessWidget {
-  const _Stub(this.title);
-  final String title;
-
-  @override
-  Widget build(BuildContext context) =>
-      Scaffold(appBar: AppBar(title: Text(title)));
-}
