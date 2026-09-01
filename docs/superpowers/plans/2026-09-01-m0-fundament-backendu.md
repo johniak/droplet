@@ -397,7 +397,7 @@ git commit -m "feat: add idempotent createinitialuser command"
 **Interfaces:**
 - Produces: `POST /api/auth/token/` `{username, password}` → `200 {"token": "..."}` (throttle scope `login`), złe dane → `400`; `GET /api/me/` z nagłówkiem `Authorization: Token <t>` → `200 {"username": ...}`, bez tokenu → `401`. To jest kontrakt logowania dla aplikacji Flutter (M4).
 
-- [ ] **Step 1: Napisz failing testy**
+- [x] **Step 1: Napisz failing testy**
 
 `backend/core/tests/test_auth.py`:
 
@@ -448,11 +448,11 @@ def test_login_view_declares_throttle_scope():
     assert ObtainTokenView.throttle_scope == "login"
 ```
 
-- [ ] **Step 2: Uruchom — FAIL**
+- [x] **Step 2: Uruchom — FAIL**
 
 Run: `pytest core/tests/test_auth.py -v` — FAIL (404 / import error).
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 Dopisz do `backend/core/views.py`:
 
@@ -478,11 +478,11 @@ Do `backend/core/urls.py` dopisz ścieżki:
     path("me/", views.me, name="me"),
 ```
 
-- [ ] **Step 4: Testy zielone**
+- [x] **Step 4: Testy zielone**
 
 Run: `pytest core/tests/test_auth.py -v` — PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/core
