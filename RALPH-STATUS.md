@@ -55,3 +55,10 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   `/home/x/.local/roms`) wyciąłby całą bibliotekę. W implementacji sprawdzam
   `p.relative_to(library_root).parts` — semantyka „ukryte w bibliotece", zgodna
   z intencją planu.
+- **M2 Task 3 — scorer fuzzy**: plan każe użyć `fuzz.token_sort_ratio`, ale wtedy jego
+  własny test (`"zelda a link to the past"` → „Legend of Zelda, The - A Link to the
+  Past (USA)") dostaje 77.4 i nie przechodzi progu 85. Użyłem `fuzz.WRatio`
+  (85.5 dla tego przypadku, 64.1 dla kontrprzykładu „wario land 4" — więc próg
+  nadal działa). Koszt: WRatio zawyża wynik przy krótkich podciągach (np. samo
+  „mario" → 90 dla „super mario world"); łagodzi to reguła exact-match oraz
+  ręczne poprawki dopasowania w adminie (Task 6).
