@@ -2,7 +2,16 @@
 
 Data: 2026-09-01. Spec: `../specs/2026-09-01-droplet-design.md`.
 
-Zasada: każdy milestone kończy się czymś **działającym i sprawdzalnym**. Kolejność
+Zasady globalne:
+- każdy milestone kończy się czymś **działającym i sprawdzalnym**;
+- **pokrycie testami 100%** jest bramką zamknięcia każdego zadania (backend:
+  `pytest --cov --cov-fail-under=100`; Flutter: `flutter test --coverage` +
+  `scripts/check_coverage_app.sh`);
+- każdy milestone utrzymuje **automatyczne testy e2e** (backend: `backend/e2e/`
+  na docker compose; Flutter: `app/integration_test/` na urządzeniu) — zielone e2e
+  są kryterium zamknięcia milestone'u.
+
+Kolejność
 jest tak dobrana, żeby backend dało się testować z curla zanim powstanie aplikacja,
 a aplikację rozwijać na prawdziwym API.
 

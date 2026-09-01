@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Obowiązują Global Constraints z M4.
+- Obowiązują Global Constraints z M4 — w tym **pokrycie 100%** (`./scripts/check_coverage_app.sh` przy każdym zadaniu) i **suita e2e** (`app/integration_test/` przez `scripts/e2e_app.sh`).
 - Usuwanie NIGDY nie wychodzi poza pliki wymienione w manifeście gry — żadnego kasowania katalogów rekurencyjnie.
 - Weryfikacja po pobraniu: rozmiar lokalny == `size` z manifestu; niezgodność = pobranie oznaczone jako błędne.
 - Stan „zainstalowane" liczony wyłącznie z porównania nazwa+rozmiar (bez hashy).
@@ -85,7 +85,7 @@ void main() {
 - Modify: `app/lib/features/settings/settings_screen.dart`, `app/android/app/src/main/AndroidManifest.xml`
 
 **Interfaces:**
-- Produces: `ensureStoragePermission() -> Future<bool>` (`Permission.manageExternalStorage.request()`; na odmowę — `openAppSettings()`); w ustawieniach sekcja **Pobieranie**: edycja katalogu bazowego (pole tekstowe + walidacja że istnieje/da się utworzyć), lista systemów z edycją podkatalogu, status uprawnienia z przyciskiem „Przyznaj".
+- Produces: `ensureStoragePermission() -> Future<bool>` (`Permission.manageExternalStorage.request()`; na odmowę — `openAppSettings()`); w ustawieniach sekcja **Pobieranie**: edycja katalogu bazowego (pole tekstowe z `Key('base-dir-field')` — używane przez e2e — + walidacja że istnieje/da się utworzyć), lista systemów z edycją podkatalogu, status uprawnienia z przyciskiem „Przyznaj".
 
 - [ ] **Step 1: Manifest + implementacja** — wg Interfaces; do manifestu dwa `uses-permission` z Global Constraints.
 
@@ -488,10 +488,109 @@ void main() {
 
 ---
 
-### Task 8: E2E na urządzeniu (kryteria M5)
+### Task 8: E2E pobierania (integration_test)
+
+**Files:**
+- Create: `app/integration_test/download_flow_test.dart`
+
+**Interfaces:**
+- Consumes: harness `scripts/e2e_app.sh` z M4 (backend e2e + fixture-library), ekrany i manager z Tasków 1–7.
+
+- [ ] **Step 1: Napisz test e2e**
+
+Najpierw `flutter pub add path_provider` (używany niżej; M6 też z niego korzysta).
+
+`app/integration_test/download_flow_test.dart` (ta sama konwencja co `app_flow_test.dart`: `E2E_SERVER` z dart-define, seed skanem w `setUpAll`):
+
+```dart
+import 'dart:io';
+
+import 'package:droplet/core/api/api_client.dart';
+import 'package:droplet/main.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
+import 'package:path_provider/path_provider.dart';
+
+const server = String.fromEnvironment('E2E_SERVER');
+
+void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() async {
+    final client = ApiClient(baseUrl: server);
+    final token = await client.login('e2e', 'e2e-pass-123');
+    await ApiClient(baseUrl: server, token: token).triggerScan();
+    await Future<void>.delayed(const Duration(seconds: 5));
+  });
+
+  testWidgets('download then delete a game', (tester) async {
+    await tester.pumpWidget(const ProviderScope(child: DropletApp()));
+    await tester.pumpAndSettle();
+
+    // logowanie (pomijane, jeśli sesja została z poprzedniego testu)
+    if (tester.any(find.text('Zaloguj'))) {
+      final fields = find.byType(TextFormField);
+      await tester.enterText(fields.at(0), server);
+      await tester.enterText(fields.at(1), 'e2e');
+      await tester.enterText(fields.at(2), 'e2e-pass-123');
+      await tester.tap(find.text('Zaloguj'));
+      await tester.pumpAndSettle(const Duration(seconds: 10));
+    }
+
+    // w e2e katalog bazowy = katalog aplikacji (bez MANAGE_EXTERNAL_STORAGE,
+    // którego nie da się kliknąć z testu) — ustaw przez ustawienia
+    final baseDir = '${(await getApplicationDocumentsDirectory()).path}/roms';
+    await tester.tap(find.byIcon(Icons.settings));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('base-dir-field')), baseDir);
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    // pobierz Super Mario World
+    await tester.tap(find.text('Super Mario World'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Pobierz'));
+    // czekaj na status "zainstalowana" (max 60 s)
+    var installed = false;
+    for (var i = 0; i < 60 && !installed; i++) {
+      await tester.pump(const Duration(seconds: 1));
+      installed = tester.any(find.textContaining('Zainstalowana'));
+    }
+    expect(installed, true);
+    final romFile = File('$baseDir/snes/Super Mario World (USA).sfc');
+    expect(romFile.existsSync(), true);
+    expect(romFile.lengthSync(), 4); // rozmiar z fixture-library
+
+    // usuń
+    await tester.tap(find.text('Usuń z urządzenia'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Usuń')); // potwierdzenie w dialogu
+    await tester.pumpAndSettle(const Duration(seconds: 3));
+    expect(romFile.existsSync(), false);
+    expect(find.textContaining('Pobierz'), findsOneWidget);
+  });
+}
+```
+
+Wymaga: pola katalogu bazowego w ustawieniach z `Key('base-dir-field')` (dodaj w Task 2, jeśli brakuje) i przycisku potwierdzenia „Usuń" w dialogu (Task 6).
+
+- [ ] **Step 2: Uruchom** — `E2E_SERVER=http://<ip-hosta>:8800 ./scripts/e2e_app.sh` na podłączonym urządzeniu → oba pliki integration_test PASS.
+
+- [ ] **Step 3: Commit** — `git add app/integration_test && git commit -m "test: download and delete e2e flow"`
+
+---
+
+### Task 9: Checklista ręczna na realnym NAS (kryteria M5)
+
+Automatyczne e2e nie pokryją integracji z RetroArchem, dużych plików i zrywania sieci — to zostaje ręczne.
 
 **Files:**
 - Create: `docs/testing-m5.md` (checklista + wyniki)
+
+- [ ] **Step 0: Bramki automatyczne** — `flutter test` + `./scripts/check_coverage_app.sh` (100%) + `./scripts/e2e_app.sh` (PASS) + `./scripts/e2e_backend.sh` (PASS).
 
 - [ ] **Step 1: Przejdź checklistę na fizycznym telefonie + realnym NAS:**
 

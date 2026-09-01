@@ -151,11 +151,23 @@ snapshoty na backend i umie je przywrócić.
 
 ## 5. Testowanie
 
-- Backend: pytest + pytest-django. Testy jednostkowe skanera na fixture'owych
-  drzewach katalogów (cue/bin, m3u, Switch base+UPD+DLC), testy normalizacji nazw
-  i fuzzy matchingu, testy API (auth, Range, path traversal).
-- Flutter: testy jednostkowe (diff manifest↔lokalne pliki, parsowanie ról),
-  testy widgetów kluczowych ekranów.
+Polityka (obowiązuje w każdym milestone):
+
+- **Pokrycie 100%** — twarda bramka: backend `pytest --cov --cov-fail-under=100`
+  (wyłączenia tylko techniczne: migracje, settings, manage.py, wsgi); Flutter
+  `flutter test --coverage` + skrypt wymuszający 100% linii z lcov. Zadanie nie
+  jest ukończone, dopóki bramka nie przechodzi.
+- **Automatyczne e2e** — obok testów jednostkowych każdy milestone utrzymuje suitę
+  e2e: backend `backend/e2e/` (pytest + requests przeciwko realnemu deploymentowi
+  z docker compose i fixture'ową biblioteką ROMów; pełny flow z HTTP Range),
+  Flutter `app/integration_test/` (realne urządzenie/emulator + realny backend:
+  login → biblioteka → karta gry → pobranie → usunięcie). E2e są wyłączone
+  z liczenia pokrycia.
+- Backend unit: testy skanera na fixture'owych drzewach katalogów (cue/bin, m3u,
+  Switch base+UPD+DLC), normalizacja nazw, fuzzy matching, API (auth, Range,
+  path traversal).
+- Flutter unit/widget: diff manifest↔lokalne pliki, parsowanie ról, selekcja
+  plików, widgety kluczowych ekranów.
 
 ## 6. Poza zakresem (świadomie)
 

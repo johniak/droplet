@@ -17,6 +17,8 @@
 - Każdy endpoint poza `/api/health/` i `/api/auth/token/` wymaga `TokenAuthentication` (globalny default DRF `IsAuthenticated`).
 - JSON w snake_case (defaulty DRF, bez kamelizacji).
 - Testy: `pytest` z `pytest-django`; w testach backend Tasks = `django_tasks.backends.immediate.ImmediateBackend`.
+- **Pokrycie 100%**: `pytest` odpalany z `--cov --cov-fail-under=100` (konfiguracja w Task 1); wyłączenia tylko techniczne (migracje, settings, manage.py, wsgi, katalog `e2e/`). Bramka obowiązuje przy zamykaniu KAŻDEGO zadania — kod bez testu nie przechodzi.
+- **E2E**: automatyczna suita `backend/e2e/` (pytest + requests) uruchamiana skryptem `scripts/e2e_backend.sh` przeciwko realnemu deploymentowi z docker compose; e2e nie liczy się do pokrycia (`--no-cov`). Zielone e2e = kryterium zamknięcia milestone'u.
 - Commity po każdym zadaniu; komunikaty `feat:`/`test:`/`chore:` po angielsku.
 
 ---
@@ -24,7 +26,7 @@
 ### Task 1: Szkielet projektu Django + settings z env
 
 **Files:**
-- Create: `backend/requirements.txt`, `backend/manage.py`, `backend/droplet/__init__.py`, `backend/droplet/settings.py`, `backend/droplet/urls.py`, `backend/droplet/wsgi.py`, `backend/pytest.ini`, `backend/conftest.py`, `.gitignore`
+- Create: `backend/requirements.txt`, `backend/manage.py`, `backend/droplet/__init__.py`, `backend/droplet/settings.py`, `backend/droplet/urls.py`, `backend/droplet/wsgi.py`, `backend/pytest.ini`, `backend/.coveragerc`, `backend/conftest.py`, `.gitignore`
 - Test: `backend/core/tests/test_settings.py` (powstanie z appem `core` — patrz kroki)
 
 **Interfaces:**
@@ -40,8 +42,10 @@ Django>=6.0,<6.1
 djangorestframework>=3.16
 django-tasks>=0.8
 gunicorn>=23.0
+requests>=2.32
 pytest>=8.0
 pytest-django>=4.9
+pytest-cov>=5.0
 EOF
 pip install -r requirements.txt
 django-admin startproject droplet .
@@ -132,6 +136,30 @@ Uwaga wykonawcza: jeśli nazwy modułów `django_tasks` różnią się w zainsta
 [pytest]
 DJANGO_SETTINGS_MODULE = droplet.settings_test
 python_files = test_*.py
+norecursedirs = e2e .venv
+addopts = --cov --cov-fail-under=100
+```
+
+`backend/.coveragerc` (wyłączenia WYŁĄCZNIE techniczne — logiki się nie wyłącza):
+
+```ini
+[run]
+source = .
+omit =
+    */migrations/*
+    droplet/settings.py
+    droplet/settings_test.py
+    droplet/wsgi.py
+    droplet/asgi.py
+    manage.py
+    conftest.py
+    e2e/*
+    .venv/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING:
 ```
 
 `backend/droplet/settings_test.py`:
@@ -660,23 +688,162 @@ git commit -m "docs: TrueNAS deployment guide"
 
 ---
 
-### Task 8: Pełny bieg testów i sanity końcowe M0
+### Task 8: Harness e2e + testy e2e M0
+
+**Files:**
+- Create: `docker-compose.e2e.yml`, `scripts/e2e_backend.sh`, `backend/e2e/__init__.py`, `backend/e2e/conftest.py`, `backend/e2e/test_health_auth.py`, `backend/e2e/fixture-library/.gitkeep`
+
+**Interfaces:**
+- Produces (infrastruktura używana przez e2e wszystkich kolejnych milestone'ów):
+  - `docker-compose.e2e.yml` — override: `LIBRARY_PATH=./backend/e2e/fixture-library`, świeży wolumen danych (`droplet-e2e-data`), stały user/hasło `e2e`/`e2e-pass-123`, port 8800.
+  - `scripts/e2e_backend.sh` — `compose up -d --build` z overridem → czeka na health (max 60 s) → `pytest e2e -v --no-cov` → `compose down -v`; exit code z pytest.
+  - `backend/e2e/conftest.py` — fixtures: `base_url` (env `E2E_BASE_URL`, default `http://localhost:8800`), `token` (login przez API), `auth` (dict nagłówków).
+
+- [ ] **Step 1: Napisz failing testy e2e**
+
+`backend/e2e/conftest.py`:
+
+```python
+import os
+
+import pytest
+import requests
+
+
+@pytest.fixture(scope="session")
+def base_url() -> str:
+    return os.environ.get("E2E_BASE_URL", "http://localhost:8800")
+
+
+@pytest.fixture(scope="session")
+def token(base_url) -> str:
+    resp = requests.post(
+        f"{base_url}/api/auth/token/",
+        data={"username": "e2e", "password": "e2e-pass-123"},
+        timeout=10,
+    )
+    resp.raise_for_status()
+    return resp.json()["token"]
+
+
+@pytest.fixture(scope="session")
+def auth(token) -> dict:
+    return {"Authorization": f"Token {token}"}
+```
+
+`backend/e2e/test_health_auth.py`:
+
+```python
+import requests
+
+
+def test_health_open(base_url):
+    resp = requests.get(f"{base_url}/api/health/", timeout=10)
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "ok"
+
+
+def test_me_requires_token(base_url):
+    assert requests.get(f"{base_url}/api/me/", timeout=10).status_code == 401
+
+
+def test_me_with_token(base_url, auth):
+    resp = requests.get(f"{base_url}/api/me/", headers=auth, timeout=10)
+    assert resp.status_code == 200
+    assert resp.json()["username"] == "e2e"
+
+
+def test_bad_login_rejected(base_url):
+    resp = requests.post(
+        f"{base_url}/api/auth/token/",
+        data={"username": "e2e", "password": "zle"},
+        timeout=10,
+    )
+    assert resp.status_code == 400
+```
+
+- [ ] **Step 2: Napisz harness**
+
+`docker-compose.e2e.yml`:
+
+```yaml
+services:
+  web:
+    ports: !override ["8800:8000"]
+    environment:
+      DJANGO_SECRET_KEY: e2e-secret
+      DROPLET_ADMIN_USER: e2e
+      DROPLET_ADMIN_PASSWORD: e2e-pass-123
+    volumes: !override
+      - droplet-e2e-data:/data
+      - ./backend/e2e/fixture-library:/library:ro
+  worker:
+    environment:
+      DJANGO_SECRET_KEY: e2e-secret
+      DROPLET_ADMIN_USER: e2e
+      DROPLET_ADMIN_PASSWORD: e2e-pass-123
+    volumes: !override
+      - droplet-e2e-data:/data
+      - ./backend/e2e/fixture-library:/library:ro
+volumes:
+  droplet-e2e-data:
+```
+
+`scripts/e2e_backend.sh`:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+COMPOSE="docker compose -f docker-compose.yml -f docker-compose.e2e.yml"
+cleanup() { $COMPOSE down -v; }
+trap cleanup EXIT
+$COMPOSE up -d --build
+for i in $(seq 1 60); do
+  curl -sf http://localhost:8800/api/health/ >/dev/null && break
+  sleep 1
+done
+cd backend && pytest e2e -v --no-cov
+```
+
+`chmod +x scripts/e2e_backend.sh`. Uwaga: `!override` wymaga compose >= 2.24; przy starszym — zamiast override zdubluj pełne definicje serwisów w pliku e2e.
+
+- [ ] **Step 3: Uruchom e2e**
+
+Run: `./scripts/e2e_backend.sh`
+Expected: 4 testy PASS, kontenery posprzątane po biegu.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add docker-compose.e2e.yml scripts/e2e_backend.sh backend/e2e
+git commit -m "feat: e2e harness with compose override and auth e2e tests"
+```
+
+---
+
+### Task 9: Pełny bieg testów, bramka pokrycia i sanity końcowe M0
 
 **Files:**
 - Modify: brak (weryfikacja)
 
-- [ ] **Step 1: Całość testów**
+- [ ] **Step 1: Całość testów unit + bramka 100%**
 
 Run: `cd backend && pytest -v`
-Expected: wszystkie testy PASS.
+Expected: wszystkie testy PASS i `Required test coverage of 100% reached` (jeśli nie — dopisz brakujące testy, nie wyłączenia).
 
-- [ ] **Step 2: Ręczny sanity-check kryteriów M0**
+- [ ] **Step 2: E2E**
+
+Run: `./scripts/e2e_backend.sh`
+Expected: PASS.
+
+- [ ] **Step 3: Ręczny sanity-check kryteriów M0**
 
 - `docker compose up` → `/api/health/` 200 bez auth.
 - `GET /api/me/` bez tokenu → 401; z tokenem → 200.
 - `/admin/` przyjmuje login z env.
 
-- [ ] **Step 3: Commit (jeśli były poprawki)**
+- [ ] **Step 4: Commit (jeśli były poprawki)**
 
 ```bash
 git add -A && git commit -m "chore: M0 wrap-up fixes" || echo "nothing to commit"

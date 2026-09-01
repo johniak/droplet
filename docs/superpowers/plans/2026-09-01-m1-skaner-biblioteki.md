@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Obowiązują Global Constraints z planu M0.
+- Obowiązują Global Constraints z planu M0 — w tym **pokrycie 100%** (`pytest --cov --cov-fail-under=100` przy zamykaniu każdego zadania) i **suita e2e** (`backend/e2e/` przez `scripts/e2e_backend.sh`).
 - `/library` traktujemy jako **read-only** — skaner nigdy nie pisze do biblioteki.
 - Tożsamość pliku: `relative_path` + `size` + `mtime_ns` (zero hashowania przy skanie).
 - Identyczność gry: `(system, normalized_title)`; dla Switcha dodatkowo scala po title-id (prefiks 12 hex).
@@ -1143,12 +1143,74 @@ Uwaga: `autocomplete_fields` wymaga `search_fields` w `GameAdmin` — jest.
 
 ---
 
-### Task 10: Skan prawdziwej biblioteki (weryfikacja kryteriów M1)
+### Task 10: E2E skanu na fixture'owej bibliotece
+
+**Files:**
+- Create: `backend/e2e/test_scan_e2e.py`, pliki w `backend/e2e/fixture-library/`
+
+**Interfaces:**
+- Consumes: harness e2e z M0 (fixture-library montowana jako `/library:ro` w biegu e2e).
+- Produces: fixture'owa biblioteka w repo (małe pliki-atrapy, commitowane) pokrywająca wszystkie ścieżki grupowania; test e2e pełnej pętli: trigger skanu przez API → poprawny indeks.
+
+- [ ] **Step 1: Zbuduj fixture-library**
+
+```bash
+cd backend/e2e/fixture-library
+mkdir -p snes psx switch "Dziwny Folder"
+printf 'AAAA' > "snes/Super Mario World (USA).sfc"
+printf 'FILE "Tekken (USA).bin" BINARY\n' > "psx/Tekken (USA).cue"
+printf 'BINBIN' > "psx/Tekken (USA).bin"
+printf 'HK' > "switch/Hollow Knight [0100633007D48000][v0].nsp"
+printf 'HKU' > "switch/Hollow Knight [UPD][0100633007D48800][v196608].nsp"
+printf 'X' > "Dziwny Folder/tajemniczy.rom"
+rm .gitkeep
+```
+
+- [ ] **Step 2: Napisz failing test e2e**
+
+`backend/e2e/test_scan_e2e.py`:
+
+```python
+import time
+
+import requests
+
+
+def test_scan_via_api_indexes_fixture_library(base_url, auth):
+    resp = requests.post(f"{base_url}/api/scan/", headers=auth, timeout=10)
+    assert resp.status_code == 202
+    # worker przetwarza task w tle — poczekaj aż skan się zakończy,
+    # potem drugi bieg synchroniczny nie powinien nic zmienić (idempotencja):
+    time.sleep(5)
+    resp2 = requests.post(f"{base_url}/api/scan/", headers=auth, timeout=10)
+    assert resp2.status_code == 202
+
+
+def test_scan_requires_auth(base_url):
+    assert requests.post(f"{base_url}/api/scan/", timeout=10).status_code == 401
+```
+
+Uwaga wykonawcza: pełna asercja zawartości indeksu (3 gry: Mario, Tekken jako
+cue+bin, Hollow Knight base+update; „Dziwny Folder" z `needs_config`) dochodzi
+w M3, gdy istnieje `GET /api/games/` — wtedy rozszerz ten plik o asercje na
+liczbę i role (M3 Task 5 ma to w zakresie). W M1 weryfikację zawartości zrób
+przez `docker compose exec web python manage.py shell -c "from library.models import Game; print(Game.objects.count())"`
+w Step 3.
+
+- [ ] **Step 3: Uruchom e2e + weryfikacja zawartości**
+
+Run: `./scripts/e2e_backend.sh` — PASS; w osobnym biegu compose e2e sprawdź `Game.objects.count() == 4` (3 znane + 1 z Dziwnego Folderu) jak w uwadze wyżej.
+
+- [ ] **Step 4: Commit** — `git add backend/e2e && git commit -m "test: e2e scan flow on fixture library"`
+
+---
+
+### Task 11: Skan prawdziwej biblioteki (weryfikacja kryteriów M1)
 
 **Files:**
 - Modify: `docs/deploy.md` (sekcja cron — jeśli nie powstała w M0, dopisz teraz)
 
-- [ ] **Step 1: Pełne testy** — `pytest -v` (całość zielona).
+- [ ] **Step 1: Pełne testy** — `pytest -v` (całość zielona, pokrycie 100%) oraz `./scripts/e2e_backend.sh` (PASS).
 
 - [ ] **Step 2: Deploy na TrueNAS i skan realnych danych**
 

@@ -17,6 +17,8 @@
 - Ruch po HTTP w LAN: w `AndroidManifest.xml` `android:usesCleartextTraffic="true"` (świadoma decyzja — LAN/VPN; HTTPS zapewni reverse proxy użytkownika).
 - Kierunek wizualny: ciemny premium (launcher konsolowy). **Przed implementacją motywu i ekranów wykonawca ładuje skill `frontend-design:frontend-design`** i trzyma się jednej spójnej palety zdefiniowanej w `lib/app/theme.dart`.
 - Logika (modele, klient API, sesja) bez importów z `package:flutter` — testowalna czystym `dart test` przez `flutter test`.
+- **Pokrycie 100%**: `flutter test --coverage` + `scripts/check_coverage_app.sh` (bramka: 100% linii z lcov; wyłączenia tylko dla wygenerowanych plików `*.g.dart`). Obowiązuje przy zamykaniu KAŻDEGO zadania.
+- **E2E**: suita `app/integration_test/` (pakiet `integration_test`) uruchamiana na fizycznym urządzeniu/emulatorze przeciwko backendowi e2e z compose (`scripts/e2e_app.sh`); zielone e2e = kryterium zamknięcia milestone'u.
 - Commity po każdym zadaniu.
 
 ---
@@ -24,7 +26,7 @@
 ### Task 1: Szkielet projektu + motyw + router
 
 **Files:**
-- Create: `app/` (via `flutter create`), `app/lib/main.dart`, `app/lib/app/theme.dart`, `app/lib/app/router.dart`
+- Create: `app/` (via `flutter create`), `app/lib/main.dart`, `app/lib/app/theme.dart`, `app/lib/app/router.dart`, `scripts/check_coverage_app.sh`
 - Modify: `app/pubspec.yaml`, `app/android/app/src/main/AndroidManifest.xml`, `app/android/app/build.gradle.kts` (minSdk 26)
 - Test: `app/test/smoke_test.dart`
 
@@ -37,10 +39,43 @@
 flutter create --org dev.johniak --project-name droplet --platforms android app
 cd app
 flutter pub add flutter_riverpod go_router dio flutter_secure_storage cached_network_image
-flutter pub add --dev http_mock_adapter
+flutter pub add --dev http_mock_adapter integration_test --sdk-dev integration_test:flutter
 ```
 
+(jeśli składnia `--sdk-dev` nie zadziała w zainstalowanym Flutterze, dodaj do `pubspec.yaml` ręcznie: `integration_test: {sdk: flutter}` w `dev_dependencies`).
+
 W `AndroidManifest.xml` (application): `android:usesCleartextTraffic="true"`, label `Droplet`. W gradle: `minSdk = 26`.
+
+Utwórz bramkę pokrycia `scripts/check_coverage_app.sh` (korzeń repo):
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/../app"
+flutter test --coverage
+python3 - <<'EOF'
+import re, sys
+
+covered = total = 0
+record_file = ""
+with open("coverage/lcov.info") as f:
+    for line in f:
+        if line.startswith("SF:"):
+            record_file = line.strip()
+        if record_file.endswith(".g.dart"):
+            continue
+        m = re.match(r"DA:\d+,(\d+)", line)
+        if m:
+            total += 1
+            if int(m.group(1)) > 0:
+                covered += 1
+pct = 100.0 * covered / total if total else 100.0
+print(f"coverage: {covered}/{total} lines = {pct:.2f}%")
+sys.exit(0 if pct >= 100.0 else 1)
+EOF
+```
+
+`chmod +x scripts/check_coverage_app.sh`.
 
 - [ ] **Step 2: Failing test**
 
@@ -141,9 +176,9 @@ class DropletApp extends StatelessWidget {
 }
 ```
 
-- [ ] **Step 4: PASS** — `flutter test` i `flutter run` na urządzeniu (aplikacja startuje na ciemnym stubie).
+- [ ] **Step 4: PASS** — `flutter test`, `./scripts/check_coverage_app.sh` (100%) i `flutter run` na urządzeniu (aplikacja startuje na ciemnym stubie).
 
-- [ ] **Step 5: Commit** — `git add app && git commit -m "feat: scaffold Flutter app with dark theme and router"`
+- [ ] **Step 5: Commit** — `git add app scripts && git commit -m "feat: scaffold Flutter app with dark theme and router"`
 
 ---
 
@@ -810,3 +845,116 @@ Checklista (fizyczny telefon + backend na NAS):
 Pokaż build użytkownikowi — **akceptacja wyglądu jest bramką zamknięcia M4**.
 
 - [ ] **Step 6: Commit** — `git commit -m "feat: settings screen and M4 wrap-up"`
+
+---
+
+### Task 9: E2E integration_test (login → biblioteka → karta gry)
+
+**Files:**
+- Create: `app/integration_test/app_flow_test.dart`, `scripts/e2e_app.sh`
+
+**Interfaces:**
+- Consumes: backend e2e z compose (M0/M1: port 8800, user `e2e`/`e2e-pass-123`, fixture-library).
+- Produces: suita e2e aplikacji na realnym urządzeniu; `scripts/e2e_app.sh` — stawia backend e2e, uruchamia testy z adresem przez `--dart-define=E2E_SERVER`, sprząta.
+
+- [ ] **Step 1: Napisz test e2e**
+
+`app/integration_test/app_flow_test.dart`:
+
+```dart
+import 'package:droplet/core/api/api_client.dart';
+import 'package:droplet/main.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
+
+const server = String.fromEnvironment('E2E_SERVER'); // np. http://192.168.1.10:8800
+
+void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() async {
+    // seed: skan fixture-library przez API, żeby biblioteka nie była pusta
+    final client = ApiClient(baseUrl: server);
+    final token = await client.login('e2e', 'e2e-pass-123');
+    final authed = ApiClient(baseUrl: server, token: token);
+    await authed.triggerScan(); // dodaj metodę POST /api/scan/ do ApiClient w tym tasku
+    await Future<void>.delayed(const Duration(seconds: 5));
+  });
+
+  testWidgets('login, browse library, open game detail', (tester) async {
+    await tester.pumpWidget(const ProviderScope(child: DropletApp()));
+    await tester.pumpAndSettle();
+
+    // logowanie
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), server);
+    await tester.enterText(fields.at(1), 'e2e');
+    await tester.enterText(fields.at(2), 'e2e-pass-123');
+    await tester.tap(find.text('Zaloguj'));
+    await tester.pumpAndSettle(const Duration(seconds: 10));
+
+    // biblioteka z fixture-library
+    expect(find.text('Super Mario World'), findsOneWidget);
+
+    // filtr systemem
+    await tester.tap(find.text('Nintendo Switch'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hollow Knight'), findsOneWidget);
+    expect(find.text('Super Mario World'), findsNothing);
+
+    // karta gry z rolami
+    await tester.tap(find.text('Hollow Knight'));
+    await tester.pumpAndSettle();
+    expect(find.text('Aktualizacja'), findsOneWidget);
+
+    // powrót i wylogowanie
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.settings));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Wyloguj'));
+    await tester.pumpAndSettle();
+    expect(find.text('Zaloguj'), findsOneWidget);
+  });
+}
+```
+
+Dopisz do `ApiClient` metodę (z testem unit — mock 202, bramka pokrycia!):
+
+```dart
+Future<void> triggerScan() async {
+  try {
+    await _dio.post('/api/scan/');
+  } on DioException catch (e) {
+    _mapError(e);
+  }
+}
+```
+
+- [ ] **Step 2: Napisz `scripts/e2e_app.sh`**
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+E2E_SERVER=${E2E_SERVER:?ustaw np. E2E_SERVER=http://192.168.1.10:8800 (IP hosta widoczne z telefonu)}
+COMPOSE="docker compose -f docker-compose.yml -f docker-compose.e2e.yml"
+cleanup() { $COMPOSE down -v; }
+trap cleanup EXIT
+$COMPOSE up -d --build
+for i in $(seq 1 60); do curl -sf localhost:8800/api/health/ >/dev/null && break; sleep 1; done
+cd app && flutter test integration_test --dart-define=E2E_SERVER="$E2E_SERVER"
+```
+
+`chmod +x scripts/e2e_app.sh`.
+
+- [ ] **Step 3: Uruchom na podłączonym urządzeniu**
+
+Run: `E2E_SERVER=http://<ip-hosta>:8800 ./scripts/e2e_app.sh`
+Expected: test PASS (telefon i host w tej samej sieci).
+
+- [ ] **Step 4: Bramki końcowe M4** — `./scripts/check_coverage_app.sh` (100%), `flutter test` zielone, e2e app PASS, e2e backendu PASS.
+
+- [ ] **Step 5: Commit** — `git add app scripts && git commit -m "test: app e2e flow with integration_test"`
