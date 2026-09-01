@@ -558,7 +558,7 @@ git commit -m "feat: wire Django tasks framework with demo task"
 **Interfaces:**
 - Produces: obraz `droplet-backend`; compose z serwisami `web` (gunicorn :8000) i `worker` (`manage.py db_worker`); wolumeny `droplet-data` → `/data` i bind `${LIBRARY_PATH}` → `/library:ro`; healthcheck na `/api/health/`. Entrypoint web robi `migrate` + `createinitialuser` + `collectstatic`.
 
-- [ ] **Step 1: Dockerfile**
+- [x] **Step 1: Dockerfile**
 
 `backend/Dockerfile`:
 
@@ -601,7 +601,7 @@ else
 fi
 ```
 
-- [ ] **Step 2: docker-compose.yml (korzeń repo)**
+- [x] **Step 2: docker-compose.yml (korzeń repo)**
 
 ```yaml
 services:
@@ -634,7 +634,7 @@ volumes:
   droplet-data:
 ```
 
-- [ ] **Step 3: Weryfikacja lokalna**
+- [x] **Step 3: Weryfikacja lokalna**
 
 ```bash
 export DJANGO_SECRET_KEY=$(python -c 'import secrets;print(secrets.token_urlsafe(50))')
@@ -650,7 +650,7 @@ docker compose down
 
 Expected: health zwraca JSON, token się wystawia, worker działa bez crash-loopa.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add backend/Dockerfile backend/entrypoint.sh backend/.dockerignore docker-compose.yml

@@ -1,0 +1,28 @@
+services:
+  web:
+    build: ./backend
+    command: ["web"]
+    ports: ["8000:8000"]
+    environment: &env
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?set me}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-*}
+      DROPLET_ADMIN_USER: ${DROPLET_ADMIN_USER:?set me}
+      DROPLET_ADMIN_PASSWORD: ${DROPLET_ADMIN_PASSWORD:?set me}
+    volumes:
+      - droplet-data:/data
+      - ${LIBRARY_PATH:?set me}:/library:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/api/health/')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  worker:
+    build: ./backend
+    command: ["worker"]
+    environment: *env
+    volumes:
+      - droplet-data:/data
+      - ${LIBRARY_PATH:?set me}:/library:ro
+    depends_on: [web]
+volumes:
+  droplet-data:
