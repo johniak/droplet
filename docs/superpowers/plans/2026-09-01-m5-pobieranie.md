@@ -261,7 +261,7 @@ Set<int> defaultSelection(List<GameFileModel> files);
 int versionNumber(String version);
 ```
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `app/test/core/selection_test.dart`:
 
@@ -300,9 +300,9 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `app/lib/core/downloads/selection.dart`:
 
@@ -332,7 +332,7 @@ Set<int> defaultSelection(List<GameFileModel> files) {
 }
 ```
 
-- [ ] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: default file selection with newest-update rule"`
+- [x] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: default file selection with newest-update rule"`
 
 ---
 
