@@ -6,19 +6,19 @@ Zasada: każdy milestone kończy się czymś **działającym i sprawdzalnym**. K
 jest tak dobrana, żeby backend dało się testować z curla zanim powstanie aplikacja,
 a aplikację rozwijać na prawdziwym API.
 
-Przegląd:
+Przegląd (każdy milestone M0–M6 ma szczegółowy plan implementacyjny — kolumna „Plan"):
 
-| # | Milestone | Efekt |
-|---|---|---|
-| M0 | Fundament backendu | Działający kontener na TrueNAS z loginem |
-| M1 | Skaner biblioteki | Kompletny indeks ROMów w adminie |
-| M2 | Okładki | Biblioteka z okładkami + korekty w adminie |
-| M3 | API dla klienta | Pełne API: listy, detale, pobieranie z Range |
-| M4 | Fundament aplikacji | Flutter: login + piękna biblioteka + karta gry |
-| M5 | Pobieranie na urządzenie | Download manager + stan „zainstalowane" + usuwanie |
-| M6 | Szlif | Animacje, offline, dopracowanie UX |
-| M7 | Save sync (etap 2) | Backup/restore save'ów na NAS |
-| M8 | Pełne metadane (etap 2) | Opisy/gatunki/oceny z IGDB lub ScreenScraper |
+| # | Milestone | Efekt | Plan |
+|---|---|---|---|
+| M0 | Fundament backendu | Działający kontener na TrueNAS z loginem | [M0](2026-09-01-m0-fundament-backendu.md) |
+| M1 | Skaner biblioteki | Kompletny indeks ROMów w adminie | [M1](2026-09-01-m1-skaner-biblioteki.md) |
+| M2 | Okładki | Biblioteka z okładkami + korekty w adminie | [M2](2026-09-01-m2-okladki.md) |
+| M3 | API dla klienta | Pełne API: listy, detale, pobieranie z Range | [M3](2026-09-01-m3-api-dla-klienta.md) |
+| M4 | Fundament aplikacji | Flutter: login + piękna biblioteka + karta gry | [M4](2026-09-01-m4-fundament-aplikacji.md) |
+| M5 | Pobieranie na urządzenie | Download manager + stan „zainstalowane" + usuwanie | [M5](2026-09-01-m5-pobieranie.md) |
+| M6 | Szlif | Animacje, offline, dopracowanie UX | [M6](2026-09-01-m6-szlif.md) |
+| M7 | Save sync (etap 2) | Backup/restore save'ów na NAS | plan powstanie po MVP |
+| M8 | Pełne metadane (etap 2) | Opisy/gatunki/oceny z IGDB lub ScreenScraper | plan powstanie po decyzji o źródle |
 
 ---
 
