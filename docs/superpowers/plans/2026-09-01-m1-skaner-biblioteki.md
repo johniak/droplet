@@ -310,7 +310,7 @@ def parse_switch(stem: str) -> SwitchInfo:
   - `parse_cue(text: str) -> list[str]` — nazwy plików z linii `FILE "..." BINARY`.
   - `parse_m3u(text: str) -> list[str]` — niepuste linie bez komentarzy `#`, kolejność = numer płyty.
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `backend/library/tests/test_playlists.py`:
 
@@ -338,9 +338,9 @@ def test_parse_m3u():
     assert parse_m3u(M3U) == ["Game (Disc 1).cue", "Game (Disc 2).cue"]
 ```
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `backend/library/scanner/playlists.py`:
 
@@ -362,7 +362,7 @@ def parse_m3u(text: str) -> list[str]:
     ]
 ```
 
-- [ ] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: cue and m3u parsers"`
+- [x] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: cue and m3u parsers"`
 
 ---
 

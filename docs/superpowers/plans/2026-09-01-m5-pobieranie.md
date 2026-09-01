@@ -18,6 +18,9 @@
 - Stan „zainstalowane" liczony wyłącznie z porównania nazwa+rozmiar (bez hashy).
 - Domyślny wybór plików: base + najnowszy update + wszystkie DLC + wszystkie płyty + support; starsze updaty odznaczone.
 - `AndroidManifest.xml`: `<uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>` + `POST_NOTIFICATIONS`.
+- Pluginy (permission_handler, background_downloader) są schowane za interfejsami-portami w `lib/core/platform/` (`PermissionsPort`, `DownloaderPort`). Implementacje na pluginie to jedyne pliki z `// coverage:ignore-file` (lista zamknięta w M4 Global Constraints); cała logika (`DownloadManager`, `ensureStoragePermission`, diff, selekcja) chodzi na portach i jest testowana na fake'ach do 100%.
+- `const kE2E = bool.fromEnvironment('E2E')` (`lib/core/env.dart`): w biegu e2e aplikacja nie pokazuje systemowych dialogów uprawnień (test integracyjny nie umie ich kliknąć). Jedyne użycie tej flagi: pominięcie promptu o powiadomieniach.
+- Nawigacja do `/downloads` — trasa zagnieżdżona pod `/` (jak w M4).
 
 ---
 
@@ -45,7 +48,8 @@ class StorageSettingsRepository {
   Future<void> saveBaseDir(String dir);
   Future<void> saveSystemDir(String code, String dir);
 }
-// provider: storageSettingsProvider = FutureProvider<StorageSettings>
+// providers: storageSettingsRepositoryProvider = Provider<StorageSettingsRepository>
+//            storageSettingsProvider = FutureProvider<StorageSettings>
 ```
 
 - [ ] **Step 1: Failing testy**
@@ -55,6 +59,9 @@ class StorageSettingsRepository {
 ```dart
 import 'package:droplet/core/downloads/storage_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 void main() {
   test('dirFor falls back to system code', () {
@@ -67,12 +74,35 @@ void main() {
     final s = StorageSettings('/roms', {});
     expect(s.pathFor('snes', 'Mario (USA).sfc'), '/roms/snes/Mario (USA).sfc');
   });
+
+  group('repository', () {
+    setUp(() {
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
+    });
+
+    test('defaults when empty', () async {
+      final s = await StorageSettingsRepository(SharedPreferencesAsync()).load();
+      expect(s.baseDir, '/storage/emulated/0/RetroArch/roms');
+      expect(s.systemDirs, isEmpty);
+    });
+
+    test('persists base dir and system dirs', () async {
+      final repo = StorageSettingsRepository(SharedPreferencesAsync());
+      await repo.saveBaseDir('/sdcard/roms');
+      await repo.saveSystemDir('psx', 'PlayStation');
+      await repo.saveSystemDir('snes', 'SNES');
+      final s = await repo.load();
+      expect(s.baseDir, '/sdcard/roms');
+      expect(s.systemDirs, {'psx': 'PlayStation', 'snes': 'SNES'});
+    });
+  });
 }
 ```
 
 - [ ] **Step 2: FAIL** — `flutter test test/core/storage_settings_test.dart`
 
-- [ ] **Step 3: Implementacja** — czysta klasa + repozytorium na `SharedPreferencesAsync` (klucze `storage.base_dir`, `storage.system_dirs` jako JSON). Provider w tym samym pliku.
+- [ ] **Step 3: Implementacja** — czysta klasa + repozytorium na `SharedPreferencesAsync` (klucze `storage.base_dir`, `storage.system_dirs` jako JSON). Provider'y w tym samym pliku (`storageSettingsProvider` czyta `storageSettingsRepositoryProvider`). `shared_preferences_platform_interface` jest zależnością tranzytywną — dodaj jawnie do `dev_dependencies` (`flutter pub add --dev shared_preferences_platform_interface`).
 
 - [ ] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: storage settings with per-system directories"`
 
@@ -81,17 +111,134 @@ void main() {
 ### Task 2: Uprawnienia + sekcja „Pobieranie" w ustawieniach
 
 **Files:**
-- Create: `app/lib/core/downloads/permissions.dart`
+- Create: `app/lib/core/platform/permissions_port.dart`, `app/lib/core/downloads/permissions.dart`, `app/lib/core/env.dart`
 - Modify: `app/lib/features/settings/settings_screen.dart`, `app/android/app/src/main/AndroidManifest.xml`
+- Test: `app/test/core/permissions_test.dart`, `app/test/features/settings_downloads_test.dart`
 
 **Interfaces:**
-- Produces: `ensureStoragePermission() -> Future<bool>` (`Permission.manageExternalStorage.request()`; na odmowę — `openAppSettings()`); w ustawieniach sekcja **Pobieranie**: edycja katalogu bazowego (pole tekstowe z `Key('base-dir-field')` — używane przez e2e — + walidacja że istnieje/da się utworzyć), lista systemów z edycją podkatalogu, status uprawnienia z przyciskiem „Przyznaj".
+- Produces:
 
-- [ ] **Step 1: Manifest + implementacja** — wg Interfaces; do manifestu dwa `uses-permission` z Global Constraints.
+```dart
+// lib/core/env.dart
+const kE2E = bool.fromEnvironment('E2E');
 
-- [ ] **Step 2: Weryfikacja ręczna na telefonie** — przyznanie uprawnienia przechodzi przez systemowy ekran i wraca ze statusem `granted`; utworzenie katalogu bazowego działa.
+// lib/core/platform/permissions_port.dart  (// coverage:ignore-file — cienki adapter pluginu)
+abstract class PermissionsPort {
+  Future<bool> hasAllFilesAccess();       // Permission.manageExternalStorage.isGranted
+  Future<bool> requestAllFilesAccess();   // .request(); odmowa -> openAppSettings(); zwraca isGranted po powrocie
+  Future<List<String>> appPrivateDirs();  // [getApplicationDocumentsDirectory().path, getExternalStorageDirectory()?.path]
+}
+class PermissionHandlerPort implements PermissionsPort { ... }
+final permissionsPortProvider = Provider<PermissionsPort>((_) => PermissionHandlerPort());
 
-- [ ] **Step 3: Commit** — `git commit -m "feat: storage permission flow and download settings section"`
+// lib/core/downloads/permissions.dart  (czysta logika, 100%)
+bool needsAllFilesAccess(String baseDir, List<String> appPrivateDirs);
+//   false, gdy baseDir leży w katalogu prywatnym aplikacji (zapis działa bez uprawnienia — z tego korzysta e2e)
+Future<bool> ensureStoragePermission(PermissionsPort port, String baseDir);
+//   !needsAllFilesAccess -> true; hasAllFilesAccess -> true; inaczej requestAllFilesAccess()
+```
+
+- Sekcja **Pobieranie** w ustawieniach: pole katalogu bazowego `Key('base-dir-field')` zapisywane **`onChanged`** przez `saveBaseDir` (e2e wpisuje ścieżkę i od razu wychodzi z ekranu), lista systemów z edycją podkatalogu (`Key('system-dir-<code>')`), status uprawnienia („Przyznane" / „Brak") z przyciskiem „Przyznaj" (`Key('grant-permission')`).
+
+- [ ] **Step 1: Failing testy**
+
+`app/test/core/permissions_test.dart`:
+
+```dart
+import 'package:droplet/core/downloads/permissions.dart';
+import 'package:droplet/core/platform/permissions_port.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+class FakePermissionsPort implements PermissionsPort {
+  FakePermissionsPort({required this.granted, this.grantOnRequest = false});
+  bool granted;
+  final bool grantOnRequest;
+  int requests = 0;
+
+  @override
+  Future<bool> hasAllFilesAccess() async => granted;
+
+  @override
+  Future<bool> requestAllFilesAccess() async {
+    requests++;
+    if (grantOnRequest) granted = true;
+    return granted;
+  }
+
+  @override
+  Future<List<String>> appPrivateDirs() async =>
+      ['/data/user/0/dev.johniak.droplet/app_flutter'];
+}
+
+void main() {
+  const appDirs = ['/data/user/0/dev.johniak.droplet/app_flutter'];
+
+  test('app-private dir needs no permission, shared storage does', () {
+    expect(needsAllFilesAccess('${appDirs.first}/roms', appDirs), false);
+    expect(needsAllFilesAccess('/storage/emulated/0/RetroArch/roms', appDirs), true);
+  });
+
+  test('skips request for app-private base dir', () async {
+    final port = FakePermissionsPort(granted: false);
+    expect(await ensureStoragePermission(port, '${appDirs.first}/roms'), true);
+    expect(port.requests, 0);
+  });
+
+  test('requests when missing and returns result', () async {
+    final ok = FakePermissionsPort(granted: false, grantOnRequest: true);
+    expect(await ensureStoragePermission(ok, '/storage/emulated/0/roms'), true);
+    expect(ok.requests, 1);
+    final denied = FakePermissionsPort(granted: false);
+    expect(await ensureStoragePermission(denied, '/storage/emulated/0/roms'), false);
+  });
+
+  test('already granted -> no request', () async {
+    final port = FakePermissionsPort(granted: true);
+    expect(await ensureStoragePermission(port, '/storage/emulated/0/roms'), true);
+    expect(port.requests, 0);
+  });
+}
+```
+
+`app/test/features/settings_downloads_test.dart` (fake porty jak wyżej — wynieś `FakePermissionsPort` do `test/fakes/fake_permissions_port.dart`, żeby oba testy go współdzieliły):
+
+```dart
+testWidgets('download section edits base dir and shows permission', (tester) async {
+  SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.empty();
+  final repo = StorageSettingsRepository(SharedPreferencesAsync());
+  await tester.pumpWidget(ProviderScope(
+    overrides: [
+      sessionProvider.overrideWith(() => _FakeSession()),   // jak w M4 Task 8
+      storageSettingsRepositoryProvider.overrideWithValue(repo),
+      permissionsPortProvider.overrideWithValue(FakePermissionsPort(granted: true)),
+    ],
+    child: const MaterialApp(home: SettingsScreen()),
+  ));
+  await tester.pumpAndSettle();
+  expect(find.text('Pobieranie'), findsOneWidget);
+  expect(find.text('Przyznane'), findsOneWidget);
+  await tester.enterText(find.byKey(const Key('base-dir-field')), '/tmp/roms');
+  await tester.pumpAndSettle();
+  expect((await repo.load()).baseDir, '/tmp/roms');
+});
+
+testWidgets('grant button requests permission', (tester) async {
+  final port = FakePermissionsPort(granted: false, grantOnRequest: true);
+  // ...te same overrides z `port`...
+  await tester.tap(find.byKey(const Key('grant-permission')));
+  await tester.pumpAndSettle();
+  expect(port.requests, 1);
+  expect(find.text('Przyznane'), findsOneWidget);
+});
+```
+
+- [ ] **Step 2: FAIL**
+
+- [ ] **Step 3: Implementacja** — wg Interfaces; do manifestu dwa `uses-permission` z Global Constraints. `permissions_port.dart` zaczyna się od `// coverage:ignore-file`.
+
+- [ ] **Step 4: PASS** — `flutter test` + `./scripts/check_coverage_app.sh`; ręcznie na telefonie: przyznanie uprawnienia przechodzi przez systemowy ekran i wraca ze statusem „Przyznane"; utworzenie katalogu bazowego działa.
+
+- [ ] **Step 5: Commit** — `git commit -m "feat: storage permission flow and download settings section"`
 
 ---
 
