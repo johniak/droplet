@@ -226,7 +226,7 @@ git commit -m "feat: scaffold Django project with env-driven settings"
 **Interfaces:**
 - Produces: `GET /api/health/` → `200 {"status": "ok", "api_version": 1}` bez uwierzytelnienia. Prefiks `/api/` dla wszystkich endpointów (include `core.urls` w `droplet/urls.py`).
 
-- [ ] **Step 1: Napisz failing test**
+- [x] **Step 1: Napisz failing test**
 
 `backend/core/tests/test_health.py`:
 
@@ -241,12 +241,12 @@ def test_health_requires_no_auth(client):
     assert resp.json() == {"status": "ok", "api_version": 1}
 ```
 
-- [ ] **Step 2: Uruchom test — ma failować**
+- [x] **Step 2: Uruchom test — ma failować**
 
 Run: `pytest core/tests/test_health.py -v`
 Expected: FAIL (404).
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `backend/core/views.py`:
 
@@ -286,12 +286,12 @@ urlpatterns = [
 ]
 ```
 
-- [ ] **Step 4: Testy zielone**
+- [x] **Step 4: Testy zielone**
 
 Run: `pytest core/tests/test_health.py -v`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/core backend/droplet/urls.py
