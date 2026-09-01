@@ -2,6 +2,8 @@ import 'package:droplet/core/session/providers.dart';
 import 'package:droplet/core/session/session_repository.dart';
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/features/auth/login_screen.dart';
+import 'package:droplet/features/game/game_detail_screen.dart';
+import 'package:droplet/features/game/providers.dart';
 import 'package:droplet/features/library/library_screen.dart';
 import 'package:droplet/features/library/providers.dart';
 import 'package:droplet/main.dart';
@@ -10,13 +12,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
-// The library screen is stubbed out at the data level so routing tests stay
+
+const _detail = GameDetail(
+  id: 7,
+  title: 'Hollow Knight',
+  systemCode: 'switch',
+  systemName: 'Switch',
+  hasCover: false,
+  totalSize: 1,
+  files: [],
+);
+
+// The library and game screens are stubbed out at the data level so routing tests stay
 // about routing (and never touch the network).
 Widget _app(KeyValueStore store) => ProviderScope(
       overrides: [
         sessionRepositoryProvider.overrideWithValue(SessionRepository(store)),
         gamesProvider.overrideWith((ref) async => <GameSummary>[]),
         systemsProvider.overrideWith((ref) async => <SystemModel>[]),
+        gameDetailProvider(7).overrideWith((ref) async => _detail),
       ],
       child: const DropletApp(),
     );
@@ -48,7 +62,7 @@ void main() {
 
     context.go('/game/7');
     await tester.pumpAndSettle();
-    expect(find.text('Gra 7'), findsOneWidget);
+    expect(find.byType(GameDetailScreen), findsOneWidget);
 
     context.go('/settings');
     await tester.pumpAndSettle();

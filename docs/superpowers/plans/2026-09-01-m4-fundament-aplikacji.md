@@ -902,7 +902,7 @@ Oryginalny krok: — `flutter test`; ręcznie na telefonie: przewijanie pełnej 
 **Interfaces:**
 - Produces: `gameDetailProvider = FutureProvider.family<GameDetail, int>`; `GameDetailScreen(gameId)` — `CustomScrollView`: `SliverAppBar` z okładką `full` jako tło (gradient do `kBg`), tytuł + system, sekcja plików pogrupowana etykietami ról (`Gra`, `Aktualizacja`, `DLC`, `Płyta N`, `Pozostałe`), rozmiary w czytelnym formacie (`formatBytes(int) -> String` w `lib/core/format.dart`: `1.4 GB`), przycisk „Pobierz" — na razie `disabled` z tooltipem „Wkrótce" (aktywacja w M5).
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `app/test/features/game_detail_test.dart`:
 
@@ -947,9 +947,9 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja** — `format.dart`:
+- [x] **Step 3: Implementacja** — `format.dart`:
 
 ```dart
 String formatBytes(int bytes) {
@@ -979,7 +979,7 @@ const roleLabels = {
 
 Router: `/game/:id` → `GameDetailScreen(gameId: int.parse(...))`.
 
-- [ ] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: game detail screen with file manifest"`
+- [x] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: game detail screen with file manifest"`
 
 ---
 

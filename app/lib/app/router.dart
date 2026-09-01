@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/session/providers.dart';
 import '../features/auth/login_screen.dart';
+import '../features/game/game_detail_screen.dart';
 import '../features/library/library_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -30,7 +31,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           // system back button returns to the library instead of exiting.
           GoRoute(
             path: 'game/:id',
-            builder: (_, s) => _Stub('Gra ${s.pathParameters['id']}'),
+            builder: (_, s) => GameDetailScreen(
+              gameId: int.parse(s.pathParameters['id']!),
+            ),
           ),
           GoRoute(
             path: 'settings',
