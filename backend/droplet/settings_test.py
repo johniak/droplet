@@ -5,3 +5,6 @@ DATA_DIR.mkdir(exist_ok=True)
 DATABASES["default"]["NAME"] = ":memory:"  # noqa: F405
 TASKS = {"default": {"BACKEND": "django.tasks.backends.immediate.ImmediateBackend"}}
 LIBRARY_ROOT = BASE_DIR / ".test-library"  # noqa: F405
+STATIC_ROOT = DATA_DIR / "static"
+STATIC_ROOT.mkdir(exist_ok=True)
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}

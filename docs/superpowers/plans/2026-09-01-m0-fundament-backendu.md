@@ -704,7 +704,7 @@ git commit -m "docs: TrueNAS deployment guide"
   - `DJANGO_CSRF_TRUSTED_ORIGINS` (CSV) → `CSRF_TRUSTED_ORIGINS` — potrzebne, gdy admin stanie za reverse proxy z HTTPS; puste = brak wpisów.
   - compose: `restart: unless-stopped` na obu serwisach; `worker` startuje dopiero po zdrowym `web` (web robi migracje — worker bez tabel crashuje na starcie).
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 Dopisz do `backend/core/tests/test_settings.py`:
 
@@ -742,9 +742,9 @@ def test_shared_auth_client_fixture(auth_client):
     assert auth_client.get("/api/me/").json() == {"username": "jan"}
 ```
 
-- [ ] **Step 2: FAIL** — `pytest core/tests/test_settings.py core/tests/test_auth.py -v --no-cov`
+- [x] **Step 2: FAIL** — `pytest core/tests/test_settings.py core/tests/test_auth.py -v --no-cov`
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `backend/requirements.txt` += `whitenoise>=6.7`, potem `pip install -r requirements.txt`.
 
@@ -819,9 +819,9 @@ services:
         condition: service_healthy
 ```
 
-- [ ] **Step 4: PASS** — `cd backend && pytest -v` (całość, 100%). Deployment: `docker compose up -d --build`, potem `curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/static/admin/css/base.css` → `200`; `docker compose ps` → worker wystartował po web; `docker compose down`.
+- [x] **Step 4: PASS** — `cd backend && pytest -v` (całość, 100%). Deployment: `docker compose up -d --build`, potem `curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/static/admin/css/base.css` → `200`; `docker compose ps` → worker wystartował po web; `docker compose down`.
 
-- [ ] **Step 5: Commit** — `git add backend docker-compose.yml && git commit -m "chore: shared auth fixture, no-op throttle in tests, whitenoise and compose resilience"`
+- [x] **Step 5: Commit** — `git add backend docker-compose.yml && git commit -m "chore: shared auth fixture, no-op throttle in tests, whitenoise and compose resilience"`
 
 ---
 

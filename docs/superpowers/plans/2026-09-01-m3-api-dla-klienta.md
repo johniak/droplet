@@ -30,6 +30,7 @@ GET /api/files/{id}/download -> 200 pełny plik / 206 przy Range / 416 zły zakr
 
 - Paginacja: `PAGE_SIZE=60` (ustawione w M0).
 - Download streamuje w kawałkach 1 MiB — nigdy nie czyta całego pliku do pamięci.
+- Biegi częściowe (`pytest <plik>`) z `--no-cov`; bramka = pełny `pytest`. Testy API używają fixture `auth_client` z `backend/conftest.py` (M0 Task 7a).
 
 ---
 
@@ -50,19 +51,12 @@ GET /api/files/{id}/download -> 200 pełny plik / 206 przy Range / 416 zły zakr
 
 ```python
 import pytest
-from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
 from library.models import Game, System
 
 
-@pytest.fixture
-def auth_client(db):
-    User.objects.create_user(username="jan", password="s3")
-    c = APIClient()
-    token = c.post("/api/auth/token/", {"username": "jan", "password": "s3"}).json()["token"]
-    c.credentials(HTTP_AUTHORIZATION=f"Token {token}")
-    return c
+# fixture `auth_client` pochodzi z backend/conftest.py (M0 Task 7a)
 
 
 @pytest.fixture
@@ -150,20 +144,13 @@ class SystemListView(ListAPIView):
 
 ```python
 import pytest
-from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
 from covers.models import Cover
 from library.models import Game, GameFile, System
 
 
-@pytest.fixture
-def auth_client(db):
-    User.objects.create_user(username="jan", password="s3")
-    c = APIClient()
-    token = c.post("/api/auth/token/", {"username": "jan", "password": "s3"}).json()["token"]
-    c.credentials(HTTP_AUTHORIZATION=f"Token {token}")
-    return c
+# fixture `auth_client` pochodzi z backend/conftest.py (M0 Task 7a)
 
 
 @pytest.fixture
@@ -223,10 +210,11 @@ class GameListSerializer(serializers.ModelSerializer):
         fields = ["id", "title", "system_code", "has_cover", "total_size"]
 ```
 
-W `api.py`:
+W `api.py` (wersja docelowa — filtr działa jako `?system=<code>`, nie `?system__code=`, stąd własny `FilterSet`):
 
 ```python
-from django.db.models import Exists, OuterRef, Sum
+import django_filters
+from django.db.models import BigIntegerField, Exists, OuterRef, Sum, Value
 from django.db.models.functions import Coalesce
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter, SearchFilter
@@ -239,26 +227,12 @@ from .serializers import GameListSerializer
 def annotated_games():
     return Game.objects.select_related("system").annotate(
         has_cover=Exists(Cover.objects.filter(game=OuterRef("pk"))),
-        total_size=Coalesce(Sum("files__size"), 0),
+        # jawny output_field: bez niego Django potrafi rzucić
+        # "Expression contains mixed types" (BigIntegerField vs IntegerField)
+        total_size=Coalesce(
+            Sum("files__size"), Value(0), output_field=BigIntegerField()
+        ),
     )
-
-
-class GameListView(ListAPIView):
-    serializer_class = GameListSerializer
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = {"system__code": ["exact"]}
-    search_fields = ["title", "normalized_title"]
-    ordering_fields = ["title", "id"]
-    ordering = ["title"]
-
-    def get_queryset(self):
-        return annotated_games()
-```
-
-Uwaga: filtr ma działać jako `?system=`, nie `?system__code=` — użyj `FilterSet`:
-
-```python
-import django_filters
 
 
 class GameFilter(django_filters.FilterSet):
@@ -267,9 +241,19 @@ class GameFilter(django_filters.FilterSet):
     class Meta:
         model = Game
         fields = ["system"]
-```
 
-...i w widoku `filterset_class = GameFilter` (zamiast `filterset_fields`).
+
+class GameListView(ListAPIView):
+    serializer_class = GameListSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_class = GameFilter
+    search_fields = ["title", "normalized_title"]
+    ordering_fields = ["title", "id"]
+    ordering = ["title"]
+
+    def get_queryset(self):
+        return annotated_games()
+```
 
 `urls.py`: `path("games/", api.GameListView.as_view(), name="games"),`
 
@@ -292,19 +276,12 @@ class GameFilter(django_filters.FilterSet):
 
 ```python
 import pytest
-from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
 from library.models import Game, GameFile, System
 
 
-@pytest.fixture
-def auth_client(db):
-    User.objects.create_user(username="jan", password="s3")
-    c = APIClient()
-    token = c.post("/api/auth/token/", {"username": "jan", "password": "s3"}).json()["token"]
-    c.credentials(HTTP_AUTHORIZATION=f"Token {token}")
-    return c
+# fixture `auth_client` pochodzi z backend/conftest.py (M0 Task 7a)
 
 
 @pytest.fixture
@@ -418,13 +395,7 @@ from library.models import Game, GameFile, System
 CONTENT = bytes(range(256)) * 4  # 1024 bajty
 
 
-@pytest.fixture
-def auth_client(db):
-    User.objects.create_user(username="jan", password="s3")
-    c = APIClient()
-    token = c.post("/api/auth/token/", {"username": "jan", "password": "s3"}).json()["token"]
-    c.credentials(HTTP_AUTHORIZATION=f"Token {token}")
-    return c
+# fixture `auth_client` pochodzi z backend/conftest.py (M0 Task 7a)
 
 
 @pytest.fixture
@@ -490,6 +461,15 @@ def test_symlink_escape_is_404(auth_client, gamefile, tmp_path):
         game=gf.game, relative_path="snes/Zly.sfc", size=5, mtime_ns=1
     )
     assert _get(auth_client, gf2, root).status_code == 404
+
+
+def test_stream_stops_when_file_shrinks_mid_transfer(auth_client, gamefile):
+    # StreamingHttpResponse jest leniwa — plik czytany dopiero przy iteracji;
+    # pokrywa gałąź `if not chunk` w _iter_file (bez niej pętla by się zawiesiła)
+    gf, root = gamefile
+    resp = _get(auth_client, gf, root)
+    (root / "snes" / "Mario (USA).sfc").write_bytes(CONTENT[:10])
+    assert b"".join(resp.streaming_content) == CONTENT[:10]
 ```
 
 - [ ] **Step 2: FAIL**

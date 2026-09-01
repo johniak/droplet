@@ -18,13 +18,18 @@ Zbuduj projekt Droplet, wykonując plany milestone'ów **w kolejności M0 → M6
    implementacja → testy zielone → commit. Nie wybiegaj naprzód.
 3. Bramki przed odhaczeniem: backend `cd backend && pytest -v` (100% pokrycia);
    Flutter `flutter test` + `./scripts/check_coverage_app.sh`. Czerwone = napraw
-   w tej iteracji, nie odhaczaj.
+   w tej iteracji, nie odhaczaj. Pojedyncze pliki testowe w trakcie TDD odpalaj
+   z `--no-cov` (częściowy bieg zawsze „obleje" próg 100% — to nie jest błąd
+   kodu); bramką jest pełny bieg na końcu zadania.
 4. Po przejściu bramek: zamień `- [ ]` na `- [x]` przy wykonanych krokach w pliku
    planu i dołącz tę zmianę do commita zadania.
 5. Jeśli krok wymaga człowieka lub sprzętu (akceptacja wyglądu, fizyczny telefon,
-   realny NAS, tydzień feedbacku): NIE wykonuj go — dopisz go do `RALPH-STATUS.md`
-   w sekcji "Czeka na Jana" (raz, bez duplikatów), odhacz jako `- [x] (odłożone
-   na człowieka)` i idź dalej.
+   realny NAS, tydzień feedbacku) albo środowiska, którego nie ma (Docker daemon
+   nie działa, `flutter devices`/`adb devices` puste): NIE wykonuj go i nie udawaj,
+   że przeszedł — dopisz go do `RALPH-STATUS.md` w sekcji "Czeka na Jana" (raz,
+   bez duplikatów), odhacz jako `- [x] (odłożone na człowieka)` i idź dalej.
+   Kroki, które da się wykonać bez tego środowiska (testy unit, kod), wykonuj
+   normalnie.
 6. Jeśli utkniesz drugi raz na tym samym problemie: opisz go w `RALPH-STATUS.md`
    w sekcji "Blokery" i przejdź do następnego niezależnego kroku.
 
@@ -36,6 +41,10 @@ Zbuduj projekt Droplet, wykonując plany milestone'ów **w kolejności M0 → M6
   poza technicznymi już opisanymi w planach.
 - Nie zmieniaj specu ani zakresu planów; rozjazd planu z rzeczywistością
   (np. inna nazwa API w bibliotece) rozwiąż minimalnie i odnotuj w `RALPH-STATUS.md`.
+- Pliki planów mogą się zmieniać między iteracjami (Jan poprawia plany w locie) —
+  zawsze czytaj aktualną treść zadania z dysku, nie z pamięci poprzedniej iteracji.
+  Zadań już odhaczonych nie przerabiaj, chyba że późniejsze zadanie każe je
+  zmodyfikować (np. „Modify: …").
 
 ## Koniec
 

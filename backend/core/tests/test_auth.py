@@ -42,3 +42,16 @@ def test_login_view_declares_throttle_scope():
     from core.views import ObtainTokenView
 
     assert ObtainTokenView.throttle_scope == "login"
+
+
+def test_many_logins_not_throttled_in_tests(user):
+    client = APIClient()
+    for _ in range(15):
+        resp = client.post(
+            "/api/auth/token/", {"username": "jan", "password": "sekret123"}
+        )
+        assert resp.status_code == 200
+
+
+def test_shared_auth_client_fixture(auth_client):
+    assert auth_client.get("/api/me/").json() == {"username": "jan"}

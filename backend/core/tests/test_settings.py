@@ -19,3 +19,20 @@ def test_root_urlconf_loads():
     from django.urls import reverse
 
     assert reverse("admin:index") == "/admin/"
+
+
+def test_throttle_cache_is_dummy_in_tests():
+    assert settings.CACHES["default"]["BACKEND"].endswith("DummyCache")
+
+
+def test_whitenoise_enabled():
+    assert "whitenoise.middleware.WhiteNoiseMiddleware" in settings.MIDDLEWARE
+
+
+def test_csv_env_helper(monkeypatch):
+    from droplet.settings import _csv_env
+
+    monkeypatch.setenv("X_CSV", " https://a.example, https://b.example ,")
+    assert _csv_env("X_CSV") == ["https://a.example", "https://b.example"]
+    monkeypatch.delenv("X_CSV")
+    assert _csv_env("X_CSV") == []
