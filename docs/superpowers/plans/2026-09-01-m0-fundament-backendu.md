@@ -500,7 +500,7 @@ git commit -m "feat: token login with throttle scope and /api/me endpoint"
 **Interfaces:**
 - Produces: wzorzec definiowania tasków (`from django.tasks import task`; `@task()` na funkcji; `fn.enqueue(...)`) używany przez skaner (M1) i okładki (M2). Task demonstracyjny `core.tasks.ping` zwraca `"pong"`.
 
-- [ ] **Step 1: Napisz failing test**
+- [x] **Step 1: Napisz failing test**
 
 `backend/core/tests/test_tasks.py`:
 
@@ -517,11 +517,11 @@ def test_ping_enqueues_and_runs_immediately():
     assert result.return_value == "pong"
 ```
 
-- [ ] **Step 2: Uruchom — FAIL**
+- [x] **Step 2: Uruchom — FAIL**
 
 Run: `pytest core/tests/test_tasks.py -v` — FAIL (no module core.tasks).
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `backend/core/tasks.py`:
 
@@ -536,12 +536,12 @@ def ping() -> str:
 
 Uwaga wykonawcza: jeśli import `from django.tasks import task` nie istnieje w zainstalowanym Django, użyj `from django_tasks import task` i popraw ten plik oraz test — pozostała część planów używa tego samego importu co tutaj.
 
-- [ ] **Step 4: Testy zielone + migracje django_tasks**
+- [x] **Step 4: Testy zielone + migracje django_tasks**
 
 Run: `python manage.py makemigrations --check --dry-run || true; python manage.py migrate --plan | head; pytest core/tests/test_tasks.py -v`
 Expected: test PASS; w `migrate --plan` widoczne migracje `django_tasks`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/core/tasks.py backend/core/tests/test_tasks.py
