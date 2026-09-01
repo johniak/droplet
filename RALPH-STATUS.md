@@ -62,3 +62,9 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   nadal działa). Koszt: WRatio zawyża wynik przy krótkich podciągach (np. samo
   „mario" → 90 dla „super mario world"); łagodzi to reguła exact-match oraz
   ręczne poprawki dopasowania w adminie (Task 6).
+- **M2 Task 7 — blokada sieci a e2e**: autouse fixture `_no_network` z `backend/conftest.py`
+  (M2 Task 1) obejmowała także `backend/e2e/`, przez co cała suita e2e wywalała się na
+  `RuntimeError: Sieć zablokowana`. Rozwiązane nadpisaniem fixture o tej samej nazwie
+  w `backend/e2e/conftest.py` (no-op) — blokada dalej działa w testach jednostkowych.
+  Dodatkowo `DROPLET_AUTO_COVERS` doszło do `docker-compose.yml` (default `1`),
+  `docker-compose.e2e.yml` (`0`) i tabelki env w `docs/deploy.md`.

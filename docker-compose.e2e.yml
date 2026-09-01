@@ -5,6 +5,7 @@ services:
       DJANGO_SECRET_KEY: e2e-secret
       DROPLET_ADMIN_USER: e2e
       DROPLET_ADMIN_PASSWORD: e2e-pass-123
+      DROPLET_AUTO_COVERS: "0"
     volumes: !override
       - droplet-e2e-data:/data
       - ./backend/e2e/fixture-library:/library:ro
@@ -13,6 +14,7 @@ services:
       DJANGO_SECRET_KEY: e2e-secret
       DROPLET_ADMIN_USER: e2e
       DROPLET_ADMIN_PASSWORD: e2e-pass-123
+      DROPLET_AUTO_COVERS: "0"
     volumes: !override
       - droplet-e2e-data:/data
       - ./backend/e2e/fixture-library:/library:ro

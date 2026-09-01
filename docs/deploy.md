@@ -41,6 +41,7 @@ na TrueNAS SCALE, pierwsze uruchomienie, aktualizacje i backup.
    | `DJANGO_ALLOWED_HOSTS` | `*` albo lista hostów po przecinku |
    | `DROPLET_ADMIN_USER` | nazwa Twojego jedynego konta |
    | `DROPLET_ADMIN_PASSWORD` | hasło do tego konta |
+   | `DROPLET_AUTO_COVERS` | `1` (domyślnie) — po każdym skanie automatycznie dopasowuj okładki z libretro-thumbnails; `0` wyłącza (backend nie wychodzi wtedy do internetu) |
    | `DJANGO_CSRF_TRUSTED_ORIGINS` | lista origins po przecinku, gdy admin stoi za reverse proxy z HTTPS (np. `https://droplet.example.com`); puste = brak wpisów |
 
    Sekret wygenerujesz np. tak:

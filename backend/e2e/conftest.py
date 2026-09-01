@@ -4,6 +4,12 @@ import pytest
 import requests
 
 
+@pytest.fixture(autouse=True)
+def _no_network():
+    """Override the unit-suite network block: e2e talks to a real deployment."""
+    yield
+
+
 @pytest.fixture(scope="session")
 def base_url() -> str:
     return os.environ.get("E2E_BASE_URL", "http://localhost:8800")

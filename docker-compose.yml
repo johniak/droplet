@@ -10,6 +10,7 @@ services:
       DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
       DROPLET_ADMIN_USER: ${DROPLET_ADMIN_USER:?set me}
       DROPLET_ADMIN_PASSWORD: ${DROPLET_ADMIN_PASSWORD:?set me}
+      DROPLET_AUTO_COVERS: ${DROPLET_AUTO_COVERS:-1}
     volumes:
       - droplet-data:/data
       - ${LIBRARY_PATH:?set me}:/library:ro
