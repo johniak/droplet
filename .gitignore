@@ -7,3 +7,7 @@ backend/.test-data/
 backend/.test-library/
 .coverage
 htmlcov/
+app/test/all_imports_test.dart
+app/coverage/
+app/.dart_tool/
+app/build/

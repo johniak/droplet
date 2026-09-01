@@ -29,6 +29,12 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   `./scripts/smoke.sh http://<ip-nas>:8000 <user> <haslo>` - oczekiwane `RESUME OK`,
   `401 OK`, `SMOKE PASSED`.
 
+- **M4 - uruchomienie aplikacji na fizycznym Androidzie.** Nie mam podpietego
+  urzadzenia ani emulatora Androida (widoczne sa tylko Chrome i iPhone), wiec
+  `flutter run` na Androidzie i wizualna akceptacja wygladu sa po Twojej stronie.
+  Zweryfikowane automatycznie: `flutter test`, bramka pokrycia 100%
+  (`./scripts/check_coverage_app.sh`) i `flutter build apk --debug` (APK sie buduje).
+
 ## Blokery
 
 (brak)
@@ -88,3 +94,7 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   dopasowaniu, `SystemSpec("switch", ...)` ma teraz pusty `thumbnail_repo` (a `match_all`
   i tak pomija systemy bez repo). Okładki Switcha wgrywa się ręcznie w adminie —
   ścieżka przewidziana w spec §3.4.
+- **M4 Task 1 - Gradle vs Java 24**: wygenerowany przez `flutter create` wrapper
+  (Gradle 8.12 + AGP 8.7.3) nie buduje sie na zainstalowanej Javie 24
+  (`java-gradle-incompatibility`). Podbite minimalnie do Gradle 8.14.3 + AGP 8.9.1 -
+  `flutter build apk --debug` przechodzi.

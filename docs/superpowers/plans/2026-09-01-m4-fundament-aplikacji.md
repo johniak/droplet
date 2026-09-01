@@ -35,7 +35,7 @@
 **Interfaces:**
 - Produces: `DropletApp` (MaterialApp.router, `themeMode: ThemeMode.dark`); `buildTheme() -> ThemeData` w `theme.dart` (paleta: tło `#0E1116`, powierzchnie `#161B22`, akcent `#3FB6F0`, tekst `#E6EDF3`); router z trasami `/login`, `/` (biblioteka), `/game/:id`, `/settings` — na razie trasy prowadzą do placeholderowych `Scaffold`ów podmienianych w kolejnych taskach.
 
-- [ ] **Step 1: Scaffold**
+- [x] **Step 1: Scaffold**
 
 ```bash
 flutter create --org dev.johniak --project-name droplet --platforms android app
@@ -117,7 +117,7 @@ EOF
 
 Uwaga do `lib/main.dart`: funkcja `main()` (i tylko ona) w bloku `// coverage:ignore-start` … `// coverage:ignore-end` — jeśli `flutter test --coverage` w zainstalowanej wersji nie respektuje tych markerów, wyciągnij ciało `main()` do `Future<void> bootstrap()` i przetestuj `bootstrap` (nie rozszerzaj listy wyjątków).
 
-- [ ] **Step 2: Failing test**
+- [x] **Step 2: Failing test**
 
 `app/test/smoke_test.dart`:
 
@@ -135,7 +135,7 @@ void main() {
 }
 ```
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `app/lib/app/theme.dart`:
 
@@ -224,9 +224,11 @@ class DropletApp extends StatelessWidget {
 }
 ```
 
-- [ ] **Step 4: PASS** — `flutter test`, `./scripts/check_coverage_app.sh` (100%) i `flutter run` na urządzeniu (aplikacja startuje na ciemnym stubie).
+- [x] **Step 4: PASS** (flutter test + bramka 100% + `flutter build apk --debug`; `flutter run` na fizycznym Androidzie odlozone na czlowieka - RALPH-STATUS)
 
-- [ ] **Step 5: Commit** — `git add app scripts && git commit -m "feat: scaffold Flutter app with dark theme and router"`
+Oryginalny krok: — `flutter test`, `./scripts/check_coverage_app.sh` (100%) i `flutter run` na urządzeniu (aplikacja startuje na ciemnym stubie).
+
+- [x] **Step 5: Commit** — `git add app scripts && git commit -m "feat: scaffold Flutter app with dark theme and router"`
 
 ---
 
