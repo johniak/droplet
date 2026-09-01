@@ -1119,7 +1119,7 @@ W `droplet/urls.py` dodaj `path("api/", include("library.urls")),`.
 **Interfaces:**
 - Produces: admin z filtrami/szukajkami; `GameFile.game` edytowalne (przepięcie pliku do innej gry) i `role`/`disc_number`/`version` edytowalne; akcja "Uruchom skan" na liście ScanRun; System z edycją `thumbnail_repo`/`needs_config`.
 
-- [ ] **Step 1: Failing test (smoke)**
+- [x] **Step 1: Failing test (smoke)**
 
 `backend/library/tests/test_admin.py`:
 
@@ -1178,9 +1178,9 @@ def test_run_scan_action_enqueues(admin_client_, tmp_path):
     assert ScanRun.objects.count() == 2  # ImmediateBackend wykonał skan od razu
 ```
 
-- [ ] **Step 2: FAIL** — `pytest library/tests/test_admin.py -v --no-cov` (testy akcji i kolumny nie przechodzą na prostych rejestracjach).
+- [x] **Step 2: FAIL** — `pytest library/tests/test_admin.py -v --no-cov` (testy akcji i kolumny nie przechodzą na prostych rejestracjach).
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `backend/library/admin.py` (zastąp):
 
@@ -1242,9 +1242,9 @@ class ScanRunAdmin(admin.ModelAdmin):
 
 Uwaga: `autocomplete_fields` wymaga `search_fields` w `GameAdmin` — jest.
 
-- [ ] **Step 4: PASS** — `pytest library/tests/test_admin.py -v`
+- [x] **Step 4: PASS** — `pytest library/tests/test_admin.py -v`
 
-- [ ] **Step 5: Commit** — `git commit -m "feat: admin for library browsing and corrections"`
+- [x] **Step 5: Commit** — `git commit -m "feat: admin for library browsing and corrections"`
 
 ---
 
