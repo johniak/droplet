@@ -417,12 +417,28 @@ void main() {
     final s = diffGame(withOld, {'hk.nsp': 10, 'old-upd.nsp': 10}, settings, 'switch');
     expect(s.presentPaths, contains('/roms/switch/old-upd.nsp'));
   });
+
+  group('scanSystemDir', () {
+    test('missing dir -> empty map', () async {
+      expect(await scanSystemDir('/nie/ma/takiego'), isEmpty);
+    });
+
+    test('maps basenames to sizes, skips subdirectories', () async {
+      final dir = await Directory.systemTemp.createTemp();
+      File('${dir.path}/a.sfc').writeAsBytesSync(List.filled(3, 0));
+      File('${dir.path}/b.sfc').writeAsBytesSync(List.filled(5, 0));
+      Directory('${dir.path}/sub').createSync();
+      expect(await scanSystemDir(dir.path), {'a.sfc': 3, 'b.sfc': 5});
+    });
+  });
 }
 ```
 
+(`import 'dart:io';` + `import 'package:droplet/core/downloads/local_scanner.dart';` na górze.)
+
 - [ ] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja** — `diffGame` wg reguł (korzysta z `defaultSelection` i `settings.pathFor`); `scanSystemDir` przez `Directory(dirPath).list()` → mapa `basename -> length`.
+- [ ] **Step 3: Implementacja** — `diffGame` wg reguł (korzysta z `defaultSelection` i `settings.pathFor`); `scanSystemDir` przez `Directory(dirPath).list()` → mapa `basename -> length` (tylko `File`, katalogi pomijane; brak katalogu → `{}`).
 
 - [ ] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: manifest-to-disk diff with install status"`
 
@@ -431,9 +447,9 @@ void main() {
 ### Task 5: Download manager
 
 **Files:**
-- Create: `app/lib/core/downloads/download_manager.dart`, `app/lib/core/downloads/task_builder.dart`
+- Create: `app/lib/core/platform/downloader_port.dart`, `app/lib/core/downloads/download_manager.dart`, `app/lib/core/downloads/task_builder.dart`, `app/test/fakes/fake_downloader_port.dart`
 - Modify: `app/lib/main.dart` (konfiguracja powiadomień przy starcie)
-- Test: `app/test/core/task_builder_test.dart`
+- Test: `app/test/core/task_builder_test.dart`, `app/test/core/download_manager_test.dart`
 
 **Interfaces:**
 - Produces:
@@ -446,17 +462,39 @@ DownloadTask buildTask({
   required StorageSettings settings, required String systemCode,
 });
 // url: $serverUrl/api/files/${file.id}/download, headers: auth,
-// baseDirectory: BaseDirectory.root, directory: settings.dirFor(systemCode) bez wiodącego '/',
+// baseDirectory: BaseDirectory.root, directory: settings.dirFor(systemCode) (ścieżka
+//   ABSOLUTNA, z wiodącym '/' — tak dokumentuje to background_downloader dla root),
 // filename: file.name, group: 'game-$gameId', allowPause: true, retries: 3,
 // updates: Updates.statusAndProgress, metaData: '{"gameId":$gameId,"size":${file.size}}'
+int gameIdOf(Task task);  int expectedSizeOf(Task task);   // z metaData
 ```
 
-  - `download_manager.dart`: `DownloadManager` (provider `downloadManagerProvider`):
-    - `Future<void> downloadGame(GameDetail game, Set<int> selectedIds)` — `ensureStoragePermission`, utworzenie katalogu, enqueue tasków (pomija pliki już obecne wg `diffGame`),
-    - nasłuch `FileDownloader().updates`: po `TaskStatus.complete` weryfikacja rozmiaru z `metaData` (niezgodność → skasuj plik, oznacz błąd), po czym `ref.invalidate` stanu lokalnego,
-    - `pause/resume/cancel(taskId)`, `retryGame(gameId)`,
-    - stream postępu per gra: `progressFor(int gameId) -> Stream<double>` (średnia ważona rozmiarami).
-  - W `main.dart`: `FileDownloader().configureNotification(running:, complete:, error:, progressBar: true)`.
+  - `lib/core/platform/downloader_port.dart` (`// coverage:ignore-file` — adapter na `FileDownloader()`):
+
+```dart
+abstract class DownloaderPort {
+  Stream<TaskUpdate> get updates;                 // FileDownloader().updates
+  Future<bool> enqueue(DownloadTask task);
+  Future<bool> pause(DownloadTask task);
+  Future<bool> resume(DownloadTask task);
+  Future<bool> cancel(String taskId);             // cancelTaskWithId
+  Future<List<TaskRecord>> allRecords();          // database.allRecords()
+  Future<List<TaskRecord>> recordsForGroup(String group);
+  Future<String> filePath(Task task);             // task.filePath()
+  Future<int?> fileLength(String path);           // File(path).length(), null gdy brak
+  Future<void> deleteFile(String path);
+  Future<void> ensureNotificationPermission();    // permissions.request(PermissionType.notifications)
+}
+class BackgroundDownloaderPort implements DownloaderPort { ... }
+final downloaderPortProvider = Provider<DownloaderPort>((_) => BackgroundDownloaderPort());
+```
+
+  - `download_manager.dart` — `DownloadManager` (provider `downloadManagerProvider`, konstruktor `DownloadManager(DownloaderPort port, PermissionsPort permissions, {required void Function(int gameId) onGameChanged})`):
+    - `Future<void> downloadGame({required GameDetail game, required Set<int> selectedIds, required LocalGameState local, required String serverUrl, required Map<String, String> authHeaders, required StorageSettings settings})` — `ensureStoragePermission` (rzuca `PermissionDeniedException` przy odmowie), `ensureNotificationPermission()` (pomijane gdy `kE2E`), enqueue tasków dla zaznaczonych plików **z pominięciem już obecnych** (`local.presentPaths`),
+    - nasłuch `port.updates`: `TaskProgressUpdate` → aktualizacja postępu gry (średnia ważona `expectedSizeOf`); `TaskStatusUpdate.complete` → `fileLength(filePath)` vs `expectedSizeOf` — niezgodność: `deleteFile` + status `failed`; po każdym zakończeniu `onGameChanged(gameId)` (feature podpina `ref.invalidate(localStateProvider(gameId))`),
+    - `pauseGame/resumeGame/cancelGame/retryGame(int gameId)` (po `recordsForGroup('game-$gameId')`),
+    - `Map<int, GameProgress> get progress` + `Stream<Map<int, GameProgress>> get progressStream`; `GameProgress {gameId, title, progress, status: GameProgressStatus running|paused|failed|complete}`.
+  - W `main.dart` (wewnątrz `main()` — ignorowane w pokryciu): `FileDownloader().configureNotification(running:, complete:, error:, progressBar: true)`.
 
 - [ ] **Step 1: Failing testy**
 
@@ -469,10 +507,11 @@ import 'package:droplet/core/downloads/task_builder.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  const file = GameFileModel(id: 42, name: 'Mario (USA).sfc',
+      relativePath: 'snes/Mario (USA).sfc', role: FileRole.base,
+      discNumber: null, version: '', size: 1024);
+
   test('buildTask fills url, path, group and headers', () {
-    const file = GameFileModel(id: 42, name: 'Mario (USA).sfc',
-        relativePath: 'snes/Mario (USA).sfc', role: FileRole.base,
-        discNumber: null, version: '', size: 1024);
     final task = buildTask(
       serverUrl: 'http://nas:8000',
       authHeaders: {'Authorization': 'Token abc'},
@@ -483,19 +522,153 @@ void main() {
     );
     expect(task.url, 'http://nas:8000/api/files/42/download');
     expect(task.headers['Authorization'], 'Token abc');
-    expect(task.directory, 'storage/emulated/0/RetroArch/roms/snes');
+    expect(task.directory, '/storage/emulated/0/RetroArch/roms/snes');
     expect(task.filename, 'Mario (USA).sfc');
     expect(task.group, 'game-7');
     expect(task.allowPause, true);
+    expect(gameIdOf(task), 7);
+    expect(expectedSizeOf(task), 1024);
+  });
+}
+```
+
+`app/test/fakes/fake_downloader_port.dart`:
+
+```dart
+import 'dart:async';
+import 'package:background_downloader/background_downloader.dart';
+import 'package:droplet/core/platform/downloader_port.dart';
+
+class FakeDownloaderPort implements DownloaderPort {
+  final controller = StreamController<TaskUpdate>.broadcast();
+  final enqueued = <DownloadTask>[];
+  final deleted = <String>[];
+  final lengths = <String, int?>{};      // ścieżka -> rozmiar (null = brak pliku)
+  int notificationRequests = 0;
+  final paused = <String>[], resumed = <String>[], cancelled = <String>[];
+
+  @override Stream<TaskUpdate> get updates => controller.stream;
+  @override Future<bool> enqueue(DownloadTask task) async { enqueued.add(task); return true; }
+  @override Future<bool> pause(DownloadTask task) async { paused.add(task.taskId); return true; }
+  @override Future<bool> resume(DownloadTask task) async { resumed.add(task.taskId); return true; }
+  @override Future<bool> cancel(String taskId) async { cancelled.add(taskId); return true; }
+  @override Future<List<TaskRecord>> allRecords() async => [];
+  @override Future<List<TaskRecord>> recordsForGroup(String group) async =>
+      [for (final t in enqueued.where((t) => t.group == group))
+        TaskRecord(t, TaskStatus.running, 0.5, 1024)];
+  @override Future<String> filePath(Task task) async => '${task.directory}/${task.filename}';
+  @override Future<int?> fileLength(String path) async => lengths[path];
+  @override Future<void> deleteFile(String path) async => deleted.add(path);
+  @override Future<void> ensureNotificationPermission() async => notificationRequests++;
+}
+```
+
+`app/test/core/download_manager_test.dart`:
+
+```dart
+void main() {
+  const file = GameFileModel(id: 42, name: 'm.sfc', relativePath: 'snes/m.sfc',
+      role: FileRole.base, discNumber: null, version: '', size: 1024);
+  const game = GameDetail(id: 7, title: 'Mario', systemCode: 'snes', systemName: 'SNES',
+      hasCover: false, totalSize: 1024, files: [file]);
+  final settings = StorageSettings('/roms', {});
+  const none = LocalGameState(status: InstallStatus.none, updateAvailable: false,
+      missing: [file], presentPaths: []);
+
+  late FakeDownloaderPort port;
+  late FakePermissionsPort perms;
+  late List<int> changed;
+  late DownloadManager manager;
+
+  setUp(() {
+    port = FakeDownloaderPort();
+    perms = FakePermissionsPort(granted: true);
+    changed = [];
+    manager = DownloadManager(port, perms, onGameChanged: changed.add);
+  });
+
+  Future<void> start([LocalGameState local = none]) => manager.downloadGame(
+      game: game, selectedIds: {42}, local: local, serverUrl: 'http://nas:8000',
+      authHeaders: const {'Authorization': 'Token t'}, settings: settings);
+
+  test('enqueues selected, missing files', () async {
+    await start();
+    expect(port.enqueued.single.url, 'http://nas:8000/api/files/42/download');
+    expect(manager.progress[7]?.status, GameProgressStatus.running);
+  });
+
+  test('skips files already present', () async {
+    await start(const LocalGameState(status: InstallStatus.installed,
+        updateAvailable: false, missing: [], presentPaths: ['/roms/snes/m.sfc']));
+    expect(port.enqueued, isEmpty);
+  });
+
+  test('denied permission throws and enqueues nothing', () async {
+    perms.granted = false;
+    manager = DownloadManager(port, perms, onGameChanged: changed.add);
+    await expectLater(start(), throwsA(isA<PermissionDeniedException>()));
+    expect(port.enqueued, isEmpty);
+  });
+
+  test('progress updates are size-weighted', () async {
+    await start();
+    port.controller.add(TaskProgressUpdate(port.enqueued.single, 0.25));
+    await Future<void>.delayed(Duration.zero);
+    expect(manager.progress[7]?.progress, closeTo(0.25, 0.001));
+  });
+
+  test('complete with matching size -> complete + onGameChanged', () async {
+    await start();
+    port.lengths['/roms/snes/m.sfc'] = 1024;
+    port.controller.add(TaskStatusUpdate(port.enqueued.single, TaskStatus.complete));
+    await Future<void>.delayed(Duration.zero);
+    expect(manager.progress[7]?.status, GameProgressStatus.complete);
+    expect(changed, [7]);
+    expect(port.deleted, isEmpty);
+  });
+
+  test('complete with size mismatch -> file deleted, failed', () async {
+    await start();
+    port.lengths['/roms/snes/m.sfc'] = 10;
+    port.controller.add(TaskStatusUpdate(port.enqueued.single, TaskStatus.complete));
+    await Future<void>.delayed(Duration.zero);
+    expect(port.deleted, ['/roms/snes/m.sfc']);
+    expect(manager.progress[7]?.status, GameProgressStatus.failed);
+  });
+
+  test('failed/paused statuses map to progress status', () async {
+    await start();
+    port.controller.add(TaskStatusUpdate(port.enqueued.single, TaskStatus.paused));
+    await Future<void>.delayed(Duration.zero);
+    expect(manager.progress[7]?.status, GameProgressStatus.paused);
+    port.controller.add(TaskStatusUpdate(port.enqueued.single, TaskStatus.failed));
+    await Future<void>.delayed(Duration.zero);
+    expect(manager.progress[7]?.status, GameProgressStatus.failed);
+  });
+
+  test('pause/resume/cancel/retry act on the game group', () async {
+    await start();
+    await manager.pauseGame(7);
+    await manager.resumeGame(7);
+    await manager.cancelGame(7);
+    expect(port.paused.length + port.resumed.length + port.cancelled.length, 3);
+    await manager.retryGame(7);
+    expect(port.enqueued.length, 2);
+  });
+
+  test('notification permission requested once (not in e2e)', () async {
+    await start();
+    await start();
+    expect(port.notificationRequests, kE2E ? 0 : 1);
   });
 }
 ```
 
 - [ ] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja** — `task_builder.dart` wg Interfaces; `download_manager.dart` jako klasa z wstrzykniętym `FileDownloader` (default `FileDownloader()`), słuchająca `updates` i utrzymująca `Map<int, GameProgress>` eksponowaną przez `StateNotifier`/`Stream`. Weryfikacja rozmiaru: po complete `File(await task.filePath()).length()` vs `size` z `metaData`.
+- [ ] **Step 3: Implementacja** — `task_builder.dart`, `downloader_port.dart` (adapter, `// coverage:ignore-file`), `download_manager.dart` wg Interfaces. `downloadManagerProvider` tworzy managera z `downloaderPortProvider`, `permissionsPortProvider` i `onGameChanged: (id) => ref.invalidate(localStateProvider(id))` (provider z Task 6 — w tym tasku callback tymczasowo pusty, Task 6 podpina).
 
-- [ ] **Step 4: PASS** — `flutter test`; build na telefon i szybki test ręczny małego pliku.
+- [ ] **Step 4: PASS** — `flutter test` + `./scripts/check_coverage_app.sh`; build na telefon i szybki test ręczny małego pliku.
 
 - [ ] **Step 5: Commit** — `git commit -m "feat: background download manager with size verification"`
 
@@ -562,12 +735,44 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Usuń z urządzenia'), findsOneWidget);
   });
+
+  testWidgets('update available shows update button', (tester) async {
+    await tester.pumpWidget(build(const LocalGameState(
+        status: InstallStatus.partial, updateAvailable: true,
+        missing: [], presentPaths: ['/roms/snes/m.sfc'])));
+    await tester.pumpAndSettle();
+    expect(find.text('Pobierz aktualizację'), findsOneWidget);
+  });
+
+  testWidgets('delete dialog removes only listed files', (tester) async {
+    final dir = await Directory.systemTemp.createTemp();
+    final rom = File('${dir.path}/m.sfc')..writeAsStringSync('rom');
+    final save = File('${dir.path}/m.srm')..writeAsStringSync('save');  // „save" obok ROM-a
+    await tester.pumpWidget(build(LocalGameState(
+        status: InstallStatus.installed, updateAvailable: false,
+        missing: const [], presentPaths: [rom.path])));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Usuń z urządzenia'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('nie zostaną usunięte'), findsOneWidget);
+    await tester.tap(find.text('Usuń'));
+    await tester.pumpAndSettle();
+    expect(rom.existsSync(), false);
+    expect(save.existsSync(), true);
+  });
+
+  test('deleteLocalFiles ignores missing paths', () async {
+    final dir = await Directory.systemTemp.createTemp();
+    await deleteLocalFiles(['${dir.path}/nie-ma.sfc']);  // nie rzuca
+  });
 }
 ```
 
+(`import 'dart:io';` + import `delete_dialog.dart`.)
+
 - [ ] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja** — wg Interfaces. Usuwanie:
+- [ ] **Step 3: Implementacja** — wg Interfaces. Usuwanie (w `delete_dialog.dart`):
 
 ```dart
 Future<void> deleteLocalFiles(List<String> presentPaths) async {
@@ -578,7 +783,7 @@ Future<void> deleteLocalFiles(List<String> presentPaths) async {
 }
 ```
 
-(żadnych `Directory.delete(recursive: true)` — Global Constraint).
+(żadnych `Directory.delete(recursive: true)` — Global Constraint). Przycisk „Pobierz" woła `downloadManagerProvider.downloadGame(...)`; `PermissionDeniedException` → `SnackBar` „Bez dostępu do plików nie pobiorę ROM-ów — przyznaj uprawnienie w ustawieniach". W tym tasku podepnij też `onGameChanged` managera pod `ref.invalidate(localStateProvider(gameId))`.
 
 - [ ] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: download, delete and install badges on game screens"`
 
@@ -594,7 +799,7 @@ Future<void> deleteLocalFiles(List<String> presentPaths) async {
 **Interfaces:**
 - Produces: `DownloadsScreen` — sekcja „Aktywne" (nazwa gry, pasek postępu, przyciski pauza/wznów/anuluj z `DownloadManager`) i „Historia" (ukończone/błędne z `FileDownloader().database.allRecords()`, błędne z przyciskiem „Ponów" → `retryGame`). Provider `activeDownloadsProvider` eksponujący listę `GameProgress {gameId, title, progress, status}`.
 
-- [ ] **Step 1: Failing test** — widget test: przy nadpisanym `activeDownloadsProvider` z jednym wpisem (progress 0.5) ekran pokazuje tytuł gry i `LinearProgressIndicator`; przy pustym — tekst „Brak aktywnych pobierań".
+- [ ] **Step 1: Failing test** — widget test: przy nadpisanym `activeDownloadsProvider` z jednym wpisem (progress 0.5) ekran pokazuje tytuł gry i `LinearProgressIndicator`; przy pustym — tekst „Brak aktywnych pobierań". Dodaj też przypadki: wpis `failed` pokazuje „Ponów", a tapnięcie pauzy/ponów woła metody managera (nadpisz `downloadManagerProvider` managerem na `FakeDownloaderPort` z Task 5 i sprawdź `port.paused`/`port.enqueued`) — każdy przycisk musi mieć test, inaczej jego handler jest nieprzykryty.
 
 ```dart
 import 'package:droplet/features/downloads/downloads_screen.dart';
@@ -666,6 +871,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
+    await const FlutterSecureStorage().deleteAll();  // czysty start jak w app_flow_test
     final client = ApiClient(baseUrl: server);
     final token = await client.login('e2e', 'e2e-pass-123');
     await ApiClient(baseUrl: server, token: token).triggerScan();
@@ -676,18 +882,18 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: DropletApp()));
     await tester.pumpAndSettle();
 
-    // logowanie (pomijane, jeśli sesja została z poprzedniego testu)
-    if (tester.any(find.text('Zaloguj'))) {
-      final fields = find.byType(TextFormField);
-      await tester.enterText(fields.at(0), server);
-      await tester.enterText(fields.at(1), 'e2e');
-      await tester.enterText(fields.at(2), 'e2e-pass-123');
-      await tester.tap(find.text('Zaloguj'));
-      await tester.pumpAndSettle(const Duration(seconds: 10));
-    }
+    // logowanie
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), server);
+    await tester.enterText(fields.at(1), 'e2e');
+    await tester.enterText(fields.at(2), 'e2e-pass-123');
+    await tester.tap(find.text('Zaloguj'));
+    await tester.pumpAndSettle(const Duration(seconds: 10));
 
-    // w e2e katalog bazowy = katalog aplikacji (bez MANAGE_EXTERNAL_STORAGE,
-    // którego nie da się kliknąć z testu) — ustaw przez ustawienia
+    // w e2e katalog bazowy = katalog prywatny aplikacji: `needsAllFilesAccess`
+    // zwraca false, więc aplikacja NIE prosi o MANAGE_EXTERNAL_STORAGE (dialogu
+    // systemowego nie da się kliknąć z testu), a --dart-define=E2E=true pomija
+    // prompt o powiadomieniach
     final baseDir = '${(await getApplicationDocumentsDirectory()).path}/roms';
     await tester.tap(find.byIcon(Icons.settings));
     await tester.pumpAndSettle();
@@ -696,8 +902,8 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
 
-    // pobierz Super Mario World
-    await tester.tap(find.text('Super Mario World'));
+    // pobierz Super Mario World (tytuł może być 2x: placeholder + podpis)
+    await tester.tap(find.text('Super Mario World').first);
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('Pobierz'));
     // czekaj na status "zainstalowana" (max 60 s)
@@ -722,7 +928,7 @@ void main() {
 }
 ```
 
-Wymaga: pola katalogu bazowego w ustawieniach z `Key('base-dir-field')` (dodaj w Task 2, jeśli brakuje) i przycisku potwierdzenia „Usuń" w dialogu (Task 6).
+Wymaga: pola katalogu bazowego w ustawieniach z `Key('base-dir-field')` zapisywanego `onChanged` (Task 2), przycisku potwierdzenia „Usuń" w dialogu (Task 6) oraz `--dart-define=E2E=true` w `scripts/e2e_app.sh` (M4 Task 9). Import `flutter_secure_storage` w teście.
 
 - [ ] **Step 2: Uruchom** — `E2E_SERVER=http://<ip-hosta>:8800 ./scripts/e2e_app.sh` na podłączonym urządzeniu → oba pliki integration_test PASS.
 

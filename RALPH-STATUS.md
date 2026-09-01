@@ -41,3 +41,8 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   testami z planu (np. metody `__str__` modeli), dopisuję minimalny, prawdziwy test
   zamiast wyłączenia pokrycia. Puste stuby generowane przez `startapp`
   (`library/views.py`) usuwam, bo tworzą je dopiero późniejsze taski.
+- **M1 Task 5 — pomijanie ukrytych plików**: plan sprawdza `p.parts` (całą ścieżkę
+  absolutną), przez co katalog ukryty gdziekolwiek wyżej w drzewie (np.
+  `/home/x/.local/roms`) wyciąłby całą bibliotekę. W implementacji sprawdzam
+  `p.relative_to(library_root).parts` — semantyka „ukryte w bibliotece", zgodna
+  z intencją planu.

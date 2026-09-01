@@ -403,7 +403,7 @@ Algorytm (dokładnie tak implementować):
 5. Pozostałe pliki: 1 plik = 1 gra, rola `base`.
 6. Pliki już przypisane w krokach 2–4 nie wracają w kroku 5.
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `backend/library/tests/test_grouping.py`:
 
@@ -506,9 +506,9 @@ def test_switch_without_title_id_groups_by_title(tmp_path):
     assert sorted(f.role for f in groups[0].files) == ["base", "update"]
 ```
 
-- [ ] **Step 2: FAIL** — `pytest library/tests/test_grouping.py -v`
+- [x] **Step 2: FAIL** — `pytest library/tests/test_grouping.py -v`
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `backend/library/scanner/grouping.py`:
 
@@ -634,9 +634,9 @@ def group_system_dir(system_dir: Path, library_root: Path, *, is_switch: bool) -
     return groups
 ```
 
-- [ ] **Step 4: PASS** — `pytest library/tests/test_grouping.py -v`
+- [x] **Step 4: PASS** — `pytest library/tests/test_grouping.py -v`
 
-- [ ] **Step 5: Commit** — `git commit -m "feat: group system directory files into game groups"`
+- [x] **Step 5: Commit** — `git commit -m "feat: group system directory files into game groups"`
 
 ---
 
