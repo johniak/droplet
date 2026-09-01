@@ -135,7 +135,7 @@ admin.site.register(ScanRun)
   - `display_title(stem: str) -> str` — zdejmuje tagi `(...)`/`[...]`, poprawia `"Zelda, The"` → `"The Zelda"`, trymuje spacje.
   - `normalize_title(stem: str) -> str` — `display_title` → lowercase → tylko `[a-z0-9 ]`, pojedyncze spacje. Używane jako klucz gry i do dopasowań okładek (M2).
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `backend/library/tests/test_naming.py`:
 
@@ -170,9 +170,9 @@ def test_normalize_title(stem, expected):
     assert normalize_title(stem) == expected
 ```
 
-- [ ] **Step 2: FAIL** — `pytest library/tests/test_naming.py -v`
+- [x] **Step 2: FAIL** — `pytest library/tests/test_naming.py -v`
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `backend/library/scanner/naming.py`:
 
@@ -200,9 +200,9 @@ def normalize_title(stem: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 ```
 
-- [ ] **Step 4: PASS** — `pytest library/tests/test_naming.py -v`
+- [x] **Step 4: PASS** — `pytest library/tests/test_naming.py -v`
 
-- [ ] **Step 5: Commit** — `git add backend/library/scanner backend/library/tests/test_naming.py && git commit -m "feat: title normalization for grouping and matching"`
+- [x] **Step 5: Commit** — `git add backend/library/scanner backend/library/tests/test_naming.py && git commit -m "feat: title normalization for grouping and matching"`
 
 ---
 
