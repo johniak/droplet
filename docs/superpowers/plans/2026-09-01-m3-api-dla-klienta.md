@@ -270,7 +270,7 @@ class GameListView(ListAPIView):
 **Interfaces:**
 - Produces: `GameDetailSerializer` — pola gry jak lista + `system_name` + `files` (`GameFileSerializer`: `id, name (basename), relative_path, role, disc_number, version, size`), pliki posortowane: `base, update, dlc, disc (po disc_number), support, other`.
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `backend/library/tests/test_api_game_detail.py`:
 
@@ -306,9 +306,9 @@ def test_detail_404(auth_client):
     assert auth_client.get("/api/games/99999/").status_code == 404
 ```
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 W `serializers.py`:
 
@@ -361,7 +361,7 @@ class GameDetailView(RetrieveAPIView):
 
 `urls.py`: `path("games/<int:pk>/", api.GameDetailView.as_view(), name="game-detail"),`
 
-- [ ] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: game detail endpoint with sorted file manifest"`
+- [x] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: game detail endpoint with sorted file manifest"`
 
 ---
 

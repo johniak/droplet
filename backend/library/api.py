@@ -4,13 +4,13 @@ from django.db.models.functions import Coalesce
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import api_view
 from rest_framework.filters import OrderingFilter, SearchFilter
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 
 from covers.models import Cover
 
 from .models import Game, System
-from .serializers import GameListSerializer, SystemSerializer
+from .serializers import GameDetailSerializer, GameListSerializer, SystemSerializer
 from .tasks import scan_library
 
 
@@ -61,3 +61,10 @@ class GameListView(ListAPIView):
 
     def get_queryset(self):
         return annotated_games()
+
+
+class GameDetailView(RetrieveAPIView):
+    serializer_class = GameDetailSerializer
+
+    def get_queryset(self):
+        return annotated_games().prefetch_related("files")
