@@ -542,7 +542,7 @@ final sessionProvider = AsyncNotifierProvider<SessionController, Session?>(...);
 final apiClientProvider = Provider<ApiClient>(...); // factory + sessionProvider; throw gdy brak sesji
 ```
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `app/test/core/session_test.dart`:
 
@@ -623,9 +623,9 @@ class _FakeApiClient extends ApiClient {
 
 (importy: `flutter_secure_storage`, `flutter_riverpod`, `droplet/core/api/api_client.dart`, `droplet/core/session/providers.dart`.)
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja** — `session_repository.dart` wg Interfaces (klucze: `server_url`, `token`; `MemoryKeyValueStore` na `Map`; `SecureKeyValueStore` na `const FlutterSecureStorage()`). `providers.dart`:
+- [x] **Step 3: Implementacja** — `session_repository.dart` wg Interfaces (klucze: `server_url`, `token`; `MemoryKeyValueStore` na `Map`; `SecureKeyValueStore` na `const FlutterSecureStorage()`). `providers.dart`:
 
 ```dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -675,7 +675,7 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 });
 ```
 
-- [ ] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: session storage and riverpod session state"`
+- [x] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: session storage and riverpod session state"`
 
 ---
 

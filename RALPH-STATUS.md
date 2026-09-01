@@ -98,3 +98,8 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   (Gradle 8.12 + AGP 8.7.3) nie buduje sie na zainstalowanej Javie 24
   (`java-gradle-incompatibility`). Podbite minimalnie do Gradle 8.14.3 + AGP 8.9.1 -
   `flutter build apk --debug` przechodzi.
+- **M4 Task 4 - Riverpod 3 API**: zainstalowany `flutter_riverpod` to 3.3.2, gdzie
+  `AsyncValue.valueOrNull` juz nie istnieje (`value` jest nullowalne), a wyjatek
+  rzucony w providerze jest opakowany w `ProviderException` (typ nieeksportowany
+  z `flutter_riverpod`). Kod uzywa `.value`, a test sprawdza komunikat wyjatku
+  zamiast `throwsStateError`.
