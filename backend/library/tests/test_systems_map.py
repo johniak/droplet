@@ -1,0 +1,21 @@
+from library.scanner.systems_map import lookup_system
+
+
+def test_full_retroarch_name():
+    spec = lookup_system("Nintendo - Super Nintendo Entertainment System")
+    assert spec.code == "snes"
+    assert spec.thumbnail_repo == "Nintendo_-_Super_Nintendo_Entertainment_System"
+
+
+def test_short_alias_case_insensitive():
+    assert lookup_system("SNES").code == "snes"
+    assert lookup_system("psx").code == "psx"
+
+
+def test_switch_flag():
+    assert lookup_system("switch").is_switch is True
+    assert lookup_system("snes").is_switch is False
+
+
+def test_unknown_returns_none():
+    assert lookup_system("Losowy Katalog") is None

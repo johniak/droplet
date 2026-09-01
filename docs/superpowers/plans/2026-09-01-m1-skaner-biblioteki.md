@@ -649,7 +649,7 @@ def group_system_dir(system_dir: Path, library_root: Path, *, is_switch: bool) -
 **Interfaces:**
 - Produces: `lookup_system(directory_name: str) -> SystemSpec | None`, gdzie `SystemSpec = dataclass(code, name, thumbnail_repo, is_switch: bool)`. Dopasowanie case-insensitive po nazwie katalogu i aliasach.
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `backend/library/tests/test_systems_map.py`:
 
@@ -677,9 +677,9 @@ def test_unknown_returns_none():
     assert lookup_system("Losowy Katalog") is None
 ```
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `backend/library/scanner/systems_map.py` — dataclass + słownik. Wpisy minimum (rozszerzać w miarę potrzeb; `thumbnail_repo` = nazwa repo w github.com/libretro-thumbnails):
 
@@ -742,7 +742,7 @@ def lookup_system(directory_name: str) -> SystemSpec | None:
     return _BY_ALIAS.get(directory_name.strip().lower())
 ```
 
-- [ ] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: directory-to-system mapping with aliases"`
+- [x] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: directory-to-system mapping with aliases"`
 
 ---
 
