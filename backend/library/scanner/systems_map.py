@@ -26,9 +26,9 @@ _SPECS = [
     SystemSpec("gbc", "Game Boy Color", "Nintendo_-_Game_Boy_Color"),
     SystemSpec("gba", "Game Boy Advance", "Nintendo_-_Game_Boy_Advance"),
     SystemSpec("nds", "Nintendo DS", "Nintendo_-_Nintendo_DS"),
-    SystemSpec(
-        "switch", "Nintendo Switch", "Nintendo_-_Nintendo_Switch", is_switch=True
-    ),
+    # libretro-thumbnails has no Switch repository, so there is nothing to
+    # fetch — Switch covers are uploaded by hand in the admin.
+    SystemSpec("switch", "Nintendo Switch", "", is_switch=True),
     SystemSpec("psx", "PlayStation", "Sony_-_PlayStation"),
     SystemSpec("ps2", "PlayStation 2", "Sony_-_PlayStation_2"),
     SystemSpec("psp", "PlayStation Portable", "Sony_-_PlayStation_Portable"),

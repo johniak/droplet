@@ -15,6 +15,14 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   4. Ustaw nocny cron na TrueNAS wg `docs/deploy.md` §5
      (`docker exec <kontener-web> python manage.py scan`, 03:00).
 
+- **M2 Task 8 krok 3 — przegląd okładek na realnej kolekcji.** Po skanie prawdziwej
+  biblioteki sprawdź w adminie (`/admin/library/game/?has_cover=no`), ile gier nie ma
+  okładki, i przeklikaj 5–10 poprawek akcją „Pokaż kandydatów okładki (top 5)" →
+  wpisz `match_name` w `/admin/covers/cover/` → akcja „Pobierz ponownie wg match_name".
+  Każda poprawka powinna zajmować poniżej 30 s — to kryterium akceptacji M2.
+  Okładki Switcha wgrywasz ręcznie (upload w `CoverAdmin`), bo libretro-thumbnails
+  nie ma repo dla tej konsoli.
+
 ## Blokery
 
 (brak)
@@ -68,3 +76,9 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   w `backend/e2e/conftest.py` (no-op) — blokada dalej działa w testach jednostkowych.
   Dodatkowo `DROPLET_AUTO_COVERS` doszło do `docker-compose.yml` (default `1`),
   `docker-compose.e2e.yml` (`0`) i tabelki env w `docs/deploy.md`.
+- **M2 Task 8 — brak repo Switcha w libretro-thumbnails**: bieg `match_all()` na realnym
+  GitHubie pokazał, że `https://api.github.com/repos/libretro-thumbnails/Nintendo_-_Nintendo_Switch`
+  zwraca 404 — ta konsola nie ma repo z boxartami. Żeby nie generować błędu przy każdym
+  dopasowaniu, `SystemSpec("switch", ...)` ma teraz pusty `thumbnail_repo` (a `match_all`
+  i tak pomija systemy bez repo). Okładki Switcha wgrywa się ręcznie w adminie —
+  ścieżka przewidziana w spec §3.4.

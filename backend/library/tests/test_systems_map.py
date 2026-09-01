@@ -19,3 +19,9 @@ def test_switch_flag():
 
 def test_unknown_returns_none():
     assert lookup_system("Losowy Katalog") is None
+
+
+def test_switch_has_no_thumbnail_repo():
+    # libretro-thumbnails has no Switch repository (the API returns 404), so the
+    # automatic matcher must skip the system instead of erroring on every scan.
+    assert lookup_system("switch").thumbnail_repo == ""
