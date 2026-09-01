@@ -366,7 +366,7 @@ class UnauthorizedException implements Exception {}
 
 Interceptor: dokleja `Authorization` gdy jest token; status 401 → rzuca `UnauthorizedException`.
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `app/test/core/api_client_test.dart`:
 
@@ -421,9 +421,9 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `app/lib/core/api/api_client.dart`:
 
@@ -502,7 +502,7 @@ class ApiClient {
 }
 ```
 
-- [ ] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: dio API client with token auth"`
+- [x] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: dio API client with token auth"`
 
 ---
 

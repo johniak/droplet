@@ -20,7 +20,7 @@ pathlib.Path("test/all_imports_test.dart").write_text("\n".join(lines))
 EOF
 
 # 2. Tests with coverage
-flutter test --coverage
+flutter test --coverage --reporter=compact
 
 # 3. 100% gate. Skipped: *.g.dart and files carrying `// coverage:ignore-file`
 #    in the first 5 lines (allow-list: Global Constraints of the M4 plan).
