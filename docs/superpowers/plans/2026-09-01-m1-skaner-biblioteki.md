@@ -1003,7 +1003,7 @@ def run_scan() -> ScanRun:
   - `python manage.py scan` — bieg synchroniczny (dla crona), wypisuje statystyki.
   - `POST /api/scan/` (auth) → `202 {"enqueued": true}`.
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `backend/library/tests/test_scan_triggers.py`:
 
@@ -1038,9 +1038,9 @@ def test_scan_endpoint_requires_auth():
     assert APIClient().post("/api/scan/").status_code == 401
 ```
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `backend/library/tasks.py`:
 
@@ -1104,9 +1104,9 @@ urlpatterns = [
 
 W `droplet/urls.py` dodaj `path("api/", include("library.urls")),`.
 
-- [ ] **Step 4: PASS** — `pytest library/tests/test_scan_triggers.py -v`
+- [x] **Step 4: PASS** — `pytest library/tests/test_scan_triggers.py -v`
 
-- [ ] **Step 5: Commit** — `git commit -m "feat: scan task, management command and API trigger"`
+- [x] **Step 5: Commit** — `git commit -m "feat: scan task, management command and API trigger"`
 
 ---
 
