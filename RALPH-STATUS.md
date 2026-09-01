@@ -48,6 +48,10 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   e2e z compose, sprawdza `adb devices`, uruchamia `integration_test` i sprzata.
   Telefon i host musza byc w tej samej sieci.
 
+- **M5 Task 2 krok 4 - uprawnienie All Files Access na telefonie.** Sprawdz recznie,
+  ze przycisk "Przyznaj" w Ustawieniach -> Pobieranie przechodzi przez systemowy ekran
+  i wraca ze statusem "Przyznane", oraz ze katalog bazowy da sie utworzyc.
+
 ## Blokery
 
 (brak)

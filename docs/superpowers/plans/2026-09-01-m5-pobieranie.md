@@ -140,7 +140,7 @@ Future<bool> ensureStoragePermission(PermissionsPort port, String baseDir);
 
 - Sekcja **Pobieranie** w ustawieniach: pole katalogu bazowego `Key('base-dir-field')` zapisywane **`onChanged`** przez `saveBaseDir` (e2e wpisuje ścieżkę i od razu wychodzi z ekranu), lista systemów z edycją podkatalogu (`Key('system-dir-<code>')`), status uprawnienia („Przyznane" / „Brak") z przyciskiem „Przyznaj" (`Key('grant-permission')`).
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `app/test/core/permissions_test.dart`:
 
@@ -232,13 +232,15 @@ testWidgets('grant button requests permission', (tester) async {
 });
 ```
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja** — wg Interfaces; do manifestu dwa `uses-permission` z Global Constraints. `permissions_port.dart` zaczyna się od `// coverage:ignore-file`.
+- [x] **Step 3: Implementacja** — wg Interfaces; do manifestu dwa `uses-permission` z Global Constraints. `permissions_port.dart` zaczyna się od `// coverage:ignore-file`.
 
-- [ ] **Step 4: PASS** — `flutter test` + `./scripts/check_coverage_app.sh`; ręcznie na telefonie: przyznanie uprawnienia przechodzi przez systemowy ekran i wraca ze statusem „Przyznane"; utworzenie katalogu bazowego działa.
+- [x] **Step 4: PASS** (testy i bramka 100%; sprawdzenie na telefonie odlozone na czlowieka)
 
-- [ ] **Step 5: Commit** — `git commit -m "feat: storage permission flow and download settings section"`
+Oryginalny krok: — `flutter test` + `./scripts/check_coverage_app.sh`; ręcznie na telefonie: przyznanie uprawnienia przechodzi przez systemowy ekran i wraca ze statusem „Przyznane"; utworzenie katalogu bazowego działa.
+
+- [x] **Step 5: Commit** — `git commit -m "feat: storage permission flow and download settings section"`
 
 ---
 
