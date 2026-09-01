@@ -138,7 +138,7 @@ class SystemListView(ListAPIView):
 **Interfaces:**
 - Produces: `GameListSerializer` (`id, title, system_code, has_cover, total_size`); filtr `?system=<code>`, `?search=` po `title`/`normalized_title`, `?ordering=` (`title`, `-title`, `-id`; default `title`); paginacja PageNumber.
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `backend/library/tests/test_api_games.py`:
 
@@ -193,9 +193,9 @@ def test_games_require_auth(db):
     assert APIClient().get("/api/games/").status_code == 401
 ```
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `pip install django-filter`, do `INSTALLED_APPS` dopisz `"django_filters"`. W `serializers.py`:
 
@@ -257,7 +257,7 @@ class GameListView(ListAPIView):
 
 `urls.py`: `path("games/", api.GameListView.as_view(), name="games"),`
 
-- [ ] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: games list with filtering, search and pagination"`
+- [x] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: games list with filtering, search and pagination"`
 
 ---
 
