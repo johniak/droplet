@@ -662,7 +662,7 @@ def test_scan_result_contents(base_url, auth):
 **Interfaces:**
 - Produces: skrypt weryfikujący pełną pętlę na żywym serwerze z prawdziwymi danymi (uzupełnienie e2e, które chodzi na fixture-library).
 
-- [ ] **Step 1: Napisz `scripts/smoke.sh`**
+- [x] **Step 1: Napisz `scripts/smoke.sh`**
 
 ```bash
 #!/usr/bin/env bash
@@ -693,9 +693,9 @@ echo "SMOKE PASSED"
 
 `chmod +x scripts/smoke.sh`.
 
-- [ ] **Step 2: Pełne testy + smoke na deployu**
+- [x] **Step 2: Pelne testy + smoke na deployu** (pytest 100% i e2e zielone; smoke zweryfikowany na zywym deploymencie lokalnym - bieg na realnym NAS-ie odlozony na czlowieka, patrz RALPH-STATUS)
 
 Run: `cd backend && pytest -v` (całość zielona, pokrycie 100%), `./scripts/e2e_backend.sh` (PASS), potem `./scripts/smoke.sh http://<ip-nas>:8000 <user> <haslo>` na realnym NAS-ie.
 Expected: `RESUME OK`, `401 OK`, `SMOKE PASSED`.
 
-- [ ] **Step 3: Commit** — `git add scripts && git commit -m "feat: e2e smoke script for the API"`
+- [x] **Step 3: Commit** — `git add scripts && git commit -m "feat: e2e smoke script for the API"`

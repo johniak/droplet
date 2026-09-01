@@ -23,6 +23,12 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   Okładki Switcha wgrywasz ręcznie (upload w `CoverAdmin`), bo libretro-thumbnails
   nie ma repo dla tej konsoli.
 
+- **M3 Task 6 - smoke na realnym NAS-ie.** Skrypt `scripts/smoke.sh` jest zweryfikowany
+  na zywym deploymencie lokalnym (biblioteka z plikiem 300 kB: `RESUME OK`, `401 OK`,
+  `SMOKE PASSED`). Na TrueNAS-ie uruchom go na swoich danych:
+  `./scripts/smoke.sh http://<ip-nas>:8000 <user> <haslo>` - oczekiwane `RESUME OK`,
+  `401 OK`, `SMOKE PASSED`.
+
 ## Blokery
 
 (brak)
