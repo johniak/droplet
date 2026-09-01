@@ -380,7 +380,7 @@ class GameDetailView(RetrieveAPIView):
   - plik z indeksu, ale resolved path poza `LIBRARY_ROOT` (symlink) → `404`,
   - streaming w kawałkach 1 MiB.
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `backend/library/tests/test_download.py`:
 
@@ -472,9 +472,9 @@ def test_stream_stops_when_file_shrinks_mid_transfer(auth_client, gamefile):
     assert b"".join(resp.streaming_content) == CONTENT[:10]
 ```
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `backend/library/download.py`:
 
@@ -545,9 +545,9 @@ def file_download(request, pk: int):
 
 `urls.py`: `path("files/<int:pk>/download", download.file_download, name="file-download"),` (+ import `from . import download`).
 
-- [ ] **Step 4: PASS** — `pytest library/tests/test_download.py -v`
+- [x] **Step 4: PASS** — `pytest library/tests/test_download.py -v`
 
-- [ ] **Step 5: Commit** — `git commit -m "feat: file download with HTTP range resume and path safety"`
+- [x] **Step 5: Commit** — `git commit -m "feat: file download with HTTP range resume and path safety"`
 
 ---
 
