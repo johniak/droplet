@@ -1,3 +1,4 @@
+import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,7 +7,16 @@ import 'app/theme.dart';
 import 'core/session/providers.dart';
 
 // coverage:ignore-start
-void main() => runApp(const ProviderScope(child: DropletApp()));
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  FileDownloader().configureNotification(
+    running: const TaskNotification('Pobieram {filename}', '{progress}'),
+    complete: const TaskNotification('Gotowe', '{filename}'),
+    error: const TaskNotification('Błąd pobierania', '{filename}'),
+    progressBar: true,
+  );
+  runApp(const ProviderScope(child: DropletApp()));
+}
 // coverage:ignore-end
 
 class DropletApp extends ConsumerWidget {

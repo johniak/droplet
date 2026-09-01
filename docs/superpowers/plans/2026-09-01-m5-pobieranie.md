@@ -498,7 +498,7 @@ final downloaderPortProvider = Provider<DownloaderPort>((_) => BackgroundDownloa
     - `Map<int, GameProgress> get progress` + `Stream<Map<int, GameProgress>> get progressStream`; `GameProgress {gameId, title, progress, status: GameProgressStatus running|paused|failed|complete}`.
   - W `main.dart` (wewnątrz `main()` — ignorowane w pokryciu): `FileDownloader().configureNotification(running:, complete:, error:, progressBar: true)`.
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `app/test/core/task_builder_test.dart`:
 
@@ -666,13 +666,15 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja** — `task_builder.dart`, `downloader_port.dart` (adapter, `// coverage:ignore-file`), `download_manager.dart` wg Interfaces. `downloadManagerProvider` tworzy managera z `downloaderPortProvider`, `permissionsPortProvider` i `onGameChanged: (id) => ref.invalidate(localStateProvider(id))` (provider z Task 6 — w tym tasku callback tymczasowo pusty, Task 6 podpina).
+- [x] **Step 3: Implementacja** — `task_builder.dart`, `downloader_port.dart` (adapter, `// coverage:ignore-file`), `download_manager.dart` wg Interfaces. `downloadManagerProvider` tworzy managera z `downloaderPortProvider`, `permissionsPortProvider` i `onGameChanged: (id) => ref.invalidate(localStateProvider(id))` (provider z Task 6 — w tym tasku callback tymczasowo pusty, Task 6 podpina).
 
-- [ ] **Step 4: PASS** — `flutter test` + `./scripts/check_coverage_app.sh`; build na telefon i szybki test ręczny małego pliku.
+- [x] **Step 4: PASS** (testy, bramka 100% i `flutter build apk --debug`; test recznego pobrania na telefonie odlozony na czlowieka)
 
-- [ ] **Step 5: Commit** — `git commit -m "feat: background download manager with size verification"`
+Oryginalny krok: — `flutter test` + `./scripts/check_coverage_app.sh`; build na telefon i szybki test ręczny małego pliku.
+
+- [x] **Step 5: Commit** — `git commit -m "feat: background download manager with size verification"`
 
 ---
 

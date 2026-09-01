@@ -129,3 +129,11 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
 - **M4 Task 6 - `GameCard` bez sesji**: karta czyta `apiClientProvider` tylko dla
   gry z okladka (`hasCover`), dzieki czemu test widgetowy z planu (gry bez okladek,
   bez nadpisanej sesji) dziala i nie strzela po HTTP.
+- **M5 Task 5 - katalog taska i wersje pluginow**: (1) `background_downloader` trzyma
+  `directory` wzglednie wobec `baseDirectory`, wiec zapisany katalog nie ma wiodacego
+  `/` (dostawia je `Task.filePath()` przy `BaseDirectory.root`) - test i fake
+  odzwierciedlaja to zachowanie zamiast asercji z planu. (2) `permission_handler` 13/14
+  wymaga AGP 9 i Kotlina 2.3 (nasz Flutter 3.32.8 ma AGP 8.x) - przypiete `^12.0.0`.
+  (3) Do zbudowania APK z nowymi pluginami trzeba bylo podbic `compileSdk` do 36
+  i Kotlin Gradle plugin do 2.2.20 oraz zamienic `kotlinOptions` na
+  `kotlin { compilerOptions { ... } }`.
