@@ -667,7 +667,7 @@ git commit -m "feat: dockerize backend with web and worker services"
 **Interfaces:**
 - Produces: instrukcja krok po kroku instalacji jako custom app (Docker Compose) na TrueNAS SCALE; sekcja o nocnym skanie przez cron (wykorzysta ją M1).
 
-- [ ] **Step 1: Napisz docs/deploy.md**
+- [x] **Step 1: Napisz docs/deploy.md**
 
 Zawartość (pełny tekst do napisania wg tego szkieletu, po polsku):
 
@@ -679,7 +679,7 @@ Zawartość (pełny tekst do napisania wg tego szkieletu, po polsku):
 6. Wystawienie na świat: poza zakresem — reverse proxy użytkownika; na razie aplikacja mobilna łączy się po `http://<ip-nas>:8000`.
 7. Backup: dataset danych (`/data`) zawiera DB i cache okładek; ROMy są read-only i nie są modyfikowane.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add docs/deploy.md
