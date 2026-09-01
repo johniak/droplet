@@ -142,4 +142,16 @@ void main() {
     final client = ApiClient(baseUrl: 'http://nas:8000', token: 'abc', dio: dio);
     expect((await client.fetchGames(search: '')).count, 0);
   });
+
+  test('triggerScan posts to the scan endpoint', () async {
+    adapter.onPost('/api/scan/', (s) => s.reply(202, {'enqueued': true}));
+    final client = ApiClient(baseUrl: 'http://nas:8000', token: 'abc', dio: dio);
+    await expectLater(client.triggerScan(), completes);
+  });
+
+  test('triggerScan maps 401 to UnauthorizedException', () async {
+    adapter.onPost('/api/scan/', (s) => s.reply(401, {'detail': 'no'}));
+    final client = ApiClient(baseUrl: 'http://nas:8000', token: 'zly', dio: dio);
+    expect(client.triggerScan(), throwsA(isA<UnauthorizedException>()));
+  });
 }

@@ -42,6 +42,12 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   i szukajka dzialaja; karta gry pokazuje komplet plikow z rolami i rozmiarami;
   wylogowanie wraca do ekranu logowania. **Akceptacja wygladu jest bramka zamkniecia M4.**
 
+- **M4 Task 9 krok 3 - e2e aplikacji na urzadzeniu.** Wymaga telefonu z Androidem
+  podpietego przez adb (u mnie `flutter devices` widzi tylko Chrome i iPhone):
+  `E2E_SERVER=http://<ip-hosta>:8800 ./scripts/e2e_app.sh` - skrypt stawia backend
+  e2e z compose, sprawdza `adb devices`, uruchamia `integration_test` i sprzata.
+  Telefon i host musza byc w tej samej sieci.
+
 ## Blokery
 
 (brak)

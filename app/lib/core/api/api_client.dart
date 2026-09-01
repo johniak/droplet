@@ -78,6 +78,14 @@ class ApiClient {
     }
   }
 
+  Future<void> triggerScan() async {
+    try {
+      await _dio.post('/api/scan/');
+    } on DioException catch (e) {
+      _mapError(e);
+    }
+  }
+
   String coverUrl(int gameId, {String size = 'thumb'}) =>
       '$baseUrl/api/games/$gameId/cover?size=$size';
 }
