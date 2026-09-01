@@ -755,7 +755,7 @@ def lookup_system(directory_name: str) -> SystemSpec | None:
 **Interfaces:**
 - Produces: `run_scan() -> ScanRun` — pełny przebieg: katalogi 1. poziomu `LIBRARY_ROOT` → Systemy (znane z mapy; nieznane → `System(code=slug, needs_config=True)`), grupy → Gry/Pliki, przyrostowo, usuwanie znikniętych plików i osieroconych gier, liczniki + błędy w `ScanRun`. Wykorzystywane przez task (Task 8) i M2 (hook dopasowania okładek).
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `backend/library/tests/test_scan.py`:
 
@@ -863,9 +863,9 @@ def test_system_error_is_recorded_and_scan_continues(library, monkeypatch):
     assert any("dysk odpięty" in e for e in run.errors)
 ```
 
-- [ ] **Step 2: FAIL** — `pytest library/tests/test_scan.py -v`
+- [x] **Step 2: FAIL** — `pytest library/tests/test_scan.py -v`
 
-- [ ] **Step 3: Implementacja**
+- [x] **Step 3: Implementacja**
 
 `backend/library/scanner/scan.py`:
 
@@ -984,9 +984,9 @@ def run_scan() -> ScanRun:
     return run
 ```
 
-- [ ] **Step 4: PASS** — `pytest library/tests/test_scan.py -v` (i cały `pytest`, bo grouping/naming już są)
+- [x] **Step 4: PASS** — `pytest library/tests/test_scan.py -v` (i cały `pytest`, bo grouping/naming już są)
 
-- [ ] **Step 5: Commit** — `git commit -m "feat: incremental library scan synchronizing DB with disk"`
+- [x] **Step 5: Commit** — `git commit -m "feat: incremental library scan synchronizing DB with disk"`
 
 ---
 
