@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/game/providers.dart';
 import '../api/models.dart';
 import '../env.dart';
 import '../platform/downloader_port.dart';
@@ -232,7 +233,7 @@ final downloadManagerProvider = Provider<DownloadManager>((ref) {
   final manager = DownloadManager(
     ref.watch(downloaderPortProvider),
     ref.watch(permissionsPortProvider),
-    onGameChanged: (_) {},
+    onGameChanged: (id) => ref.invalidate(localStateProvider(id)),
   );
   ref.onDispose(manager.dispose);
   return manager;

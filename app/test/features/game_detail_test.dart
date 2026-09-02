@@ -1,5 +1,6 @@
 import 'package:droplet/core/api/api_client.dart';
 import 'package:droplet/core/api/models.dart';
+import 'package:droplet/core/downloads/local_state.dart';
 import 'package:droplet/core/session/providers.dart';
 import 'package:droplet/core/format.dart';
 import 'package:droplet/features/game/game_detail_screen.dart';
@@ -37,8 +38,18 @@ const _detail = GameDetail(
   ],
 );
 
+const _notInstalled = LocalGameState(
+  status: InstallStatus.none,
+  updateAvailable: false,
+  missing: [],
+  presentPaths: [],
+);
+
 Widget _screen(GameDetail detail) => ProviderScope(
-      overrides: [gameDetailProvider(7).overrideWith((ref) async => detail)],
+      overrides: [
+        gameDetailProvider(7).overrideWith((ref) async => detail),
+        localStateProvider(7).overrideWith((ref) async => _notInstalled),
+      ],
       child: const MaterialApp(home: GameDetailScreen(gameId: 7)),
     );
 
@@ -54,6 +65,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Hollow Knight'), findsWidgets);
     expect(find.text('Aktualizacja'), findsOneWidget);
+    // The manifest sits below the fold once every row carries a checkbox.
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
+    await tester.pumpAndSettle();
     expect(find.textContaining('v196608'), findsOneWidget);
   });
 
@@ -92,18 +106,13 @@ void main() {
     expect(find.text('Pozostałe'), findsOneWidget);
   });
 
-  testWidgets('the download button is not active yet', (tester) async {
-    await tester.pumpWidget(_screen(_detail));
-    await tester.pumpAndSettle();
-    final button = tester.widget<FilledButton>(find.byType(FilledButton));
-    expect(button.onPressed, isNull);
-  });
-
   testWidgets('an error shows a retry action', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          gameDetailProvider(7).overrideWith((ref) async => throw StateError('x')),
+          gameDetailProvider(7)
+              .overrideWith((ref) async => throw StateError('x')),
+          localStateProvider(7).overrideWith((ref) async => _notInstalled),
         ],
         child: const MaterialApp(home: GameDetailScreen(gameId: 7)),
       ),
@@ -129,6 +138,7 @@ void main() {
       ProviderScope(
         overrides: [
           gameDetailProvider(7).overrideWith((ref) async => withCover),
+          localStateProvider(7).overrideWith((ref) async => _notInstalled),
           apiClientProvider.overrideWithValue(
             ApiClient(baseUrl: 'http://nas:8000', token: 't'),
           ),

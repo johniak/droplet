@@ -692,7 +692,7 @@ Oryginalny krok: — `flutter test` + `./scripts/check_coverage_app.sh`; build n
   - `delete_dialog.dart`: `confirmAndDelete(BuildContext, WidgetRef, LocalGameState) -> Future<bool>` — dialog z listą plików do skasowania i dopiskiem „Save'y i stany zapisu nie zostaną usunięte", kasuje wyłącznie `presentPaths`, potem invaliduje `localStateProvider`.
   - `GameCard`: badge w rogu okładki — `installed` (wypełniona ikona ✓), `partial` (połówkowa), `updateAvailable` (strzałka) — na podstawie `localStateProvider`.
 
-- [ ] **Step 1: Failing testy**
+- [x] **Step 1: Failing testy**
 
 `app/test/features/game_actions_test.dart`:
 
@@ -774,9 +774,9 @@ void main() {
 
 (`import 'dart:io';` + import `delete_dialog.dart`.)
 
-- [ ] **Step 2: FAIL**
+- [x] **Step 2: FAIL**
 
-- [ ] **Step 3: Implementacja** — wg Interfaces. Usuwanie (w `delete_dialog.dart`):
+- [x] **Step 3: Implementacja** — wg Interfaces. Usuwanie (w `delete_dialog.dart`):
 
 ```dart
 Future<void> deleteLocalFiles(List<String> presentPaths) async {
@@ -789,7 +789,7 @@ Future<void> deleteLocalFiles(List<String> presentPaths) async {
 
 (żadnych `Directory.delete(recursive: true)` — Global Constraint). Przycisk „Pobierz" woła `downloadManagerProvider.downloadGame(...)`; `PermissionDeniedException` → `SnackBar` „Bez dostępu do plików nie pobiorę ROM-ów — przyznaj uprawnienie w ustawieniach". W tym tasku podepnij też `onGameChanged` managera pod `ref.invalidate(localStateProvider(gameId))`.
 
-- [ ] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: download, delete and install badges on game screens"`
+- [x] **Step 4: PASS**, **Step 5: Commit** — `git commit -m "feat: download, delete and install badges on game screens"`
 
 ---
 

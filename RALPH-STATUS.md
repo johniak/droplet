@@ -137,3 +137,12 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   (3) Do zbudowania APK z nowymi pluginami trzeba bylo podbic `compileSdk` do 36
   i Kotlin Gradle plugin do 2.2.20 oraz zamienic `kotlinOptions` na
   `kotlin { compilerOptions { ... } }`.
+- **M5 Task 6 - async dart:io nie dziala w `testWidgets`**: `Directory`/`File` w wersji
+  asynchronicznej nigdy nie konczy sie w widget testach (strefa fake-async nie pompuje
+  realnej petli zdarzen - potwierdzone eksperymentem: `createTemp()` zawiesza test).
+  Dlatego `deleteLocalFiles` i `scanSystemDir` uzywaja IO synchronicznego (kilka plikow
+  lokalnie, koszt pomijalny), a testy tworza katalogi przez `createTempSync()`.
+  Bez tego badge instalacji na kazdej karcie gry bylby nietestowalny.
+- **M5 Task 6 - test z M4 zaktualizowany**: `game_detail_test.dart` mial test
+  "download button is not active yet" (przycisk byl wylaczony do M5). Task 6 wlacza
+  pobieranie, wiec test usunieto - zachowanie przycisku pokrywa `game_actions_test.dart`.

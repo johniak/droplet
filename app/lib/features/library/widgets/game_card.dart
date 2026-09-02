@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/api/models.dart';
+import '../../../core/downloads/local_state.dart';
 import '../../../core/session/providers.dart';
+import '../../game/providers.dart';
 import 'cover_image.dart';
 
 class GameCard extends ConsumerWidget {
@@ -26,14 +28,24 @@ class GameCard extends ConsumerWidget {
           Expanded(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: AspectRatio(
-                aspectRatio: 3 / 4,
-                child: CoverImage(
-                  title: game.title,
-                  url: client?.coverUrl(game.id) ?? '',
-                  headers: client?.authHeaders ?? const {},
-                  hasCover: game.hasCover,
-                ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  AspectRatio(
+                    aspectRatio: 3 / 4,
+                    child: CoverImage(
+                      title: game.title,
+                      url: client?.coverUrl(game.id) ?? '',
+                      headers: client?.authHeaders ?? const {},
+                      hasCover: game.hasCover,
+                    ),
+                  ),
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: _InstallBadge(gameId: game.id),
+                  ),
+                ],
               ),
             ),
           ),
@@ -51,6 +63,34 @@ class GameCard extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+
+/// Corner badge telling at a glance whether the ROM is on the device.
+class _InstallBadge extends ConsumerWidget {
+  const _InstallBadge({required this.gameId});
+
+  final int gameId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final local = ref.watch(localStateProvider(gameId)).value;
+    if (local == null || local.status == InstallStatus.none) {
+      return const SizedBox.shrink();
+    }
+    final (icon, color) = switch ((local.status, local.updateAvailable)) {
+      (_, true) => (Icons.arrow_circle_down, kAccent),
+      (InstallStatus.installed, _) => (Icons.check_circle, kAccent),
+      _ => (Icons.adjust, kTextDim),
+    };
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: kBg.withValues(alpha: 0.7),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, size: 18, color: color),
     );
   }
 }

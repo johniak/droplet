@@ -3,9 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../core/api/models.dart';
+import '../../core/downloads/download_manager.dart';
+import '../../core/downloads/local_state.dart';
+import '../../core/downloads/selection.dart';
+import '../../core/downloads/storage_settings.dart';
 import '../../core/format.dart';
 import '../../core/session/providers.dart';
 import '../library/widgets/cover_image.dart';
+import 'delete_dialog.dart';
 import 'providers.dart';
 
 const roleLabels = {
@@ -42,14 +47,62 @@ class GameDetailScreen extends ConsumerWidget {
   }
 }
 
-class _Detail extends ConsumerWidget {
+class _Detail extends ConsumerStatefulWidget {
   const _Detail({required this.game});
 
   final GameDetail game;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_Detail> createState() => _DetailState();
+}
+
+class _DetailState extends ConsumerState<_Detail> {
+  late Set<int> _selected = defaultSelection(widget.game.files);
+
+  GameDetail get game => widget.game;
+
+  int get _selectedSize => game.files
+      .where((f) => _selected.contains(f.id))
+      .fold(0, (sum, f) => sum + f.size);
+
+  void _toggle(GameFileModel file, bool? on) => setState(() {
+        if (on ?? false) {
+          _selected.add(file.id);
+        } else {
+          _selected.remove(file.id);
+        }
+      });
+
+  Future<void> _download(LocalGameState local) async {
+    // await, not read: the session may not have been initialised yet.
+    final session = (await ref.read(sessionProvider.future))!;
+    final settings = await ref.read(storageSettingsProvider.future);
+    try {
+      await ref.read(downloadManagerProvider).downloadGame(
+            game: game,
+            selectedIds: _selected,
+            local: local,
+            serverUrl: session.serverUrl,
+            authHeaders: {'Authorization': 'Token ${session.token}'},
+            settings: settings,
+          );
+    } on PermissionDeniedException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Bez dostępu do plików nie pobiorę ROM-ów — '
+            'przyznaj uprawnienie w ustawieniach',
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final client = game.hasCover ? ref.watch(apiClientProvider) : null;
+    final local = ref.watch(localStateProvider(game.id));
     final grouped = <String, List<GameFileModel>>{};
     for (final file in game.files) {
       grouped.putIfAbsent(labelFor(file), () => []).add(file);
@@ -102,20 +155,23 @@ class _Detail extends ConsumerWidget {
                 style: const TextStyle(color: kTextDim, fontSize: 14),
               ),
               const SizedBox(height: 20),
-              const Tooltip(
-                message: 'Wkrótce',
-                // Plain FilledButton (not .icon): the icon variant is a private
-                // subclass that find.byType cannot match in widget tests.
-                child: FilledButton(
+              local.when(
+                // A static placeholder, not a spinner: an indeterminate
+                // animation never lets widget tests settle.
+                loading: () => const FilledButton(
                   onPressed: null,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.download_outlined, size: 18),
-                      SizedBox(width: 8),
-                      Text('Pobierz'),
-                    ],
-                  ),
+                  child: Text('Sprawdzam pliki...'),
+                ),
+                error: (e, _) => Text(
+                  '$e',
+                  style: const TextStyle(color: kTextDim),
+                ),
+                data: (state) => _Actions(
+                  state: state,
+                  selectedSize: _selectedSize,
+                  onDownload: () => _download(state),
+                  onDelete: () =>
+                      confirmAndDelete(context, ref, game.id, state),
                 ),
               ),
               const SizedBox(height: 28),
@@ -130,7 +186,12 @@ class _Detail extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                for (final file in entry.value) _FileRow(file: file),
+                for (final file in entry.value)
+                  _FileRow(
+                    file: file,
+                    selected: _selected.contains(file.id),
+                    onChanged: (on) => _toggle(file, on),
+                  ),
                 const SizedBox(height: 20),
               ],
             ],
@@ -142,17 +203,24 @@ class _Detail extends ConsumerWidget {
 }
 
 class _FileRow extends StatelessWidget {
-  const _FileRow({required this.file});
+  const _FileRow({
+    required this.file,
+    required this.selected,
+    required this.onChanged,
+  });
 
   final GameFileModel file;
+  final bool selected;
+  final ValueChanged<bool?> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final version = file.version.isEmpty ? '' : ' · ${file.version}';
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
+          Checkbox(value: selected, onChanged: onChanged),
           Expanded(
             child: Text(
               file.name,
@@ -196,4 +264,62 @@ class _Error extends StatelessWidget {
           ),
         ),
       );
+}
+
+
+class _Actions extends StatelessWidget {
+  const _Actions({
+    required this.state,
+    required this.selectedSize,
+    required this.onDownload,
+    required this.onDelete,
+  });
+
+  final LocalGameState state;
+  final int selectedSize;
+  final VoidCallback onDownload;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    if (state.status == InstallStatus.installed && !state.updateAvailable) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.check_circle, color: kAccent, size: 18),
+              SizedBox(width: 8),
+              Text('Zainstalowana', style: TextStyle(color: kAccent)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton(
+            onPressed: onDelete,
+            child: const Text('Usuń z urządzenia'),
+          ),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FilledButton(
+          onPressed: onDownload,
+          child: Text(
+            state.updateAvailable
+                ? 'Pobierz aktualizację'
+                : 'Pobierz (${formatBytes(selectedSize)})',
+          ),
+        ),
+        if (state.presentPaths.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: onDelete,
+            child: const Text('Usuń z urządzenia'),
+          ),
+        ],
+      ],
+    );
+  }
 }
