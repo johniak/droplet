@@ -139,10 +139,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    // Since M6 the raw exception is replaced by a human message; the disk
-    // scan error also keeps the raw detail for diagnosis.
-    expect(find.textContaining('Coś poszło nie tak'), findsOneWidget);
-    expect(find.textContaining('dysk'), findsOneWidget);
+    // Since M6 the raw exception is replaced by a human message.
+    expect(find.text('Coś poszło nie tak'), findsOneWidget);
   });
 
   group('install badge', () {

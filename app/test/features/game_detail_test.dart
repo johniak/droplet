@@ -315,7 +315,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('dysk'), findsOneWidget);
+    expect(find.text('Coś poszło nie tak'), findsOneWidget);
   });
 
   testWidgets('loading skeleton', (tester) async {

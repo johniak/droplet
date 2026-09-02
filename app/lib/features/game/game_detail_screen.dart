@@ -38,14 +38,6 @@ String labelFor(GameFileModel file) => file.role == FileRole.disc
     ? '${roleLabels[FileRole.disc]} ${file.discNumber ?? ''}'.trim()
     : roleLabels[file.role]!;
 
-/// Jak `humanizeError`, ale dla błędu skanu dysku dorzuca surowy komunikat —
-/// tu diagnoza (np. „brak dostępu do /roms") jest ważniejsza niż w innych
-/// miejscach, gdzie generyczny tekst wystarcza.
-String _localStateError(Object error) {
-  final generic = humanizeError(error);
-  return generic == 'Coś poszło nie tak' ? '$generic ($error)' : generic;
-}
-
 /// Ile realnie zejdzie z sieci: zaznaczone pliki, których nie ma na dysku.
 int bytesToFetch(GameDetail game, Set<int> selected, LocalGameState local) {
   final present = {for (final p in local.presentPaths) p.split('/').last};
@@ -207,7 +199,7 @@ class _DetailState extends ConsumerState<_Detail> {
         ),
         error: (e, _) => _BottomBar(
           child: Text(
-            _localStateError(e),
+            humanizeError(e),
             textAlign: TextAlign.center,
             style: const TextStyle(color: kTextDim),
           ),
@@ -236,7 +228,8 @@ class _DetailState extends ConsumerState<_Detail> {
   }
 }
 
-/// Rozmyta okładka jako tło, ostra na wierzchu, wstecz w rogu.
+/// Rozmyta okładka jako tło, ostra na wierzchu; wstecz to osobny,
+/// przyklejony widget nad scrollem (zob. `_Detail.build`).
 class _Hero extends ConsumerWidget {
   const _Hero({required this.game});
 
@@ -433,7 +426,10 @@ class _Actions extends ConsumerWidget {
         if (installed)
           PrimaryButton(label: 'Usuń z urządzenia', onPressed: onDelete, ghost: true)
         else ...[
-          PrimaryButton(label: label, onPressed: offline ? null : onDownload),
+          PrimaryButton(
+            label: label,
+            onPressed: offline || toFetch == 0 ? null : onDownload,
+          ),
           if (state.presentPaths.isNotEmpty)
             TextButton(
               onPressed: onDelete,

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:droplet/app/widgets/primary_button.dart';
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/local_state.dart';
 import 'package:droplet/core/downloads/storage_settings.dart';
@@ -175,10 +176,19 @@ void main() {
     await tester.tap(find.byType(Checkbox).first);
     await tester.pumpAndSettle();
     expect(find.text('Pobierz · 0 B'), findsOneWidget);
-    // ...and selecting it again brings the size back.
+    // Nothing left to fetch: the button is disabled, not just relabeled.
+    expect(
+      tester.widget<PrimaryButton>(find.byType(PrimaryButton)).onPressed,
+      isNull,
+    );
+    // ...and selecting it again brings the size back and re-enables it.
     await tester.tap(find.byType(Checkbox).first);
     await tester.pumpAndSettle();
     expect(find.text('Pobierz · 1.0 KB'), findsOneWidget);
+    expect(
+      tester.widget<PrimaryButton>(find.byType(PrimaryButton)).onPressed,
+      isNotNull,
+    );
   });
 
   test('deleteLocalFiles ignores missing paths', () async {
