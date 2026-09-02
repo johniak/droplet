@@ -7,6 +7,7 @@ import '../features/auth/login_screen.dart';
 import '../features/downloads/downloads_screen.dart';
 import '../features/game/game_detail_screen.dart';
 import '../features/library/library_screen.dart';
+import '../features/settings/folders_screen.dart';
 import '../features/settings/settings_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -44,6 +45,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'settings',
             builder: (_, __) => const SettingsScreen(),
+            routes: [
+              GoRoute(
+                path: 'folders',
+                builder: (_, __) => const FoldersScreen(),
+              ),
+            ],
           ),
         ],
       ),

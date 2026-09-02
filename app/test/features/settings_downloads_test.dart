@@ -1,5 +1,5 @@
-import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/storage_settings.dart';
+import 'package:droplet/core/platform/downloader_port.dart';
 import 'package:droplet/core/platform/permissions_port.dart';
 import 'package:droplet/core/session/providers.dart';
 import 'package:droplet/core/session/session_repository.dart';
@@ -12,19 +12,28 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
+import '../fakes/fake_downloader_port.dart';
 import '../fakes/fake_permissions_port.dart';
 
 Widget _screen({
   required StorageSettingsRepository repo,
   required PermissionsPort port,
-  List<SystemModel> systems = const [],
 }) =>
     ProviderScope(
       overrides: [
-        sessionProvider.overrideWith(() => _FakeSession()),
+        sessionRepositoryProvider
+            .overrideWithValue(SessionRepository(MemoryKeyValueStore())),
         storageSettingsRepositoryProvider.overrideWithValue(repo),
         permissionsPortProvider.overrideWithValue(port),
-        systemsProvider.overrideWith((ref) async => systems),
+        downloaderPortProvider.overrideWithValue(FakeDownloaderPort()),
+        librarySnapshotProvider.overrideWith(
+          (ref) async => const LibrarySnapshot(
+            systems: [],
+            games: [],
+            fromCache: false,
+            previousIds: {},
+          ),
+        ),
       ],
       child: const MaterialApp(home: SettingsScreen()),
     );
@@ -35,22 +44,35 @@ void main() {
         InMemorySharedPreferencesAsync.empty();
   });
 
-  testWidgets('download section edits base dir and shows permission', (
-    tester,
-  ) async {
+  testWidgets('base dir is edited through a dialog', (tester) async {
     final repo = StorageSettingsRepository(SharedPreferencesAsync());
     await tester.pumpWidget(
       _screen(repo: repo, port: FakePermissionsPort(granted: true)),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Pobieranie'), findsOneWidget);
-    expect(find.text('Przyznane'), findsOneWidget);
-    await tester.enterText(
-      find.byKey(const Key('base-dir-field')),
-      '/tmp/roms',
-    );
+    expect(find.text(defaultBaseDir), findsOneWidget);
+    expect(find.text('Przyznany'), findsOneWidget);
+    await tester.tap(find.text('Zmień'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('base-dir-field')), '/tmp/roms');
+    await tester.tap(find.text('Zapisz'));
     await tester.pumpAndSettle();
     expect((await repo.load()).baseDir, '/tmp/roms');
+    expect(find.text('/tmp/roms'), findsOneWidget);
+  });
+
+  testWidgets('cancel leaves the dir alone', (tester) async {
+    final repo = StorageSettingsRepository(SharedPreferencesAsync());
+    await tester.pumpWidget(
+      _screen(repo: repo, port: FakePermissionsPort(granted: true)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Zmień'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('base-dir-field')), '/nope');
+    await tester.tap(find.text('Anuluj'));
+    await tester.pumpAndSettle();
+    expect((await repo.load()).baseDir, defaultBaseDir);
   });
 
   testWidgets('grant button requests permission', (tester) async {
@@ -63,32 +85,45 @@ void main() {
     await tester.tap(find.byKey(const Key('grant-permission')));
     await tester.pumpAndSettle();
     expect(port.requests, 1);
-    expect(find.text('Przyznane'), findsOneWidget);
+    expect(find.text('Przyznany'), findsOneWidget);
   });
 
-  testWidgets('per-system directories are editable', (tester) async {
+  testWidgets('wifi-only switch persists', (tester) async {
     final repo = StorageSettingsRepository(SharedPreferencesAsync());
     await tester.pumpWidget(
-      _screen(
-        repo: repo,
-        port: FakePermissionsPort(granted: true),
-        systems: const [
-          SystemModel(id: 1, code: 'psx', name: 'PlayStation', gameCount: 3),
+      _screen(repo: repo, port: FakePermissionsPort(granted: true)),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.byKey(const Key('wifi-only')), 200);
+    await tester.tap(find.byKey(const Key('wifi-only')));
+    await tester.pumpAndSettle();
+    expect((await repo.load()).wifiOnly, isTrue);
+  });
+
+  testWidgets('settings load error is shown', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sessionRepositoryProvider
+              .overrideWithValue(SessionRepository(MemoryKeyValueStore())),
+          storageSettingsProvider
+              .overrideWith((ref) async => throw StateError('prefs')),
+          permissionsPortProvider
+              .overrideWithValue(FakePermissionsPort(granted: true)),
+          downloaderPortProvider.overrideWithValue(FakeDownloaderPort()),
+          librarySnapshotProvider.overrideWith(
+            (ref) async => const LibrarySnapshot(
+              systems: [],
+              games: [],
+              fromCache: false,
+              previousIds: {},
+            ),
+          ),
         ],
+        child: const MaterialApp(home: SettingsScreen()),
       ),
     );
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byKey(const Key('system-dir-psx')),
-      'PlayStation',
-    );
-    await tester.pumpAndSettle();
-    expect((await repo.load()).systemDirs, {'psx': 'PlayStation'});
+    expect(find.textContaining('prefs'), findsOneWidget);
   });
-}
-
-class _FakeSession extends SessionController {
-  @override
-  Future<Session?> build() async =>
-      const Session(serverUrl: 'http://nas:8000', token: 't');
 }

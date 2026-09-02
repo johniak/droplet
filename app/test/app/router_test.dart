@@ -7,11 +7,14 @@ import 'package:droplet/features/game/game_detail_screen.dart';
 import 'package:droplet/features/game/providers.dart';
 import 'package:droplet/features/library/library_screen.dart';
 import 'package:droplet/features/library/providers.dart';
+import 'package:droplet/features/settings/folders_screen.dart';
 import 'package:droplet/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 
 const _detail = GameDetail(
@@ -44,6 +47,11 @@ Future<MemoryKeyValueStore> _signedIn() async {
 }
 
 void main() {
+  setUp(() {
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+  });
+
   testWidgets('no session -> login screen', (tester) async {
     await tester.pumpWidget(_app(MemoryKeyValueStore()));
     await tester.pumpAndSettle();
@@ -72,6 +80,10 @@ void main() {
     context.go('/settings');
     await tester.pumpAndSettle();
     expect(find.text('Ustawienia'), findsOneWidget);
+
+    context.go('/settings/folders');
+    await tester.pumpAndSettle();
+    expect(find.byType(FoldersScreen), findsOneWidget);
   });
 
   testWidgets('signing in redirects away from login', (tester) async {
