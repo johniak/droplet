@@ -19,13 +19,6 @@ Widget _screen(List<GameProgress> active, DownloadManager manager) =>
       child: const MaterialApp(home: DownloadsScreen()),
     );
 
-const _running = GameProgress(
-  gameId: 7,
-  title: 'Mario',
-  progress: 0.5,
-  status: GameProgressStatus.running,
-);
-
 void main() {
   late FakeDownloaderPort port;
   late DownloadManager manager;
