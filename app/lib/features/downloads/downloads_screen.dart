@@ -107,7 +107,7 @@ class _DownloadCard extends ConsumerWidget {
                 systemCode: progress.systemCode,
                 hasCover: progress.hasCover,
                 totalSize: progress.bytesTotal,
-                folder: '',
+                folder: progress.folder,
               ),
             ),
           ),

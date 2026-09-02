@@ -26,6 +26,7 @@ class GameProgress {
     required this.gameId,
     required this.title,
     required this.systemCode,
+    required this.folder,
     required this.hasCover,
     required this.progress,
     required this.status,
@@ -37,6 +38,11 @@ class GameProgress {
   final int gameId;
   final String title;
   final String systemCode;
+
+  /// Folder gry w drzewie ROMów — kafelek pobierania buduje z niego pełny
+  /// [GameSummary], zamiast podstawiać pusty ciąg.
+  final String folder;
+
   final bool hasCover;
   final double progress;
   final GameProgressStatus status;
@@ -63,6 +69,7 @@ class GameProgress {
         gameId: gameId,
         title: title,
         systemCode: systemCode,
+        folder: folder,
         hasCover: hasCover,
         progress: progress ?? this.progress,
         status: status ?? this.status,
@@ -146,6 +153,7 @@ class DownloadManager {
       gameId: game.id,
       title: game.title,
       systemCode: game.systemCode,
+      folder: game.folder,
       hasCover: game.hasCover,
       progress: 0,
       status: GameProgressStatus.running,
@@ -273,19 +281,22 @@ class DownloadManager {
     if (actual != expected) {
       await _port.deleteFile(path);
       _progress[gameId] = current.copyWith(status: GameProgressStatus.failed);
-    } else {
-      _taskProgress[task.taskId] = 1;
-      final tasks = _tasksByGame[gameId] ?? const <DownloadTask>[];
-      final allDone = tasks.every((t) => (_taskProgress[t.taskId] ?? 0) >= 1);
-      _progress[gameId] = current.copyWith(
-        progress: allDone ? 1 : current.progress,
-        status: allDone
-            ? GameProgressStatus.complete
-            : GameProgressStatus.running,
-        bytesDone: allDone ? current.bytesTotal : current.bytesDone,
-      );
+      onGameChanged(gameId);
+      return;
     }
-    onGameChanged(gameId);
+    _taskProgress[task.taskId] = 1;
+    final tasks = _tasksByGame[gameId] ?? const <DownloadTask>[];
+    final allDone = tasks.every((t) => (_taskProgress[t.taskId] ?? 0) >= 1);
+    _progress[gameId] = current.copyWith(
+      progress: allDone ? 1 : current.progress,
+      status:
+          allDone ? GameProgressStatus.complete : GameProgressStatus.running,
+      bytesDone: allDone ? current.bytesTotal : current.bytesDone,
+    );
+    // Skan dysku kosztuje przejście po całym drzewie ROMów, więc leci raz na
+    // grę — po ostatnim pliku (albo po skasowaniu pliku o złym rozmiarze),
+    // nie po każdym pobranym pliku z osobna.
+    if (allDone) onGameChanged(gameId);
   }
 
   /// Usuwa wpisy zakończone sukcesem; błędy zostają do ponowienia/anulowania.
@@ -296,11 +307,28 @@ class DownloadManager {
 }
 
 final downloadManagerProvider = Provider<DownloadManager>((ref) {
+  // Kilka gier kończących się w tym samym ticku ma dać jeden skan dysku, a nie
+  // jeden na każde powiadomienie — stąd sklejanie do jednego mikrozadania.
+  var scheduled = false;
+  var disposed = false;
   final manager = DownloadManager(
     ref.watch(downloaderPortProvider),
     ref.watch(permissionsPortProvider),
-    onGameChanged: (_) => ref.read(deviceIndexProvider.notifier).refresh(),
+    onGameChanged: (_) {
+      if (scheduled) return;
+      scheduled = true;
+      // Timer, nie mikrozadanie: powiadomienia o kolejnych grach przychodzą
+      // zza `await`ów portu, więc mikrozadanie zdążyłoby się już wykonać.
+      Timer.run(() {
+        scheduled = false;
+        if (disposed) return;
+        ref.read(deviceIndexProvider.notifier).refresh();
+      });
+    },
   );
-  ref.onDispose(manager.dispose);
+  ref.onDispose(() {
+    disposed = true;
+    manager.dispose();
+  });
   return manager;
 });

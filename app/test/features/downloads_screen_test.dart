@@ -66,6 +66,7 @@ GameProgress at(
       gameId: id,
       title: 'Mario',
       systemCode: 'snes',
+      folder: 'Mario',
       hasCover: false,
       progress: progress,
       status: status,

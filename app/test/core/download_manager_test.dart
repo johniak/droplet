@@ -8,9 +8,11 @@ import 'package:droplet/core/downloads/task_builder.dart';
 import 'package:droplet/core/env.dart';
 import 'package:droplet/core/platform/downloader_port.dart';
 import 'package:droplet/core/platform/permissions_port.dart';
+import 'package:droplet/features/library/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../fakes/fake_device_index.dart';
 import '../fakes/fake_downloader_port.dart';
 import '../fakes/fake_permissions_port.dart';
 
@@ -119,6 +121,8 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(port.deleted, ['/roms/snes/Mario/m.sfc']);
     expect(manager.progress[7]?.status, GameProgressStatus.failed);
+    // Skasowany plik zmienił dysk, więc indeks trzeba przeliczyć — ale raz.
+    expect(changed, [7]);
   });
 
   test('failed/paused statuses map to progress status', () async {
@@ -224,12 +228,15 @@ void main() {
     );
     await Future<void>.delayed(Duration.zero);
     expect(manager.progress[8]?.status, GameProgressStatus.running);
+    expect(changed, isEmpty);
     port.controller.add(
       TaskStatusUpdate(port.enqueued.last, TaskStatus.complete),
     );
     await Future<void>.delayed(Duration.zero);
     expect(manager.progress[8]?.status, GameProgressStatus.complete);
     expect(manager.progress[8]?.progress, 1);
+    // Skan dysku dopiero po ostatnim pliku — nie po każdym z osobna.
+    expect(changed, [8]);
   });
 
   test('PermissionDeniedException explains itself', () {
@@ -261,14 +268,16 @@ void main() {
     expect(manager.progress[7]?.status, GameProgressStatus.running);
   });
 
-  test('the provider-built manager runs a full download', () async {
+  test('the provider-built manager runs a full download and rescans', () async {
     final providerPort = FakeDownloaderPort();
+    late FakeDeviceIndex index;
     final container = ProviderContainer(
       overrides: [
         downloaderPortProvider.overrideWithValue(providerPort),
         permissionsPortProvider.overrideWithValue(
           FakePermissionsPort(granted: true),
         ),
+        deviceIndexProvider.overrideWith(() => index = FakeDeviceIndex({})),
       ],
     );
     addTearDown(container.dispose);
@@ -287,6 +296,56 @@ void main() {
     );
     await Future<void>.delayed(Duration.zero);
     expect(provided.progress[7]?.status, GameProgressStatus.complete);
+    // Skan dysku leci timerem (sklejanie powiadomień), więc jeden tick więcej.
+    await Future<void>.delayed(Duration.zero);
+    // Pobranie kończy się przeliczeniem indeksu urządzenia — bez sieci.
+    expect(index.refreshes, 1);
+  });
+
+  test('two games finishing together trigger a single rescan', () async {
+    final providerPort = FakeDownloaderPort();
+    late FakeDeviceIndex index;
+    final container = ProviderContainer(
+      overrides: [
+        downloaderPortProvider.overrideWithValue(providerPort),
+        permissionsPortProvider.overrideWithValue(
+          FakePermissionsPort(granted: true),
+        ),
+        deviceIndexProvider.overrideWith(() => index = FakeDeviceIndex({})),
+      ],
+    );
+    addTearDown(container.dispose);
+    final provided = container.read(downloadManagerProvider);
+    for (final id in [7, 8]) {
+      await provided.downloadGame(
+        game: GameDetail(
+          id: id,
+          title: 'Mario $id',
+          systemCode: 'snes',
+          systemName: 'SNES',
+          hasCover: false,
+          totalSize: 1024,
+          folder: 'Mario $id',
+          files: const [file],
+        ),
+        selectedIds: {42},
+        local: none,
+        serverUrl: 'http://nas:8000',
+        authHeaders: const {'Authorization': 'Token t'},
+        settings: settings,
+      );
+    }
+    for (final task in providerPort.enqueued) {
+      providerPort.lengths['/${task.directory}/${task.filename}'] =
+          expectedSizeOf(task);
+      providerPort.controller.add(TaskStatusUpdate(task, TaskStatus.complete));
+    }
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    expect(provided.progress[7]?.status, GameProgressStatus.complete);
+    expect(provided.progress[8]?.status, GameProgressStatus.complete);
+    // Dwie gry, jeden skan drzewa ROMów.
+    expect(index.refreshes, 1);
   });
 
   test('not enough space stops the download', () async {
