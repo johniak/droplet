@@ -71,18 +71,6 @@ final systemsProvider = FutureProvider<List<SystemModel>>(
   (ref) async => (await ref.watch(librarySnapshotProvider.future)).systems,
 );
 
-/// Riverpod 3 dropped StateProvider, so the two pieces of UI state are plain
-/// notifiers with an explicit setter.
-class SelectedSystem extends Notifier<String?> {
-  @override
-  String? build() => null;
-
-  void select(String? code) => state = code;
-}
-
-final selectedSystemProvider =
-    NotifierProvider<SelectedSystem, String?>(SelectedSystem.new);
-
 class SearchQuery extends Notifier<String> {
   @override
   String build() => '';
@@ -103,16 +91,6 @@ class SortOrder extends Notifier<LibrarySort> {
 }
 
 final sortProvider = NotifierProvider<SortOrder, LibrarySort>(SortOrder.new);
-
-class InstalledOnly extends Notifier<bool> {
-  @override
-  bool build() => false;
-
-  void toggle() => state = !state;
-}
-
-final installedOnlyProvider =
-    NotifierProvider<InstalledOnly, bool>(InstalledOnly.new);
 
 /// Zbiór id — jeden typ dla „na urządzeniu" i „do aktualizacji"; zasilany
 /// przez odznaki na kafelkach, gdy rozwiążą stan lokalny.

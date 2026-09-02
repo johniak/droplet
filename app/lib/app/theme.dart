@@ -4,10 +4,6 @@ import 'tokens.dart';
 
 export 'tokens.dart';
 
-// Aliasy dla ekranów sprzed redesignu — usuwane w Task 12.
-const kBg = kBgBottom;
-const kSurface = Color(0xFF151A2E);
-
 ThemeData buildTheme() {
   final base = ThemeData.dark(useMaterial3: true);
   final scheme = base.colorScheme.copyWith(

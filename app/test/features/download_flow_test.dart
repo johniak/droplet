@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:droplet/core/api/api_client.dart';
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/local_state.dart';
 import 'package:droplet/core/downloads/storage_settings.dart';
@@ -12,11 +10,9 @@ import 'package:droplet/core/session/providers.dart';
 import 'package:droplet/core/session/session_repository.dart';
 import 'package:droplet/features/game/game_detail_screen.dart';
 import 'package:droplet/features/game/providers.dart';
-import 'package:droplet/features/library/widgets/game_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
 
 import '../fakes/fake_downloader_port.dart';
 import '../fakes/fake_permissions_port.dart';
@@ -142,139 +138,6 @@ void main() {
     // Since M6 the raw exception is replaced by a human message.
     expect(find.text('Coś poszło nie tak'), findsOneWidget);
   });
-
-  group('install badge', () {
-    Future<void> pumpCard(WidgetTester tester, LocalGameState? state) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            apiClientProvider.overrideWithValue(
-              ApiClient(baseUrl: 'http://nas:8000', token: 't'),
-            ),
-            if (state != null)
-              localStateProvider(1).overrideWith((ref) async => state),
-          ],
-          child: const MaterialApp(
-            home: Scaffold(
-              body: SizedBox(
-                height: 300,
-                child: GameCard(
-                  game: GameSummary(
-                    id: 1,
-                    title: 'Mario',
-                    systemCode: 'snes',
-                    hasCover: false,
-                    totalSize: 1024,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-    }
-
-    testWidgets('installed shows a check', (tester) async {
-      await pumpCard(
-        tester,
-        const LocalGameState(
-          status: InstallStatus.installed,
-          updateAvailable: false,
-          missing: [],
-          presentPaths: ['/roms/snes/m.sfc'],
-        ),
-      );
-      expect(find.byIcon(Icons.check_circle), findsOneWidget);
-    });
-
-    testWidgets('an available update shows an arrow', (tester) async {
-      await pumpCard(
-        tester,
-        const LocalGameState(
-          status: InstallStatus.installed,
-          updateAvailable: true,
-          missing: [],
-          presentPaths: ['/roms/snes/m.sfc'],
-        ),
-      );
-      expect(find.byIcon(Icons.arrow_circle_down), findsOneWidget);
-    });
-
-    testWidgets('a partial install shows a half marker', (tester) async {
-      await pumpCard(
-        tester,
-        const LocalGameState(
-          status: InstallStatus.partial,
-          updateAvailable: false,
-          missing: [_file],
-          presentPaths: ['/roms/snes/m.sfc'],
-        ),
-      );
-      expect(find.byIcon(Icons.adjust), findsOneWidget);
-    });
-
-    testWidgets('nothing installed shows no badge', (tester) async {
-      await pumpCard(tester, _none);
-      expect(find.byIcon(Icons.check_circle), findsNothing);
-      expect(find.byIcon(Icons.adjust), findsNothing);
-    });
-  });
-
-  testWidgets(
-    'a GameCard with a cover renders the network image and navigates',
-    (tester) async {
-      final router = GoRouter(
-        routes: [
-          GoRoute(
-            path: '/',
-            builder: (_, __) => Scaffold(
-              body: SizedBox(
-                height: 300,
-                child: GameCard(
-                  game: const GameSummary(
-                    id: 1,
-                    title: 'Zelda',
-                    systemCode: 'snes',
-                    hasCover: true,
-                    totalSize: 1024,
-                  ),
-                ),
-              ),
-            ),
-            routes: [
-              GoRoute(
-                path: 'game/:id',
-                builder: (_, s) =>
-                    Scaffold(body: Text('Gra ${s.pathParameters['id']}')),
-              ),
-            ],
-          ),
-        ],
-      );
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            apiClientProvider.overrideWithValue(
-              ApiClient(baseUrl: 'http://nas:8000', token: 't'),
-            ),
-            localStateProvider(1).overrideWith((ref) async => _none),
-          ],
-          child: MaterialApp.router(routerConfig: router),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.byType(CachedNetworkImage), findsOneWidget);
-      final image = tester.widget<CachedNetworkImage>(
-        find.byType(CachedNetworkImage),
-      );
-      expect(image.imageUrl, contains('/api/games/1/cover'));
-      expect(image.httpHeaders, containsPair('Authorization', 'Token t'));
-      await tester.tap(find.byType(GameCard));
-      await tester.pumpAndSettle();
-      expect(find.text('Gra 1'), findsOneWidget);
-    },
-  );
 
   test('localStateProvider diffs the manifest against the disk', () async {
     final dir = Directory.systemTemp.createTempSync();

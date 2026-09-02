@@ -6,9 +6,20 @@ import '../core/session/providers.dart';
 import '../features/auth/login_screen.dart';
 import '../features/downloads/downloads_screen.dart';
 import '../features/game/game_detail_screen.dart';
-import '../features/library/library_screen.dart';
+import '../features/home/home_screen.dart';
 import '../features/settings/folders_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/system/system_screen.dart';
+import 'shell.dart';
+import 'theme.dart';
+
+export 'shell.dart' show hidesNavBar;
+
+GoRoute _gameRoute() => GoRoute(
+      path: 'game/:id',
+      builder: (_, s) =>
+          GameDetailScreen(gameId: int.parse(s.pathParameters['id']!)),
+    );
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier(0);
@@ -25,30 +36,50 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(
-        path: '/',
-        builder: (_, __) => const LibraryScreen(),
-        routes: [
-          // Nested: go('/game/7') builds the stack [/, /game/7], so the
-          // system back button returns to the library instead of exiting.
-          GoRoute(
-            path: 'game/:id',
-            builder: (_, s) => GameDetailScreen(
-              gameId: int.parse(s.pathParameters['id']!),
-            ),
-          ),
-          GoRoute(
-            path: 'downloads',
-            builder: (_, __) => const DownloadsScreen(),
-          ),
-          GoRoute(
-            path: 'settings',
-            builder: (_, __) => const SettingsScreen(),
+        path: '/login',
+        builder: (_, __) => const AppBackground(child: LoginScreen()),
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, shell) =>
+            AppShell(shell: shell, hideBar: hidesNavBar(state.uri.path)),
+        branches: [
+          StatefulShellBranch(
             routes: [
               GoRoute(
-                path: 'folders',
-                builder: (_, __) => const FoldersScreen(),
+                path: '/',
+                builder: (_, __) => const HomeScreen(),
+                routes: [
+                  _gameRoute(),
+                  GoRoute(
+                    path: 'system/:code',
+                    builder: (_, s) =>
+                        SystemScreen(code: s.pathParameters['code']!),
+                    routes: [_gameRoute()],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/downloads',
+                builder: (_, __) => const DownloadsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/settings',
+                builder: (_, __) => const SettingsScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'folders',
+                    builder: (_, __) => const FoldersScreen(),
+                  ),
+                ],
               ),
             ],
           ),

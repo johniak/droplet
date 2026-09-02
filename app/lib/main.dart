@@ -28,7 +28,7 @@ class DropletApp extends ConsumerWidget {
     if (ref.watch(sessionProvider).isLoading) {
       return MaterialApp(
         theme: buildTheme(),
-        home: const Scaffold(backgroundColor: kBg),
+        home: const AppBackground(child: Scaffold()),
       );
     }
     return MaterialApp.router(
