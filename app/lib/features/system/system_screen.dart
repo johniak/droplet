@@ -53,32 +53,22 @@ class _SystemScreenState extends ConsumerState<SystemScreen> {
             ),
             const _FilterChips(),
             Expanded(
-              child: SingleChildScrollView(
-                // Grid jest `shrinkWrap`owany wewnątrz tego scrolla, żeby
-                // zbudować wszystkie wiersze naraz — inaczej lazy viewport
-                // ciasnego `Expanded` potrafi nie zbudować ostatniego wiersza
-                // krótkiej listy gier.
-                child: systems.when(
-                  loading: () => const _Skeleton(),
-                  error: (e, _) => _Message(
-                    humanizeError(e),
-                    action: 'Ponów',
-                    onAction: () => ref.invalidate(librarySnapshotProvider),
-                  ),
-                  data: (_) {
-                    if (system == null) {
-                      return const _Message('Nieznany system');
-                    }
-                    final list = filterByQuery(games.value ?? const [], _query);
-                    if (list.isEmpty) return const _Message('Nic nie pasuje');
-                    return GamesGrid(
-                      games: list,
-                      routeFor: (id) => '/system/${widget.code}/game/$id',
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                    );
-                  },
+              child: systems.when(
+                loading: () => const _Skeleton(),
+                error: (e, _) => _Message(
+                  humanizeError(e),
+                  action: 'Ponów',
+                  onAction: () => ref.invalidate(librarySnapshotProvider),
                 ),
+                data: (_) {
+                  if (system == null) return const _Message('Nieznany system');
+                  final list = filterByQuery(games.value ?? const [], _query);
+                  if (list.isEmpty) return const _Message('Nic nie pasuje');
+                  return GamesGrid(
+                    games: list,
+                    routeFor: (id) => '/system/${widget.code}/game/$id',
+                  );
+                },
               ),
             ),
           ],
@@ -205,25 +195,25 @@ class _Message extends StatelessWidget {
   final VoidCallback? onAction;
 
   @override
-  Widget build(BuildContext context) => Padding(
+  Widget build(BuildContext context) => ListView(
         padding: const EdgeInsets.all(32),
-        child: Column(
-          children: [
-            const SizedBox(height: 60),
-            Text(
-              text,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: kTextDim, fontSize: 15),
-            ),
-            if (action != null) ...[
-              const SizedBox(height: 20),
-              SizedBox(
+        children: [
+          const SizedBox(height: 60),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: kTextDim, fontSize: 15),
+          ),
+          if (action != null) ...[
+            const SizedBox(height: 20),
+            Center(
+              child: SizedBox(
                 width: 160,
                 child: PrimaryButton(label: action!, onPressed: onAction),
               ),
-            ],
+            ),
           ],
-        ),
+        ],
       );
 }
 
@@ -234,8 +224,6 @@ class _Skeleton extends StatelessWidget {
   Widget build(BuildContext context) => GridView.builder(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, kListBottomPad),
         gridDelegate: GamesGrid.delegate,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
         itemCount: 6,
         itemBuilder: (_, __) => const PulseBox(),
       );

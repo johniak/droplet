@@ -1,8 +1,10 @@
+import 'package:droplet/app/widgets/pulse_box.dart';
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/local_state.dart';
 import 'package:droplet/features/game/providers.dart';
 import 'package:droplet/features/library/providers.dart';
 import 'package:droplet/features/library/widgets/game_tile.dart';
+import 'package:droplet/features/library/widgets/sort_menu.dart';
 import 'package:droplet/features/system/system_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -87,10 +89,14 @@ void main() {
   ];
 
   testWidgets('header, counts and back', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(_app(games, overrides: states));
     await tester.pumpAndSettle();
     expect(find.text('Super Nintendo'), findsOneWidget);
     expect(find.text('3 gry · 2 na urządzeniu'), findsOneWidget);
+    expect(find.text('Szukaj w Super Nintendo'), findsOneWidget);
+    expect(find.byType(SortMenu), findsOneWidget);
     expect(find.byType(GameTile), findsNWidgets(3));
     await tester.tap(find.byKey(const Key('back-button')));
     await tester.pumpAndSettle();
@@ -98,21 +104,31 @@ void main() {
   });
 
   testWidgets('chips filter installed and updatable', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(_app(games, overrides: states));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Na urządzeniu'));
     await tester.pumpAndSettle();
     expect(find.byType(GameTile), findsNWidgets(2));
+    await tester.ensureVisible(
+      find.text('Do aktualizacji', skipOffstage: false),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Do aktualizacji'));
     await tester.pumpAndSettle();
     expect(find.byType(GameTile), findsOneWidget);
     expect(find.text('Zelda'), findsWidgets);
+    await tester.ensureVisible(find.text('Wszystkie', skipOffstage: false));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Wszystkie'));
     await tester.pumpAndSettle();
     expect(find.byType(GameTile), findsNWidgets(3));
   });
 
   testWidgets('search narrows within the system', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(_app(games, overrides: states));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'met');
@@ -157,6 +173,7 @@ void main() {
         child: MaterialApp.router(routerConfig: _router()),
       ),
     );
+    expect(find.byType(PulseBox), findsWidgets);
     await tester.pumpAndSettle();
     expect(find.text('Ponów'), findsOneWidget);
     expect(attempts, 1);
@@ -167,6 +184,8 @@ void main() {
 
   testWidgets('tapping a game tile navigates within the system stack',
       (tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(_app(games, overrides: states));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Mario').first);
