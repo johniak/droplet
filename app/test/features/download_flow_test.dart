@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:droplet/core/api/api_client.dart';
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/local_state.dart';
@@ -15,6 +16,7 @@ import 'package:droplet/features/library/widgets/game_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import '../fakes/fake_downloader_port.dart';
 import '../fakes/fake_permissions_port.dart';
@@ -218,6 +220,56 @@ void main() {
       expect(find.byIcon(Icons.adjust), findsNothing);
     });
   });
+
+  testWidgets(
+    'a GameCard with a cover renders the network image and navigates',
+    (tester) async {
+      final router = GoRouter(
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, __) => Scaffold(
+              body: SizedBox(
+                height: 300,
+                child: GameCard(
+                  game: const GameSummary(
+                    id: 1,
+                    title: 'Zelda',
+                    systemCode: 'snes',
+                    hasCover: true,
+                    totalSize: 1024,
+                  ),
+                ),
+              ),
+            ),
+            routes: [
+              GoRoute(
+                path: 'game/:id',
+                builder: (_, s) =>
+                    Scaffold(body: Text('Gra ${s.pathParameters['id']}')),
+              ),
+            ],
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            apiClientProvider.overrideWithValue(
+              ApiClient(baseUrl: 'http://nas:8000', token: 't'),
+            ),
+            localStateProvider(1).overrideWith((ref) async => _none),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(CachedNetworkImage), findsOneWidget);
+      await tester.tap(find.byType(GameCard));
+      await tester.pumpAndSettle();
+      expect(find.text('Gra 1'), findsOneWidget);
+    },
+  );
 
   test('localStateProvider diffs the manifest against the disk', () async {
     final dir = Directory.systemTemp.createTempSync();

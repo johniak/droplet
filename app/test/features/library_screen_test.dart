@@ -4,6 +4,7 @@ import 'package:droplet/features/library/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 void main() {
   final games = [
@@ -33,6 +34,33 @@ void main() {
           systemsProvider.overrideWith((ref) async => systems),
         ],
         child: const MaterialApp(home: LibraryScreen()),
+      );
+
+  GoRouter routedRouter() => GoRouter(
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, __) => const LibraryScreen(),
+            routes: [
+              GoRoute(
+                path: 'settings',
+                builder: (_, __) => const Scaffold(body: Text('Ustawienia')),
+              ),
+              GoRoute(
+                path: 'downloads',
+                builder: (_, __) => const Scaffold(body: Text('Pobierania')),
+              ),
+            ],
+          ),
+        ],
+      );
+
+  Widget buildRouted() => ProviderScope(
+        overrides: [
+          gamesProvider.overrideWith((ref) async => games),
+          systemsProvider.overrideWith((ref) async => systems),
+        ],
+        child: MaterialApp.router(routerConfig: routedRouter()),
       );
 
   testWidgets('shows games and system chips', (tester) async {
@@ -199,5 +227,30 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.textContaining('Nowe w bibliotece'), findsNothing);
+  });
+
+  testWidgets('the settings action opens settings', (tester) async {
+    await tester.pumpWidget(buildRouted());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pumpAndSettle();
+    expect(find.text('Ustawienia'), findsOneWidget);
+  });
+
+  testWidgets('the downloads action opens the queue', (tester) async {
+    await tester.pumpWidget(buildRouted());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.download_outlined));
+    await tester.pumpAndSettle();
+    expect(find.text('Pobierania'), findsOneWidget);
+  });
+
+  testWidgets('pull to refresh reloads the games', (tester) async {
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+    await tester.fling(find.byType(GridView), const Offset(0, 300), 1000);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Super Mario World'), findsWidgets);
   });
 }

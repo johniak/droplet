@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../../../app/theme.dart';
+import '../../../app/tokens.dart';
 
 /// Boxart with a graceful fallback: a game without a cover still fills its
 /// slot in the grid instead of leaving a hole.
@@ -36,6 +36,12 @@ class CoverImage extends StatelessWidget {
   }
 }
 
+const coverPlaceholderGradient = LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: [Color(0xFF242B45), Color(0xFF161A2C)],
+);
+
 class _Placeholder extends StatelessWidget {
   const _Placeholder({required this.title});
 
@@ -43,16 +49,10 @@ class _Placeholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [kSurface, Color(0xFF10151C)],
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: coverPlaceholderGradient),
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             child: Text(
               title,
               textAlign: TextAlign.center,
@@ -60,9 +60,9 @@ class _Placeholder extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: kTextDim,
-                fontSize: 13,
+                fontSize: 12,
                 height: 1.3,
-                letterSpacing: 0.2,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
