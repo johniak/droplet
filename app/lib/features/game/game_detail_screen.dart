@@ -9,6 +9,7 @@ import '../../core/downloads/selection.dart';
 import '../../core/downloads/storage_settings.dart';
 import '../../core/format.dart';
 import '../../core/session/providers.dart';
+import '../../app/widgets/pulse_box.dart';
 import '../library/widgets/cover_image.dart';
 import 'delete_dialog.dart';
 import 'providers.dart';
@@ -36,7 +37,7 @@ class GameDetailScreen extends ConsumerWidget {
     final detail = ref.watch(gameDetailProvider(gameId));
     return Scaffold(
       body: detail.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const _DetailSkeleton(),
         error: (error, _) => _Error(
           message: error.toString(),
           onRetry: () => ref.invalidate(gameDetailProvider(gameId)),
@@ -116,11 +117,14 @@ class _DetailState extends ConsumerState<_Detail> {
             background: Stack(
               fit: StackFit.expand,
               children: [
-                CoverImage(
-                  title: game.title,
-                  url: client?.coverUrl(game.id, size: 'full') ?? '',
-                  headers: client?.authHeaders ?? const {},
-                  hasCover: game.hasCover,
+                Hero(
+                  tag: 'cover-${game.id}',
+                  child: CoverImage(
+                    title: game.title,
+                    url: client?.coverUrl(game.id, size: 'full') ?? '',
+                    headers: client?.authHeaders ?? const {},
+                    hasCover: game.hasCover,
+                  ),
                 ),
                 const DecoratedBox(
                   decoration: BoxDecoration(
@@ -322,4 +326,30 @@ class _Actions extends StatelessWidget {
       ],
     );
   }
+}
+
+
+/// Keeps the shape of the game card while the manifest is on its way.
+class _DetailSkeleton extends StatelessWidget {
+  const _DetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) => ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          const PulseBox(height: 320, radius: BorderRadius.zero),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
+            child: PulseBox(height: 26, width: 220),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: PulseBox(height: 14, width: 140),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
+            child: PulseBox(height: 40, width: 180, radius: BorderRadius.zero),
+          ),
+        ],
+      );
 }

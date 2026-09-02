@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
+import '../../app/widgets/pulse_box.dart';
 import '../../core/api/models.dart';
 import '../../core/downloads/download_manager.dart';
 import '../downloads/downloads_screen.dart';
@@ -35,7 +36,7 @@ class LibraryScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(gamesProvider),
         child: games.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const _LibrarySkeleton(),
           error: (error, _) => _ErrorState(
             message: error.toString(),
             onRetry: () => ref.invalidate(gamesProvider),
@@ -243,4 +244,23 @@ class _DownloadsAction extends ConsumerWidget {
       ),
     );
   }
+}
+
+
+/// Six cover-shaped blocks: the grid keeps its rhythm while data loads.
+class _LibrarySkeleton extends StatelessWidget {
+  const _LibrarySkeleton();
+
+  @override
+  Widget build(BuildContext context) => GridView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 20,
+          childAspectRatio: 0.62,
+        ),
+        itemCount: 6,
+        itemBuilder: (_, __) => const PulseBox(),
+      );
 }

@@ -31,13 +31,16 @@ class GameCard extends ConsumerWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  AspectRatio(
-                    aspectRatio: 3 / 4,
-                    child: CoverImage(
-                      title: game.title,
-                      url: client?.coverUrl(game.id) ?? '',
-                      headers: client?.authHeaders ?? const {},
-                      hasCover: game.hasCover,
+                  Hero(
+                    tag: 'cover-${game.id}',
+                    child: AspectRatio(
+                      aspectRatio: 3 / 4,
+                      child: CoverImage(
+                        title: game.title,
+                        url: client?.coverUrl(game.id) ?? '',
+                        headers: client?.authHeaders ?? const {},
+                        hasCover: game.hasCover,
+                      ),
                     ),
                   ),
                   Positioned(

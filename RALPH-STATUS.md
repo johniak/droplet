@@ -62,6 +62,10 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   Wynik. Punkt 5 (usuwanie ROM-ow bez ruszania `saves/`/`states/`) to kluczowe
   kryterium bezpieczenstwa M5.
 
+- **M6 Task 1 krok 4 - ogledziny animacji na telefonie.** Sprawdz, czy przejscie
+  grid -> karta gry (Hero na okladce) jest plynne i czy przy okladce z cache nie
+  "mruga" placeholder.
+
 ## Blokery
 
 (brak)
