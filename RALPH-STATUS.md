@@ -56,6 +56,12 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   `E2E_SERVER=http://<ip-hosta>:8800 ./scripts/e2e_app.sh` uruchomi oba pliki
   `integration_test` (logowanie/biblioteka oraz pobranie + usuniecie gry).
 
+- **M5 Task 9 - checklista na urzadzeniu i realnym NAS.** Szesc scenariuszy, ktorych
+  automat nie pokryje (RetroArch, wielogigabajtowe pliki, zrywanie sieci, zabicie
+  aplikacji w trakcie pobierania) - spisane w `docs/testing-m5.md`; wypelnij kolumne
+  Wynik. Punkt 5 (usuwanie ROM-ow bez ruszania `saves/`/`states/`) to kluczowe
+  kryterium bezpieczenstwa M5.
+
 ## Blokery
 
 (brak)

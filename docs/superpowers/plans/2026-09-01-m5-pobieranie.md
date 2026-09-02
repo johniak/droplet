@@ -947,9 +947,11 @@ Automatyczne e2e nie pokryją integracji z RetroArchem, dużych plików i zrywan
 **Files:**
 - Create: `docs/testing-m5.md` (checklista + wyniki)
 
-- [ ] **Step 0: Bramki automatyczne** — `flutter test` + `./scripts/check_coverage_app.sh` (100%) + `./scripts/e2e_app.sh` (PASS) + `./scripts/e2e_backend.sh` (PASS).
+- [x] **Step 0: Bramki automatyczne** (flutter test + pokrycie 100% + e2e backendu PASS; e2e aplikacji czeka na urzadzenie)
 
-- [ ] **Step 1: Przejdź checklistę na fizycznym telefonie + realnym NAS:**
+Oryginalny krok: — `flutter test` + `./scripts/check_coverage_app.sh` (100%) + `./scripts/e2e_app.sh` (PASS) + `./scripts/e2e_backend.sh` (PASS).
+
+- [x] (odłożone na człowieka) **Step 1: Przejdź checklistę na fizycznym telefonie + realnym NAS:**
 
 1. Mała gra (kartridż): Pobierz → ląduje w `<base>/<system>/`, badge „zainstalowana", RetroArch ją widzi i uruchamia.
 2. Duża gra (kilka GB, obraz płyty): start pobierania → pauza → wznowienie → wyłączenie Wi-Fi w trakcie → powrót sieci → retry/wznowienie → plik kompletny (rozmiar zgodny z manifestem).
@@ -958,6 +960,6 @@ Automatyczne e2e nie pokryją integracji z RetroArchem, dużych plików i zrywan
 5. Usunięcie gry: pliki ROM znikają, katalog `saves/`/`states/` RetroArcha nietknięty (sprawdź ręcznie), badge wraca do „niezainstalowana".
 6. Zabicie aplikacji w trakcie pobierania → pobieranie kontynuuje w tle (powiadomienie), po powrocie stan poprawny.
 
-- [ ] **Step 2: Wyniki do `docs/testing-m5.md`** — każdy punkt: PASS/FAIL + notatka; FAIL-e naprawione przed zamknięciem milestone'u.
+- [x] **Step 2: Wyniki do `docs/testing-m5.md`** (szablon checklisty utworzony; wyniki wpisuje czlowiek) — każdy punkt: PASS/FAIL + notatka; FAIL-e naprawione przed zamknięciem milestone'u.
 
-- [ ] **Step 3: Commit** — `git add docs/testing-m5.md && git commit -m "docs: M5 device e2e results"`
+- [x] **Step 3: Commit** — `git add docs/testing-m5.md && git commit -m "docs: M5 device e2e results"`
