@@ -19,7 +19,7 @@ class FoldersScreen extends ConsumerWidget {
       body: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, kListBottomPad),
+          padding: EdgeInsets.fromLTRB(16, 8, 16, listBottomPad(context)),
           children: [
             Row(
               children: [

@@ -11,10 +11,19 @@ import 'install_badge.dart';
 
 /// Okładka 3:4 z odznaką — wspólny kawałek kafla gridu i kafla półki.
 class CoverThumb extends ConsumerWidget {
-  const CoverThumb({super.key, required this.game, this.hero = false});
+  const CoverThumb({
+    super.key,
+    required this.game,
+    this.hero = false,
+    this.showBadge = true,
+  });
 
   final GameSummary game;
   final bool hero;
+
+  /// Kafelek pobierania ma własny stan i 40 px szerokości — odznaka „na
+  /// urządzeniu" byłaby tam nieczytelna i myląca, więc da się ją wyłączyć.
+  final bool showBadge;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -43,11 +52,12 @@ class CoverThumb extends ConsumerWidget {
               position: DecorationPosition.foreground,
               child: image,
             ),
-            Positioned(
-              right: 6,
-              top: 6,
-              child: InstallBadge(gameId: game.id),
-            ),
+            if (showBadge)
+              Positioned(
+                right: 6,
+                top: 6,
+                child: InstallBadge(gameId: game.id),
+              ),
           ],
         ),
       ),

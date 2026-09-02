@@ -25,7 +25,7 @@ class DownloadsScreen extends ConsumerWidget {
       body: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, kListBottomPad),
+          padding: EdgeInsets.fromLTRB(16, 10, 16, listBottomPad(context)),
           children: [
             const Text(
               'Pobierania',
@@ -100,6 +100,7 @@ class _DownloadCard extends ConsumerWidget {
           SizedBox(
             width: 40,
             child: CoverThumb(
+              showBadge: false,
               game: GameSummary(
                 id: progress.gameId,
                 title: progress.title,

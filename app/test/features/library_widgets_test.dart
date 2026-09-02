@@ -433,6 +433,70 @@ void main() {
     expect(find.byType(GameTile), findsNWidgets(2));
   });
 
+  testWidgets('GamesGrid resolves its bottom padding from MediaQuery', (
+    tester,
+  ) async {
+    // Powłoka ma extendBody: true, więc padding.bottom w gałęzi to już
+    // wysokość paska plus wcięcie systemowe — siatka dokłada tylko 16.
+    await tester.pumpWidget(
+      _app(
+        const MediaQuery(
+          data: MediaQueryData(padding: EdgeInsets.only(bottom: 120)),
+          child: GamesGrid(games: []),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final grid = tester.widget<GridView>(find.byType(GridView));
+    expect((grid.padding! as EdgeInsets).bottom, 136);
+  });
+
+  testWidgets('GamesGrid honours an explicit padding', (tester) async {
+    await tester.pumpWidget(
+      _app(
+        const GamesGrid(games: [], padding: EdgeInsets.all(4)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final grid = tester.widget<GridView>(find.byType(GridView));
+    expect(grid.padding, const EdgeInsets.all(4));
+  });
+
+  testWidgets('CoverThumb without a badge renders no InstallBadge', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        Row(
+          children: [
+            SizedBox(width: 40, child: CoverThumb(game: g(1, 'A'))),
+            SizedBox(
+              width: 40,
+              child: CoverThumb(game: g(2, 'B'), showBadge: false),
+            ),
+          ],
+        ),
+        overrides: [
+          for (final id in [1, 2])
+            localStateProvider(id).overrideWith(
+              (ref) async => local(InstallStatus.installed),
+            ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(InstallBadge), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byWidgetPredicate(
+          (w) => w is CoverThumb && !w.showBadge,
+        ),
+        matching: find.byType(InstallBadge),
+      ),
+      findsNothing,
+    );
+  });
+
   testWidgets('GamesGrid honours routeFor for custom routes', (tester) async {
     await tester.pumpWidget(
       _app(

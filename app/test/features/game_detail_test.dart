@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:droplet/core/api/api_client.dart';
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/local_state.dart';
@@ -17,6 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http_mock_adapter/http_mock_adapter.dart';
 
 import '../fakes/fake_downloader_port.dart';
 
@@ -108,6 +110,34 @@ void main() {
     expect(formatBytes(1500000000), '1.4 GB');
     expect(formatBytes(1023), '1023 B');
     expect(formatBytes(1024), '1.0 KB');
+  });
+
+  test('gameDetailProvider reads the detail through the API client', () async {
+    // Jedyny test dotykający prawdziwego ciała providera — ekrany i odznaki
+    // zawsze go nadpisują.
+    final dio = Dio(BaseOptions(baseUrl: 'http://nas:8000'));
+    DioAdapter(dio: dio).onGet(
+      '/api/games/7/',
+      (s) => s.reply(200, {
+        'id': 7,
+        'title': 'Hollow Knight',
+        'system_code': 'switch',
+        'system_name': 'Switch',
+        'has_cover': false,
+        'total_size': 1,
+        'files': <Map<String, dynamic>>[],
+      }),
+    );
+    final container = ProviderContainer(
+      overrides: [
+        apiClientProvider.overrideWithValue(
+          ApiClient(baseUrl: 'http://nas:8000', token: 't', dio: dio),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    final detail = await container.read(gameDetailProvider(7).future);
+    expect(detail.systemName, 'Switch');
   });
 
   test('bytesToFetch skips files already on disk', () {
@@ -332,5 +362,24 @@ void main() {
     );
     await tester.pump();
     expect(find.byType(PulseBox), findsWidgets);
+    // Ekran nie ma AppBara — bez tego przycisku szkielet byłby ślepym
+    // zaułkiem na nawigacji trójprzyciskowej.
+    expect(find.byKey(const Key('back-button')), findsOneWidget);
+  });
+
+  testWidgets('the error state can go back', (tester) async {
+    await _phoneSurface(tester);
+    await tester.pumpWidget(
+      _screen(
+        _detail,
+        detailOverride: gameDetailProvider(7)
+            .overrideWith((ref) async => throw StateError('x')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Coś poszło nie tak'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('back-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Home'), findsOneWidget);
   });
 }

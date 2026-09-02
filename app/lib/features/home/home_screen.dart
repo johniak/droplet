@@ -20,12 +20,15 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  var _announcedNew = false;
+  /// Zatrzask po tożsamości snapshotu, nie po fladze bool: każde kolejne
+  /// odświeżenie biblioteki to nowy obiekt, więc nowe gry ogłaszamy znowu,
+  /// a wielokrotne przebudowy tego samego snapshotu — tylko raz.
+  LibrarySnapshot? _lastAnnounced;
 
   /// Raz na snapshot: co przyniosło odświeżenie.
   void _announceNewGames(LibrarySnapshot snapshot) {
-    if (_announcedNew) return;
-    _announcedNew = true;
+    if (identical(snapshot, _lastAnnounced)) return;
+    _lastAnnounced = snapshot;
     final count = newGameCount(
       snapshot.previousIds,
       [for (final g in snapshot.games) g.id],
@@ -147,14 +150,27 @@ class _Shelves extends ConsumerWidget {
     final shelves = ref.watch(homeShelvesProvider).value;
     if (shelves == null) return const HomeSkeleton();
     return ListView(
-      padding: const EdgeInsets.only(bottom: kListBottomPad),
+      padding: EdgeInsets.only(bottom: listBottomPad(context)),
+      // Stałe klucze: półka „Na urządzeniu" pojawia się dopiero, gdy odznaki
+      // rozwiążą stan lokalny, więc bez nich wstawienie jej w środek listy
+      // przesuwałoby stan (pozycję scrolla) półek systemowych o jedno miejsce.
       children: [
-        Shelf(title: 'Ostatnio dodane', games: shelves.recent, cardWidth: 120),
+        Shelf(
+          key: const ValueKey('shelf-recent'),
+          title: 'Ostatnio dodane',
+          games: shelves.recent,
+          cardWidth: 120,
+        ),
         if (shelves.installed.isNotEmpty)
-          Shelf(title: 'Na urządzeniu', games: shelves.installed),
+          Shelf(
+            key: const ValueKey('shelf-installed'),
+            title: 'Na urządzeniu',
+            games: shelves.installed,
+          ),
         for (final shelf in shelves.systems)
           if (shelf.games.isNotEmpty)
             Shelf(
+              key: ValueKey('shelf-${shelf.system.code}'),
               title: shelf.system.name,
               trailing: '${shelf.games.length} ›',
               games: shelf.games,
@@ -247,7 +263,7 @@ class HomeSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-        padding: const EdgeInsets.fromLTRB(16, 18, 0, kListBottomPad),
+        padding: EdgeInsets.fromLTRB(16, 18, 0, listBottomPad(context)),
         children: [
           for (var s = 0; s < 3; s++) ...[
             const PulseBox(height: 18, width: 140),

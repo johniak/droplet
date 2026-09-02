@@ -88,10 +88,20 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   widoczny na karcie gry i w widoku systemu, dolna nawigacja nie zasłania ostatniego
   wiersza list, pull‑to‑refresh na ekranie głównym, e2e:
   `E2E_SERVER=http://<ip>:8800 ./scripts/e2e_app.sh`.
+  Sprawdź też: tryb nawigacji trójprzyciskowej (dolne wcięcie systemowe jest
+  wtedy najwyższe — listy nie mogą chować ostatniego wiersza pod paskiem), duża
+  skala czcionek (Ustawienia → Wyświetlanie → Rozmiar czcionki na maksimum),
+  animacja wejścia (push) na przezroczysty scaffold karty gry.
   Status automatyczny: **e2e zielone na emulatorze** (`droplet`, API 35,
   `E2E_SERVER=http://10.0.2.2:8800`, 2026-09-02) — oba pliki `integration_test`
   przechodzą (`All tests passed!`, `+2 -0`). Wizualna akceptacja na fizycznym
   telefonie nadal po Twojej stronie.
+  - Ograniczenie do zapamiętania przy akceptacji: filtry „Na urządzeniu" /
+    „Do aktualizacji" oraz półka „Na urządzeniu" znają tylko te gry, których
+    kafelek już się wyrenderował — zbiory id zasilają odznaki (`InstallBadge`),
+    więc gra spoza obejrzanego kawałka listy nie wpadnie do filtra (to samo
+    ograniczenie co w M6, redesign go nie zmienia). Planowane wyjście: cache
+    lokalnego skanu per system albo zbiorczy endpoint manifestu z serwera.
 
 - **Emulator Androida jest gotowy** — `droplet` (API 35, arm64) w `~/Library/Android/sdk`.
   Odpalenie: `~/Library/Android/sdk/emulator/emulator -avd droplet &`, potem

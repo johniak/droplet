@@ -8,12 +8,15 @@ class GamesGrid extends StatelessWidget {
   const GamesGrid({
     super.key,
     required this.games,
-    this.padding = const EdgeInsets.fromLTRB(16, 12, 16, kListBottomPad),
+    this.padding,
     this.routeFor,
   });
 
   final List<GameSummary> games;
-  final EdgeInsets padding;
+
+  /// Domyślnie 16/12/16 z dolnym marginesem spod pływającego paska —
+  /// liczonym z `MediaQuery`, więc rozwiązywanym dopiero w `build`.
+  final EdgeInsets? padding;
 
   /// Trasa dla danego id — domyślnie `/game/<id>`. Ekran systemu (kolejny
   /// task) podaje `(id) => '/system/<code>/game/<id>'`, żeby stos nawigacji
@@ -29,7 +32,8 @@ class GamesGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GridView.builder(
-        padding: padding,
+        padding: padding ??
+            EdgeInsets.fromLTRB(16, 12, 16, listBottomPad(context)),
         gridDelegate: delegate,
         itemCount: games.length,
         itemBuilder: (_, i) => GameTile(

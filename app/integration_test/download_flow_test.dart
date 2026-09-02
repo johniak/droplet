@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:droplet/core/api/api_client.dart';
 import 'package:droplet/main.dart';
 import 'package:flutter/material.dart';
@@ -58,10 +60,18 @@ void main() {
     }
     expect(installed, isTrue, reason: 'pobieranie nie zakończyło się w 60 s');
 
+    // Pigułka „Zainstalowana" czyta stan lokalny, ale to plik na dysku jest
+    // dowodem — bez tej asercji test przeszedłby też, gdyby manager tylko
+    // zameldował sukces. Domyślny podkatalog to kod systemu (dirFor).
+    final romFile = File('$baseDir/snes/Super Mario World (USA).sfc');
+    expect(romFile.existsSync(), isTrue, reason: 'brak ROM-u pod $romFile');
+    expect(romFile.lengthSync(), 4); // rozmiar z fixture-library
+
     await tester.tap(find.text('Usuń z urządzenia'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Usuń'));
-    await tester.pumpAndSettle();
+    await tester.pumpAndSettle(const Duration(seconds: 3));
+    expect(romFile.existsSync(), isFalse, reason: 'ROM został po usunięciu');
     expect(find.textContaining('Pobierz ·'), findsOneWidget);
   });
 }

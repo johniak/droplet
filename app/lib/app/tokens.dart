@@ -19,7 +19,13 @@ const kRadiusBar = 26.0;
 const kNavHeight = 64.0;
 
 /// Dolny padding list pod pływającym paskiem nawigacji.
-const kListBottomPad = 104.0;
+///
+/// Powłoka ma `extendBody: true`, więc `MediaQuery.paddingOf(context).bottom`
+/// wewnątrz gałęzi to już wysokość paska plus wcięcie systemowe (przy
+/// nawigacji trójprzyciskowej sporo więcej niż przy gestach). Stała 104 dp
+/// nie doszacowywała tego drugiego przypadku — liczymy realny odstęp.
+double listBottomPad(BuildContext context) =>
+    MediaQuery.paddingOf(context).bottom + 16;
 
 const kPrimaryGradient = LinearGradient(colors: [kAccent, kAccentAlt]);
 

@@ -80,7 +80,85 @@ Widget _app({
       child: MaterialApp.router(routerConfig: _router()),
     );
 
+/// Ten sam ekran co `_app`, ale z uchwytem na kontener — testy, które muszą
+/// dotknąć notifiera albo unieważnić provider, potrzebują go z zewnątrz.
+Widget _appWithContainer(
+  void Function(ProviderContainer) onContainer, {
+  Override? snapshotOverride,
+  Override? local1Override,
+}) => ProviderScope(
+      overrides: [
+        snapshotOverride ??
+            librarySnapshotProvider.overrideWith((ref) async => snap()),
+        local1Override ??
+            localStateProvider(1).overrideWith((ref) async => _none),
+        localStateProvider(2).overrideWith((ref) async => _none),
+      ],
+      child: Consumer(
+        builder: (context, ref, _) {
+          onContainer(ProviderScope.containerOf(context));
+          return MaterialApp.router(routerConfig: _router());
+        },
+      ),
+    );
+
 void main() {
+  testWidgets('shelves keep stable keys when the installed shelf appears', (
+    tester,
+  ) async {
+    late ProviderContainer container;
+    // Stan lokalny gry 1 nigdy się nie rozwiązuje, więc jej odznaka nie
+    // zasila zbioru id — o „na urządzeniu" decyduje wyłącznie wpis poniżej.
+    final pending = Completer<LocalGameState>();
+    await tester.pumpWidget(
+      _appWithContainer(
+        (c) => container = c,
+        local1Override:
+            localStateProvider(1).overrideWith((ref) => pending.future),
+      ),
+    );
+    await tester.pumpAndSettle();
+    const snesKey = ValueKey('shelf-snes');
+    expect(find.byKey(const ValueKey('shelf-installed')), findsNothing);
+    expect(find.byKey(snesKey), findsOneWidget);
+    final before = tester.element(find.byKey(snesKey));
+
+    // Odznaka kafelka zgłasza „na urządzeniu" dopiero po rozwiązaniu stanu
+    // lokalnego — półka wskakuje wtedy w środek listy.
+    container.read(installedIdsProvider.notifier).mark(1, installed: true);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('shelf-installed')), findsOneWidget);
+    expect(find.byKey(snesKey), findsOneWidget);
+    // Ten sam element, mimo wstawki przed nim: klucz utrzymał stan półki.
+    expect(identical(tester.element(find.byKey(snesKey)), before), isTrue);
+    expect(find.byKey(const ValueKey('shelf-recent')), findsOneWidget);
+  });
+
+  testWidgets('a later refresh announces new games again', (tester) async {
+    late ProviderContainer container;
+    await tester.pumpWidget(
+      _appWithContainer(
+        (c) => container = c,
+        // Każde wywołanie buduje nowy snapshot — zatrzask po tożsamości
+        // obiektu, nie po fladze bool, musi to zauważyć.
+        snapshotOverride: librarySnapshotProvider.overrideWith(
+          (ref) async => snap(previous: {1}),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Nowe w bibliotece: 1 gier'), findsOneWidget);
+    // Poczekaj, aż pasek sam zniknie (domyślne 4 s), żeby drugie wystąpienie
+    // było nowym paskiem, a nie resztką pierwszego.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    expect(find.text('Nowe w bibliotece: 1 gier'), findsNothing);
+
+    container.invalidate(librarySnapshotProvider);
+    await tester.pumpAndSettle();
+    expect(find.text('Nowe w bibliotece: 1 gier'), findsOneWidget);
+  });
+
   testWidgets('shelves: recent + per system, header opens the system', (
     tester,
   ) async {

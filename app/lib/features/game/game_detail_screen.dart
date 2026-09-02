@@ -56,15 +56,33 @@ class GameDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(gameDetailProvider(gameId));
-    return detail.when(
-      loading: () => const Scaffold(body: _DetailSkeleton()),
-      error: (error, _) => Scaffold(
-        body: _Error(
-          message: humanizeError(error),
-          onRetry: () => ref.invalidate(gameDetailProvider(gameId)),
+    // Wstecz stoi nad wszystkimi trzema gałęziami — ekran nie ma AppBara, a
+    // szkielet i błąd nie miały wcześniej żadnego wyjścia poza gestem
+    // systemowym (na nawigacji trójprzyciskowej: żadnego).
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        detail.when(
+          loading: () => const Scaffold(body: _DetailSkeleton()),
+          error: (error, _) => Scaffold(
+            body: _Error(
+              message: humanizeError(error),
+              onRetry: () => ref.invalidate(gameDetailProvider(gameId)),
+            ),
+          ),
+          data: (game) => _Detail(game: game),
         ),
-      ),
-      data: (game) => _Detail(game: game),
+        Positioned(
+          top: MediaQuery.paddingOf(context).top + 8,
+          left: 12,
+          child: CircleIconButton(
+            key: const Key('back-button'),
+            icon: Icons.arrow_back_rounded,
+            tooltip: 'Wstecz',
+            onPressed: () => context.pop(),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -116,7 +134,7 @@ class _DetailState extends ConsumerState<_Detail> {
     } on InsufficientSpaceException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
+          .showSnackBar(SnackBar(content: Text(humanizeError(e))));
     }
   }
 
@@ -128,67 +146,53 @@ class _DetailState extends ConsumerState<_Detail> {
       grouped.putIfAbsent(labelFor(file), () => []).add(file);
     }
     return Scaffold(
-      body: Stack(
-        children: [
-          CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(child: _Hero(game: game)),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-                sliver: SliverList.list(
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(child: _Hero(game: game)),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+            sliver: SliverList.list(
+              children: [
+                Text(
+                  game.title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: kText,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    height: 1.15,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 6,
+                  runSpacing: 6,
                   children: [
-                    Text(
-                      game.title,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: kText,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        height: 1.15,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        Pill(game.systemName),
-                        Pill(formatBytes(game.totalSize)),
-                        if (local.value case final state?)
-                          if (_statePill(state) case final text?)
-                            Pill(text, accent: true),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    for (final entry in grouped.entries) ...[
-                      SectionLabel(
-                        entry.key,
-                        trailing: entry.key == roleLabels[FileRole.update]
-                            ? 'najnowsza domyślnie'
-                            : null,
-                      ),
-                      for (final file in entry.value)
-                        _FileRow(
-                          file: file,
-                          selected: _selected.contains(file.id),
-                          onChanged: (on) => _toggle(file, on),
-                        ),
-                    ],
+                    Pill(game.systemName),
+                    Pill(formatBytes(game.totalSize)),
+                    if (local.value case final state?)
+                      if (_statePill(state) case final text?)
+                        Pill(text, accent: true),
                   ],
                 ),
-              ),
-            ],
-          ),
-          Positioned(
-            top: MediaQuery.paddingOf(context).top + 8,
-            left: 12,
-            child: CircleIconButton(
-              key: const Key('back-button'),
-              icon: Icons.arrow_back_rounded,
-              tooltip: 'Wstecz',
-              onPressed: () => context.pop(),
+                const SizedBox(height: 8),
+                for (final entry in grouped.entries) ...[
+                  SectionLabel(
+                    entry.key,
+                    trailing: entry.key == roleLabels[FileRole.update]
+                        ? 'najnowsza domyślnie'
+                        : null,
+                  ),
+                  for (final file in entry.value)
+                    _FileRow(
+                      file: file,
+                      selected: _selected.contains(file.id),
+                      onChanged: (on) => _toggle(file, on),
+                    ),
+                ],
+              ],
             ),
           ),
         ],
@@ -228,8 +232,17 @@ class _DetailState extends ConsumerState<_Detail> {
   }
 }
 
+/// Nasycenie 1.4 dla rozmytego tła — standardowa macierz saturacji na
+/// luminancji Rec. 709, żeby wyblakła po rozmyciu okładka znów miała kolor.
+const _saturation = <double>[
+  1.31496, -0.28608, -0.02888, 0, 0, //
+  -0.08504, 1.11392, -0.02888, 0, 0, //
+  -0.08504, -0.28608, 1.37112, 0, 0, //
+  0, 0, 0, 1, 0, //
+];
+
 /// Rozmyta okładka jako tło, ostra na wierzchu; wstecz to osobny,
-/// przyklejony widget nad scrollem (zob. `_Detail.build`).
+/// przyklejony widget nad scrollem (zob. `GameDetailScreen.build`).
 class _Hero extends ConsumerWidget {
   const _Hero({required this.game});
 
@@ -246,14 +259,25 @@ class _Hero extends ConsumerWidget {
         fit: StackFit.expand,
         children: [
           if (game.hasCover)
-            ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-              child: CoverImage(
-                title: game.title,
-                url: url,
-                headers: headers,
-                hasCover: true,
-                fit: BoxFit.cover,
+            // Skala 1.15 pod ClipRect: rozmycie przy krawędziach ściąga
+            // przezroczystość zza obrazka i zostawia jasną obwódkę —
+            // powiększony obrazek wypycha ją poza kadr.
+            ClipRect(
+              child: Transform.scale(
+                scale: 1.15,
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+                  child: ColorFiltered(
+                    colorFilter: const ColorFilter.matrix(_saturation),
+                    child: CoverImage(
+                      title: game.title,
+                      url: url,
+                      headers: headers,
+                      hasCover: true,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
               ),
             )
           else
