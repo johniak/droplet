@@ -24,10 +24,18 @@ Future<void> deleteLocalFiles(
     if (file.existsSync()) file.deleteSync();
   }
   // Katalog gry znika tylko wtedy, gdy nic w nim nie zostało — save'y i stany
-  // zapisu obok ROM-u trzymają go przy życiu.
-  if (gameDir != null) {
-    final dir = Directory(gameDir);
-    if (dir.existsSync() && dir.listSync().isEmpty) dir.deleteSync();
+  // zapisu obok ROM-u trzymają go przy życiu. Puste podkatalogi (disc1/,
+  // disc2/ po usunięciu ROM-ów) same by go trzymały przy życiu, więc lecą
+  // pierwsze — od najgłębszego, żeby rodzic zdążył zrobić się pusty.
+  if (gameDir == null) return;
+  final dir = Directory(gameDir);
+  if (!dir.existsSync()) return;
+  final nested = [
+    for (final e in dir.listSync(recursive: true, followLinks: false))
+      if (e is Directory) e,
+  ]..sort((a, b) => b.path.length.compareTo(a.path.length));
+  for (final child in [...nested, dir]) {
+    if (child.listSync().isEmpty) child.deleteSync();
   }
 }
 

@@ -62,6 +62,43 @@ void main() {
     expect(states[3]!.status, InstallStatus.none);
   });
 
+  test('hidden files and folders are skipped, not reported as unknown', () {
+    put('snes/Mario (USA)/Mario (USA).sfc');
+    put('snes/Mario (USA)/.DS_Store', 9);
+    put('snes/Mario (USA)/.thumbs/cache.png', 9);
+    put('snes/.nomedia', 1);
+    put('snes/.thumbnails/x.png', 7);
+    final index = scanDevice(settings, ['snes'], {'snes/Mario (USA)'});
+    expect(index.games['snes']!['Mario (USA)'], {'Mario (USA).sfc': 4});
+    expect(index.unknown, isEmpty);
+  });
+
+  test('a system path that is a file yields nothing and does not throw', () {
+    put('snes', 4); // "katalog" systemu okazuje się plikiem
+    expect(scanDevice(settings, ['snes'], const {}).games, isEmpty);
+    expect(scanDevice(settings, ['snes'], const {}).unknown, isEmpty);
+  });
+
+  test('unreadable directories are skipped, the rest of the scan goes on', () {
+    put('snes/Mario (USA)/Mario (USA).sfc');
+    put('snes/Mario (USA)/locked/secret.sfc', 6);
+    put('psx/FF7/disc1/FF7 (Disc 1).bin', 8);
+    final locked = '${root.path}/snes/Mario (USA)/locked';
+    final lockedSystem = '${root.path}/psx';
+    Process.runSync('chmod', ['000', locked]);
+    Process.runSync('chmod', ['000', lockedSystem]);
+    addTearDown(() {
+      Process.runSync('chmod', ['700', locked]);
+      Process.runSync('chmod', ['700', lockedSystem]);
+    });
+    final index = scanDevice(settings, ['snes', 'psx'], {'snes/Mario (USA)', 'psx/FF7'});
+    // Nieczytelny podkatalog nie gubi reszty plików gry...
+    expect(index.games['snes']!['Mario (USA)'], {'Mario (USA).sfc': 4});
+    // ...a nieczytelny katalog systemu po prostu wypada ze skanu.
+    expect(index.games.containsKey('psx'), isFalse);
+    expect(index.unknown, isEmpty);
+  });
+
   test('size mismatch means not present', () {
     put('snes/Mario (USA)/Mario (USA).sfc', 3);
     final manifest = [

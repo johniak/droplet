@@ -230,6 +230,39 @@ void main() {
     );
   });
 
+  test('empty sub-directories go with the game folder', () async {
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    final gameDir = Directory('${root.path}/snes/FF7');
+    final discs = [
+      for (final disc in ['disc1', 'disc2'])
+        File('${gameDir.path}/$disc/$disc.bin')
+          ..parent.createSync(recursive: true)
+          ..writeAsStringSync('rom'),
+    ];
+    await deleteLocalFiles(
+      [for (final f in discs) f.path],
+      gameDir: gameDir.path,
+    );
+    expect(gameDir.existsSync(), false);
+  });
+
+  test('a sub-directory holding a save keeps the game folder alive', () async {
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    final gameDir = Directory('${root.path}/snes/FF7');
+    final rom = File('${gameDir.path}/disc1/disc1.bin')
+      ..parent.createSync(recursive: true)
+      ..writeAsStringSync('rom');
+    final save = File('${gameDir.path}/disc2/save.srm')
+      ..parent.createSync(recursive: true)
+      ..writeAsStringSync('save');
+    await deleteLocalFiles([rom.path], gameDir: gameDir.path);
+    expect(Directory('${gameDir.path}/disc1').existsSync(), false);
+    expect(save.existsSync(), true);
+    expect(gameDir.existsSync(), true);
+  });
+
   test('deleteLocalFiles ignores missing paths and folders', () async {
     final dir = Directory.systemTemp.createTempSync();
     addTearDown(() => dir.deleteSync(recursive: true));
