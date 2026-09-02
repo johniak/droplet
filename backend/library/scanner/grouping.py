@@ -1,4 +1,4 @@
-"""Group the files of one system directory into games.
+"""Group one system directory into games: every sub-directory is one game.
 
 Pure filesystem logic — no ORM — so it can be tested on temporary trees.
 """
@@ -9,6 +9,11 @@ from pathlib import Path
 from .naming import display_title, normalize_title
 from .playlists import parse_cue, parse_m3u
 from .switch import parse_switch, title_prefix
+
+SIDECAR_EXTENSIONS = frozenset(
+    {".txt", ".nfo", ".md", ".jpg", ".jpeg", ".png", ".pdf", ".sav", ".srm",
+     ".state", ".xml", ".json"}
+)
 
 
 @dataclass
@@ -23,110 +28,106 @@ class FileEntry:
 
 @dataclass
 class GameGroup:
+    folder: str
     title: str
     normalized_title: str
     switch_title_prefix: str = ""
     files: list[FileEntry] = field(default_factory=list)
 
 
+@dataclass
+class LooseEntry:
+    relative_path: str
+    size: int
+
+
 def _entry(path: Path, root: Path, role: str, disc=None, version="") -> FileEntry:
     st = path.stat()
     return FileEntry(
         relative_path=path.relative_to(root).as_posix(),
-        role=role,
-        disc_number=disc,
-        version=version,
-        size=st.st_size,
-        mtime_ns=st.st_mtime_ns,
+        role=role, disc_number=disc, version=version,
+        size=st.st_size, mtime_ns=st.st_mtime_ns,
     )
 
 
-def group_system_dir(
-    system_dir: Path, library_root: Path, *, is_switch: bool
-) -> list[GameGroup]:
-    all_files = sorted(
-        p
-        for p in system_dir.rglob("*")
-        if p.is_file()
-        and not any(part.startswith(".") for part in p.relative_to(library_root).parts)
+def _hidden(path: Path, root: Path) -> bool:
+    return any(part.startswith(".") for part in path.relative_to(root).parts)
+
+
+def _group_folder(folder: Path, root: Path, *, is_switch: bool) -> GameGroup | None:
+    files = sorted(p for p in folder.rglob("*") if p.is_file() and not _hidden(p, root))
+    if not files:
+        return None
+    file_set = set(files)
+    group = GameGroup(
+        folder=folder.relative_to(root).as_posix(),
+        title=display_title(folder.name),
+        normalized_title=normalize_title(folder.name),
     )
-    file_set = set(all_files)
     claimed: set[Path] = set()
-    groups: list[GameGroup] = []
 
     def resolve(base: Path, name: str) -> Path | None:
-        cand = base.parent / name
+        cand = (base.parent / name)
         return cand if cand in file_set else None
 
-    # 1. m3u playlists: one multi-disc game
-    for m3u in [p for p in all_files if p.suffix.lower() == ".m3u"]:
-        group = GameGroup(
-            title=display_title(m3u.stem), normalized_title=normalize_title(m3u.stem)
-        )
-        group.files.append(_entry(m3u, library_root, "support"))
+    # 1. m3u: płyty z numerami, cue/bin jako support
+    for m3u in [p for p in files if p.suffix.lower() == ".m3u"]:
+        group.files.append(_entry(m3u, root, "support"))
         claimed.add(m3u)
         for i, name in enumerate(parse_m3u(m3u.read_text(errors="replace")), start=1):
             disc = resolve(m3u, name)
             if disc is None:
                 continue
-            group.files.append(_entry(disc, library_root, "disc", disc=i))
+            group.files.append(_entry(disc, root, "disc", disc=i))
             claimed.add(disc)
             if disc.suffix.lower() == ".cue":
                 for bin_name in parse_cue(disc.read_text(errors="replace")):
                     b = resolve(disc, bin_name)
-                    if b is not None:
-                        group.files.append(_entry(b, library_root, "support"))
+                    if b is not None and b not in claimed:
+                        group.files.append(_entry(b, root, "support"))
                         claimed.add(b)
-        groups.append(group)
 
-    # 2. standalone cue sheets
-    for cue in [p for p in all_files if p.suffix.lower() == ".cue" and p not in claimed]:
-        group = GameGroup(
-            title=display_title(cue.stem), normalized_title=normalize_title(cue.stem)
-        )
-        group.files.append(_entry(cue, library_root, "base"))
+    # 2. samodzielne cue
+    for cue in [p for p in files if p.suffix.lower() == ".cue" and p not in claimed]:
+        group.files.append(_entry(cue, root, "base"))
         claimed.add(cue)
         for bin_name in parse_cue(cue.read_text(errors="replace")):
             b = resolve(cue, bin_name)
             if b is not None and b not in claimed:
-                group.files.append(_entry(b, library_root, "support"))
+                group.files.append(_entry(b, root, "support"))
                 claimed.add(b)
-        groups.append(group)
 
-    rest = [p for p in all_files if p not in claimed]
-
-    # 3. switch: group base + updates + DLC by title id family
-    if is_switch:
-        families: dict[str, GameGroup] = {}
-        for p in rest:
+    # 3. reszta: Switch wg tagów, sidecar jako other, inne jako base
+    for p in files:
+        if p in claimed:
+            continue
+        if is_switch:
             info = parse_switch(p.stem)
-            key = (
-                title_prefix(info.title_id)
-                if info.title_id
-                else normalize_title(p.stem)
-            )
-            group = families.setdefault(
-                key,
-                GameGroup(
-                    title=display_title(p.stem),
-                    normalized_title=normalize_title(p.stem),
-                    switch_title_prefix=key if info.title_id else "",
-                ),
-            )
-            if info.role == "base":
-                group.title = display_title(p.stem)
-                group.normalized_title = normalize_title(p.stem)
-            group.files.append(_entry(p, library_root, info.role, version=info.version))
-        groups.extend(families.values())
-        return groups
+            if info.role == "base" and info.title_id and not group.switch_title_prefix:
+                group.switch_title_prefix = title_prefix(info.title_id)
+            version = "" if info.role == "base" else info.version
+            group.files.append(_entry(p, root, info.role, version=version))
+        elif p.suffix.lower() in SIDECAR_EXTENSIONS:
+            group.files.append(_entry(p, root, "other"))
+        else:
+            group.files.append(_entry(p, root, "base"))
+    return group
 
-    # 4. everything else: one file = one game
-    for p in rest:
-        groups.append(
-            GameGroup(
-                title=display_title(p.stem),
-                normalized_title=normalize_title(p.stem),
-                files=[_entry(p, library_root, "base")],
+
+def group_system_dir(
+    system_dir: Path, library_root: Path, *, is_switch: bool
+) -> tuple[list[GameGroup], list[LooseEntry]]:
+    groups: list[GameGroup] = []
+    loose: list[LooseEntry] = []
+    for child in sorted(system_dir.iterdir()):
+        if _hidden(child, library_root):
+            continue
+        if child.is_dir():
+            group = _group_folder(child, library_root, is_switch=is_switch)
+            if group is not None:
+                groups.append(group)
+        elif child.is_file():
+            loose.append(
+                LooseEntry(child.relative_to(library_root).as_posix(), child.stat().st_size)
             )
-        )
-    return groups
+    return groups, loose
