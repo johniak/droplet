@@ -44,7 +44,7 @@ class _PulseBoxState extends State<PulseBox> {
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            color: kSurface,
+            color: kGlass,
             borderRadius: widget.radius ?? BorderRadius.circular(12),
           ),
         ),
