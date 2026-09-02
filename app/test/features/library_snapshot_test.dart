@@ -125,18 +125,11 @@ void main() {
     expect(snapshot.previousIds, {1});
   });
 
-  test('the games projection filters by system and search', () async {
+  test('the games projection filters by search', () async {
     final container = _container(_OkClient(), dir);
     addTearDown(container.dispose);
     expect((await container.read(gamesProvider.future)).length, 2);
 
-    container.read(selectedSystemProvider.notifier).select('psx');
-    expect(
-      (await container.read(gamesProvider.future)).single.title,
-      'Tekken',
-    );
-
-    container.read(selectedSystemProvider.notifier).select(null);
     container.read(searchQueryProvider.notifier).update('mar');
     expect((await container.read(gamesProvider.future)).single.title, 'Mario');
   });

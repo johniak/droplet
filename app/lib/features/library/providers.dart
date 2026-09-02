@@ -114,9 +114,9 @@ class InstalledOnly extends Notifier<bool> {
 final installedOnlyProvider =
     NotifierProvider<InstalledOnly, bool>(InstalledOnly.new);
 
-/// Ids of games with anything on disk — filled by the game cards as they
-/// resolve their local state.
-class InstalledIds extends Notifier<Set<int>> {
+/// Zbiór id — jeden typ dla „na urządzeniu" i „do aktualizacji"; zasilany
+/// przez odznaki na kafelkach, gdy rozwiążą stan lokalny.
+class IdSet extends Notifier<Set<int>> {
   @override
   Set<int> build() => {};
 
@@ -132,19 +132,23 @@ class InstalledIds extends Notifier<Set<int>> {
   }
 }
 
-final installedIdsProvider =
-    NotifierProvider<InstalledIds, Set<int>>(InstalledIds.new);
+final installedIdsProvider = NotifierProvider<IdSet, Set<int>>(IdSet.new);
+final updatableIdsProvider = NotifierProvider<IdSet, Set<int>>(IdSet.new);
 
-List<GameSummary> sortAndFilter(
-  List<GameSummary> games,
-  LibrarySort sort,
-  bool installedOnly,
-  Set<int> installedIds,
-) {
-  final out = [
-    for (final game in games)
-      if (!installedOnly || installedIds.contains(game.id)) game,
-  ];
+enum SystemFilter { all, installed, updatable }
+
+class SystemFilterState extends Notifier<SystemFilter> {
+  @override
+  SystemFilter build() => SystemFilter.all;
+
+  void select(SystemFilter filter) => state = filter;
+}
+
+final systemFilterProvider =
+    NotifierProvider<SystemFilterState, SystemFilter>(SystemFilterState.new);
+
+List<GameSummary> sortGames(List<GameSummary> games, LibrarySort sort) {
+  final out = [...games];
   out.sort(
     switch (sort) {
       LibrarySort.title => (a, b) =>
@@ -155,22 +159,104 @@ List<GameSummary> sortAndFilter(
   return out;
 }
 
-/// Client-side projection of the snapshot: the whole library of a single user
-/// fits in memory, and filtering locally keeps offline mode working.
+List<GameSummary> applyFilter(
+  List<GameSummary> games,
+  SystemFilter filter,
+  Set<int> installed,
+  Set<int> updatable,
+) =>
+    switch (filter) {
+      SystemFilter.all => games,
+      SystemFilter.installed =>
+        [for (final g in games) if (installed.contains(g.id)) g],
+      SystemFilter.updatable =>
+        [for (final g in games) if (updatable.contains(g.id)) g],
+    };
+
+class SystemShelf {
+  const SystemShelf({required this.system, required this.games});
+
+  final SystemModel system;
+  final List<GameSummary> games;
+}
+
+class HomeShelves {
+  const HomeShelves({
+    required this.recent,
+    required this.installed,
+    required this.systems,
+  });
+
+  final List<GameSummary> recent;
+  final List<GameSummary> installed;
+  final List<SystemShelf> systems;
+}
+
+const kRecentShelfSize = 10;
+
+HomeShelves buildShelves(
+  List<GameSummary> games,
+  List<SystemModel> systems,
+  Set<int> installedIds,
+  LibrarySort sort,
+) {
+  final recent =
+      sortGames(games, LibrarySort.recentlyAdded).take(kRecentShelfSize);
+  final installed = sortGames(
+    [for (final g in games) if (installedIds.contains(g.id)) g],
+    sort,
+  );
+  return HomeShelves(
+    recent: recent.toList(),
+    installed: installed,
+    systems: [
+      for (final system in systems)
+        SystemShelf(
+          system: system,
+          games: sortGames(
+            [for (final g in games) if (g.systemCode == system.code) g],
+            sort,
+          ),
+        ),
+    ],
+  );
+}
+
+final homeShelvesProvider = FutureProvider<HomeShelves>((ref) async {
+  final snapshot = await ref.watch(librarySnapshotProvider.future);
+  return buildShelves(
+    snapshot.games,
+    snapshot.systems,
+    ref.watch(installedIdsProvider),
+    ref.watch(sortProvider),
+  );
+});
+
+/// Gry jednego systemu po chipie filtra i sortowaniu.
+final systemGamesProvider =
+    FutureProvider.family<List<GameSummary>, String>((ref, code) async {
+  final snapshot = await ref.watch(librarySnapshotProvider.future);
+  final own = [for (final g in snapshot.games) if (g.systemCode == code) g];
+  return sortGames(
+    applyFilter(
+      own,
+      ref.watch(systemFilterProvider),
+      ref.watch(installedIdsProvider),
+      ref.watch(updatableIdsProvider),
+    ),
+    ref.watch(sortProvider),
+  );
+});
+
+/// Wyniki szukajki po całej bibliotece (ekran główny).
 final gamesProvider = FutureProvider<List<GameSummary>>((ref) async {
   final snapshot = await ref.watch(librarySnapshotProvider.future);
-  final system = ref.watch(selectedSystemProvider);
   final search = ref.watch(searchQueryProvider).trim().toLowerCase();
-  final matching = [
-    for (final game in snapshot.games)
-      if ((system == null || game.systemCode == system) &&
-          (search.isEmpty || game.title.toLowerCase().contains(search)))
-        game,
-  ];
-  return sortAndFilter(
-    matching,
+  return sortGames(
+    [
+      for (final g in snapshot.games)
+        if (search.isEmpty || g.title.toLowerCase().contains(search)) g,
+    ],
     ref.watch(sortProvider),
-    ref.watch(installedOnlyProvider),
-    ref.watch(installedIdsProvider),
   );
 });

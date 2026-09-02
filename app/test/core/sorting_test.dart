@@ -2,10 +2,10 @@ import 'package:droplet/core/api/models.dart';
 import 'package:droplet/features/library/providers.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-GameSummary g(int id, String title) => GameSummary(
+GameSummary g(int id, String title, [String system = 'x']) => GameSummary(
       id: id,
       title: title,
-      systemCode: 'x',
+      systemCode: system,
       hasCover: false,
       totalSize: 1,
     );
@@ -14,17 +14,28 @@ void main() {
   final games = [g(1, 'Zelda'), g(3, 'Aero'), g(2, 'Mario')];
 
   test('title sort', () {
-    final out = sortAndFilter(games, LibrarySort.title, false, {});
-    expect(out.map((e) => e.title).toList(), ['Aero', 'Mario', 'Zelda']);
+    expect(
+      sortGames(games, LibrarySort.title).map((e) => e.title).toList(),
+      ['Aero', 'Mario', 'Zelda'],
+    );
   });
 
   test('recently added sort', () {
-    final out = sortAndFilter(games, LibrarySort.recentlyAdded, false, {});
-    expect(out.map((e) => e.id).toList(), [3, 2, 1]);
+    expect(
+      sortGames(games, LibrarySort.recentlyAdded).map((e) => e.id).toList(),
+      [3, 2, 1],
+    );
   });
 
-  test('installed only filter', () {
-    final out = sortAndFilter(games, LibrarySort.title, true, {2});
-    expect(out.single.title, 'Mario');
+  test('filters: all / installed / updatable', () {
+    expect(applyFilter(games, SystemFilter.all, {}, {}), hasLength(3));
+    expect(
+      applyFilter(games, SystemFilter.installed, {2}, {}).single.title,
+      'Mario',
+    );
+    expect(
+      applyFilter(games, SystemFilter.updatable, {2}, {3}).single.title,
+      'Aero',
+    );
   });
 }
