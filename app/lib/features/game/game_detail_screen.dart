@@ -1,7 +1,16 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../app/theme.dart';
+import '../../app/tokens.dart';
+import '../../app/widgets/circle_icon_button.dart';
+import '../../app/widgets/glass_panel.dart';
+import '../../app/widgets/pill.dart';
+import '../../app/widgets/primary_button.dart';
+import '../../app/widgets/pulse_box.dart';
+import '../../app/widgets/section_label.dart';
 import '../../core/api/models.dart';
 import '../../core/downloads/download_manager.dart';
 import '../../core/downloads/local_state.dart';
@@ -11,7 +20,6 @@ import '../../core/downloads/storage_settings.dart';
 import '../../core/errors.dart';
 import '../../core/format.dart';
 import '../../core/session/providers.dart';
-import '../../app/widgets/pulse_box.dart';
 import '../library/providers.dart';
 import '../library/widgets/cover_image.dart';
 import 'delete_dialog.dart';
@@ -30,6 +38,24 @@ String labelFor(GameFileModel file) => file.role == FileRole.disc
     ? '${roleLabels[FileRole.disc]} ${file.discNumber ?? ''}'.trim()
     : roleLabels[file.role]!;
 
+/// Jak `humanizeError`, ale dla błędu skanu dysku dorzuca surowy komunikat —
+/// tu diagnoza (np. „brak dostępu do /roms") jest ważniejsza niż w innych
+/// miejscach, gdzie generyczny tekst wystarcza.
+String _localStateError(Object error) {
+  final generic = humanizeError(error);
+  return generic == 'Coś poszło nie tak' ? '$generic ($error)' : generic;
+}
+
+/// Ile realnie zejdzie z sieci: zaznaczone pliki, których nie ma na dysku.
+int bytesToFetch(GameDetail game, Set<int> selected, LocalGameState local) {
+  final present = {for (final p in local.presentPaths) p.split('/').last};
+  return game.files
+      .where((f) => selected.contains(f.id) && !present.contains(f.name))
+      .fold(0, (sum, f) => sum + f.size);
+}
+
+const _heroHeight = 260.0;
+
 class GameDetailScreen extends ConsumerWidget {
   const GameDetailScreen({super.key, required this.gameId});
 
@@ -38,15 +64,15 @@ class GameDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(gameDetailProvider(gameId));
-    return Scaffold(
-      body: detail.when(
-        loading: () => const _DetailSkeleton(),
-        error: (error, _) => _Error(
+    return detail.when(
+      loading: () => const Scaffold(body: _DetailSkeleton()),
+      error: (error, _) => Scaffold(
+        body: _Error(
           message: humanizeError(error),
           onRetry: () => ref.invalidate(gameDetailProvider(gameId)),
         ),
-        data: (game) => _Detail(game: game),
       ),
+      data: (game) => _Detail(game: game),
     );
   }
 }
@@ -65,10 +91,6 @@ class _DetailState extends ConsumerState<_Detail> {
 
   GameDetail get game => widget.game;
 
-  int get _selectedSize => game.files
-      .where((f) => _selected.contains(f.id))
-      .fold(0, (sum, f) => sum + f.size);
-
   void _toggle(GameFileModel file, bool? on) => setState(() {
         if (on ?? false) {
           _selected.add(file.id);
@@ -78,7 +100,6 @@ class _DetailState extends ConsumerState<_Detail> {
       });
 
   Future<void> _download(LocalGameState local) async {
-    // await, not read: the session may not have been initialised yet.
     final session = (await ref.read(sessionProvider.future))!;
     final settings = await ref.read(storageSettingsProvider.future);
     try {
@@ -109,110 +130,188 @@ class _DetailState extends ConsumerState<_Detail> {
 
   @override
   Widget build(BuildContext context) {
-    final client = game.hasCover ? ref.watch(apiClientProvider) : null;
     final local = ref.watch(localStateProvider(game.id));
     final grouped = <String, List<GameFileModel>>{};
     for (final file in game.files) {
       grouped.putIfAbsent(labelFor(file), () => []).add(file);
     }
-    return CustomScrollView(
-      slivers: [
-        SliverAppBar(
-          expandedHeight: 320,
-          pinned: true,
-          flexibleSpace: FlexibleSpaceBar(
-            background: Stack(
-              fit: StackFit.expand,
-              children: [
-                Hero(
-                  tag: 'cover-${game.id}',
+    return Scaffold(
+      body: Stack(
+        children: [
+          CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(child: _Hero(game: game)),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+                sliver: SliverList.list(
+                  children: [
+                    Text(
+                      game.title,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: kText,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        height: 1.15,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        Pill(game.systemName),
+                        Pill(formatBytes(game.totalSize)),
+                        if (local.value case final state?)
+                          if (_statePill(state) case final text?)
+                            Pill(text, accent: true),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    for (final entry in grouped.entries) ...[
+                      SectionLabel(
+                        entry.key,
+                        trailing: entry.key == roleLabels[FileRole.update]
+                            ? 'najnowsza domyślnie'
+                            : null,
+                      ),
+                      for (final file in entry.value)
+                        _FileRow(
+                          file: file,
+                          selected: _selected.contains(file.id),
+                          onChanged: (on) => _toggle(file, on),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          Positioned(
+            top: MediaQuery.paddingOf(context).top + 8,
+            left: 12,
+            child: CircleIconButton(
+              key: const Key('back-button'),
+              icon: Icons.arrow_back_rounded,
+              tooltip: 'Wstecz',
+              onPressed: () => context.pop(),
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: local.when(
+        loading: () => const _BottomBar(
+          child: PrimaryButton(label: 'Sprawdzam pliki...', onPressed: null),
+        ),
+        error: (e, _) => _BottomBar(
+          child: Text(
+            _localStateError(e),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: kTextDim),
+          ),
+        ),
+        data: (state) => _BottomBar(
+          child: _Actions(
+            game: game,
+            state: state,
+            toFetch: bytesToFetch(game, _selected, state),
+            offline: ref.watch(isOfflineProvider),
+            onDownload: () => _download(state),
+            onDelete: () => confirmAndDelete(context, ref, game.id, state),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String? _statePill(LocalGameState state) {
+    if (state.updateAvailable) return 'Jest aktualizacja';
+    return switch (state.status) {
+      InstallStatus.installed => 'Zainstalowana',
+      InstallStatus.partial => 'Częściowo',
+      InstallStatus.none => null,
+    };
+  }
+}
+
+/// Rozmyta okładka jako tło, ostra na wierzchu, wstecz w rogu.
+class _Hero extends ConsumerWidget {
+  const _Hero({required this.game});
+
+  final GameDetail game;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final client = game.hasCover ? ref.watch(apiClientProvider) : null;
+    final url = client?.coverUrl(game.id, size: 'full') ?? '';
+    final headers = client?.authHeaders ?? const <String, String>{};
+    return SizedBox(
+      height: _heroHeight,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (game.hasCover)
+            ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+              child: CoverImage(
+                title: game.title,
+                url: url,
+                headers: headers,
+                hasCover: true,
+                fit: BoxFit.cover,
+              ),
+            )
+          else
+            const DecoratedBox(
+              decoration: BoxDecoration(gradient: coverPlaceholderGradient),
+            ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0x80000000), Colors.transparent, kBgMid],
+                stops: [0.0, 0.35, 1.0],
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Hero(
+                tag: 'cover-${game.id}',
+                child: Container(
+                  height: 150,
+                  width: 150 * 3 / 4,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(kRadiusCover),
+                    border: Border.all(color: kGlassBorder),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x99000000),
+                        blurRadius: 40,
+                        offset: Offset(0, 20),
+                      ),
+                    ],
+                  ),
+                  clipBehavior: Clip.antiAlias,
                   child: CoverImage(
                     title: game.title,
-                    url: client?.coverUrl(game.id, size: 'full') ?? '',
-                    headers: client?.authHeaders ?? const {},
+                    url: url,
+                    headers: headers,
                     hasCover: game.hasCover,
-                    // The detail header is a backdrop, so it may crop.
                     fit: BoxFit.cover,
                   ),
                 ),
-                const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.center,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, kBg],
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          sliver: SliverList.list(
-            children: [
-              Text(
-                game.title,
-                style: const TextStyle(
-                  color: kText,
-                  fontSize: 26,
-                  fontWeight: FontWeight.w600,
-                  height: 1.15,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${game.systemName} · ${formatBytes(game.totalSize)}',
-                style: const TextStyle(color: kTextDim, fontSize: 14),
-              ),
-              const SizedBox(height: 20),
-              local.when(
-                // A static placeholder, not a spinner: an indeterminate
-                // animation never lets widget tests settle.
-                loading: () => const FilledButton(
-                  onPressed: null,
-                  child: Text('Sprawdzam pliki...'),
-                ),
-                error: (e, _) => Text(
-                  humanizeError(e),
-                  style: const TextStyle(color: kTextDim),
-                ),
-                data: (state) => _Actions(
-                  state: state,
-                  selectedSize: _selectedSize,
-                  // Offline the server is unreachable, so downloading is off.
-                  onDownload:
-                      ref.watch(isOfflineProvider) ? null : () => _download(state),
-                  onDelete: () =>
-                      confirmAndDelete(context, ref, game.id, state),
-                ),
-              ),
-              const SizedBox(height: 28),
-              for (final entry in grouped.entries) ...[
-                Text(
-                  entry.key,
-                  style: const TextStyle(
-                    color: kAccent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                for (final file in entry.value)
-                  _FileRow(
-                    file: file,
-                    selected: _selected.contains(file.id),
-                    onChanged: (on) => _toggle(file, on),
-                  ),
-                const SizedBox(height: 20),
-              ],
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -229,28 +328,132 @@ class _FileRow extends StatelessWidget {
   final ValueChanged<bool?> onChanged;
 
   @override
-  Widget build(BuildContext context) {
-    final version = file.version.isEmpty ? '' : ' · ${file.version}';
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          Checkbox(value: selected, onChanged: onChanged),
-          Expanded(
-            child: Text(
-              file.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: kText, fontSize: 14),
-            ),
+  Widget build(BuildContext context) => Opacity(
+        opacity: selected ? 1 : 0.55,
+        child: GlassPanel(
+          margin: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.fromLTRB(6, 4, 12, 4),
+          onTap: () => onChanged(!selected),
+          child: Row(
+            children: [
+              Checkbox(value: selected, onChanged: onChanged),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      file.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: kText, fontSize: 14),
+                    ),
+                    if (file.version.isNotEmpty)
+                      Text(
+                        file.version,
+                        style: const TextStyle(color: kTextDim, fontSize: 11),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                formatBytes(file.size),
+                style: const TextStyle(color: kTextDim, fontSize: 13),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
+        ),
+      );
+}
+
+/// Dolny pasek: gradient do tła, żeby lista „wchodziła" pod przycisk.
+class _BottomBar extends StatelessWidget {
+  const _BottomBar({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.transparent, kBgBottom],
+            stops: [0.0, 0.4],
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: child,
+          ),
+        ),
+      );
+}
+
+class _Actions extends ConsumerWidget {
+  const _Actions({
+    required this.game,
+    required this.state,
+    required this.toFetch,
+    required this.offline,
+    required this.onDownload,
+    required this.onDelete,
+  });
+
+  final GameDetail game;
+  final LocalGameState state;
+  final int toFetch;
+  final bool offline;
+  final VoidCallback onDownload;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(storageSettingsProvider).value;
+    final dir = settings?.dirFor(game.systemCode);
+    final free = settings == null
+        ? null
+        : ref.watch(freeBytesProvider(settings.baseDir)).value;
+    final installed =
+        state.status == InstallStatus.installed && !state.updateAvailable;
+    final label = state.updateAvailable
+        ? 'Pobierz aktualizację · ${formatBytes(toFetch)}'
+        : 'Pobierz · ${formatBytes(toFetch)}';
+    final footer = offline
+        ? 'Offline — pobieranie niedostępne'
+        : [
+            if (free != null) 'Wolne ${formatBytes(free)}',
+            if (dir != null) 'zapis: $dir',
+          ].join(' · ');
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (installed)
+          PrimaryButton(label: 'Usuń z urządzenia', onPressed: onDelete, ghost: true)
+        else ...[
+          PrimaryButton(label: label, onPressed: offline ? null : onDownload),
+          if (state.presentPaths.isNotEmpty)
+            TextButton(
+              onPressed: onDelete,
+              child: const Text(
+                'Usuń z urządzenia',
+                style: TextStyle(color: kTextDim),
+              ),
+            ),
+        ],
+        if (footer.isNotEmpty) ...[
+          const SizedBox(height: 6),
           Text(
-            '${formatBytes(file.size)}$version',
-            style: const TextStyle(color: kTextDim, fontSize: 13),
+            footer,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: kTextDim, fontSize: 11),
           ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -274,92 +477,35 @@ class _Error extends StatelessWidget {
                 style: const TextStyle(color: kTextDim),
               ),
               const SizedBox(height: 16),
-              FilledButton(onPressed: onRetry, child: const Text('Ponów')),
+              SizedBox(
+                width: 160,
+                child: PrimaryButton(label: 'Ponów', onPressed: onRetry),
+              ),
             ],
           ),
         ),
       );
 }
 
-
-class _Actions extends StatelessWidget {
-  const _Actions({
-    required this.state,
-    required this.selectedSize,
-    required this.onDownload,
-    required this.onDelete,
-  });
-
-  final LocalGameState state;
-  final int selectedSize;
-  final VoidCallback? onDownload;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    if (state.status == InstallStatus.installed && !state.updateAvailable) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.check_circle, color: kAccent, size: 18),
-              SizedBox(width: 8),
-              Text('Zainstalowana', style: TextStyle(color: kAccent)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: onDelete,
-            child: const Text('Usuń z urządzenia'),
-          ),
-        ],
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        FilledButton(
-          onPressed: onDownload,
-          child: Text(
-            state.updateAvailable
-                ? 'Pobierz aktualizację'
-                : 'Pobierz (${formatBytes(selectedSize)})',
-          ),
-        ),
-        if (state.presentPaths.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: onDelete,
-            child: const Text('Usuń z urządzenia'),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-
-/// Keeps the shape of the game card while the manifest is on its way.
 class _DetailSkeleton extends StatelessWidget {
   const _DetailSkeleton();
 
   @override
   Widget build(BuildContext context) => ListView(
         padding: EdgeInsets.zero,
-        children: [
-          const PulseBox(height: 320, radius: BorderRadius.zero),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
-            child: PulseBox(height: 26, width: 220),
+        children: const [
+          PulseBox(height: _heroHeight, radius: BorderRadius.zero),
+          Padding(
+            padding: EdgeInsets.fromLTRB(60, 18, 60, 8),
+            child: PulseBox(height: 24),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: PulseBox(height: 14, width: 140),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 110),
+            child: PulseBox(height: 22),
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
-            child: PulseBox(height: 40, width: 180, radius: BorderRadius.zero),
+          Padding(
+            padding: EdgeInsets.fromLTRB(20, 28, 20, 0),
+            child: PulseBox(height: 52),
           ),
         ],
       );

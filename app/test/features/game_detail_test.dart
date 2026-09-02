@@ -1,13 +1,24 @@
+import 'dart:async';
+
 import 'package:droplet/core/api/api_client.dart';
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/local_state.dart';
-import 'package:droplet/core/session/providers.dart';
+import 'package:droplet/core/downloads/storage_settings.dart';
 import 'package:droplet/core/format.dart';
+import 'package:droplet/core/platform/downloader_port.dart';
+import 'package:droplet/core/session/providers.dart';
 import 'package:droplet/features/game/game_detail_screen.dart';
 import 'package:droplet/features/game/providers.dart';
+import 'package:droplet/features/library/providers.dart';
+import 'package:droplet/features/library/widgets/cover_image.dart';
+import 'package:droplet/app/widgets/pulse_box.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+
+import '../fakes/fake_downloader_port.dart';
 
 const _detail = GameDetail(
   id: 7,
@@ -45,13 +56,50 @@ const _notInstalled = LocalGameState(
   presentPaths: [],
 );
 
-Widget _screen(GameDetail detail) => ProviderScope(
-      overrides: [
-        gameDetailProvider(7).overrideWith((ref) async => detail),
-        localStateProvider(7).overrideWith((ref) async => _notInstalled),
+GoRouter _router() => GoRouter(
+      initialLocation: '/game/7',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, __) => const Scaffold(body: Text('Home')),
+          routes: [
+            GoRoute(
+              path: 'game/:id',
+              builder: (_, s) =>
+                  GameDetailScreen(gameId: int.parse(s.pathParameters['id']!)),
+            ),
+          ],
+        ),
       ],
-      child: const MaterialApp(home: GameDetailScreen(gameId: 7)),
     );
+
+Widget _screen(
+  GameDetail detail, {
+  LocalGameState local = _notInstalled,
+  List<Override> overrides = const [],
+  FakeDownloaderPort? port,
+  Override? detailOverride,
+  Override? localOverride,
+}) =>
+    ProviderScope(
+      overrides: [
+        detailOverride ?? gameDetailProvider(7).overrideWith((ref) async => detail),
+        localOverride ?? localStateProvider(7).overrideWith((ref) async => local),
+        downloaderPortProvider.overrideWithValue(port ?? FakeDownloaderPort()),
+        storageSettingsProvider.overrideWith(
+          (ref) async => StorageSettings('/roms', const {}),
+        ),
+        ...overrides,
+      ],
+      child: MaterialApp.router(routerConfig: _router()),
+    );
+
+/// A phone-shaped viewport: the default 800×600 test surface is too short
+/// for the hero + file list to fit without scrolling.
+Future<void> _phoneSurface(WidgetTester tester) async {
+  await tester.binding.setSurfaceSize(const Size(400, 800));
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+}
 
 void main() {
   test('formatBytes', () {
@@ -60,18 +108,63 @@ void main() {
     expect(formatBytes(1500000000), '1.4 GB');
   });
 
-  testWidgets('shows role sections', (tester) async {
-    await tester.pumpWidget(_screen(_detail));
+  test('bytesToFetch skips files already on disk', () {
+    const local = LocalGameState(
+      status: InstallStatus.partial,
+      updateAvailable: true,
+      missing: [],
+      presentPaths: ['/roms/switch/hk.nsp'],
+    );
+    expect(bytesToFetch(_detail, {1, 2}, local), 2);
+    expect(bytesToFetch(_detail, {1}, local), 0);
+  });
+
+  testWidgets('hero, pills, sections, back button', (tester) async {
+    await _phoneSurface(tester);
+    final port = FakeDownloaderPort()..free = 5 * 1024 * 1024 * 1024;
+    await tester.pumpWidget(_screen(_detail, port: port));
     await tester.pumpAndSettle();
     expect(find.text('Hollow Knight'), findsWidgets);
+    expect(find.text('Switch'), findsOneWidget);
     expect(find.text('Aktualizacja'), findsOneWidget);
-    // The manifest sits below the fold once every row carries a checkbox.
+    expect(find.text('najnowsza domyślnie'), findsOneWidget);
+    expect(find.text('Pobierz · 3 B'), findsOneWidget);
+    expect(find.text('Wolne 5.0 GB · zapis: /roms/switch'), findsOneWidget);
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
     await tester.pumpAndSettle();
     expect(find.textContaining('v196608'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('back-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Home'), findsOneWidget);
+  });
+
+  testWidgets('unchecking a file lowers the button size', (tester) async {
+    await _phoneSurface(tester);
+    await tester.pumpWidget(_screen(_detail));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Checkbox).last);
+    await tester.pumpAndSettle();
+    expect(find.text('Pobierz · 1 B'), findsOneWidget);
+  });
+
+  testWidgets('tapping the row itself also toggles the file', (tester) async {
+    await _phoneSurface(tester);
+    await tester.pumpWidget(_screen(_detail));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('upd.nsp'));
+    await tester.pumpAndSettle();
+    expect(find.text('Pobierz · 1 B'), findsOneWidget);
+  });
+
+  testWidgets('unknown free space shows only the directory', (tester) async {
+    await _phoneSurface(tester);
+    await tester.pumpWidget(_screen(_detail));
+    await tester.pumpAndSettle();
+    expect(find.text('zapis: /roms/switch'), findsOneWidget);
   });
 
   testWidgets('discs and support files get their own labels', (tester) async {
+    await _phoneSurface(tester);
     const multiDisc = GameDetail(
       id: 7,
       title: 'Final Fantasy VII',
@@ -106,15 +199,103 @@ void main() {
     expect(find.text('Pozostałe'), findsOneWidget);
   });
 
-  testWidgets('an error shows a retry action', (tester) async {
+  testWidgets('installed: pill and ghost delete only', (tester) async {
+    await _phoneSurface(tester);
     await tester.pumpWidget(
-      ProviderScope(
+      _screen(
+        _detail,
+        local: const LocalGameState(
+          status: InstallStatus.installed,
+          updateAvailable: false,
+          missing: [],
+          presentPaths: ['/roms/switch/hk.nsp', '/roms/switch/upd.nsp'],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Zainstalowana'), findsOneWidget);
+    expect(find.text('Usuń z urządzenia'), findsOneWidget);
+    expect(find.textContaining('Pobierz'), findsNothing);
+  });
+
+  testWidgets('update available: update button and secondary delete', (
+    tester,
+  ) async {
+    await _phoneSurface(tester);
+    await tester.pumpWidget(
+      _screen(
+        _detail,
+        local: const LocalGameState(
+          status: InstallStatus.partial,
+          updateAvailable: true,
+          missing: [],
+          presentPaths: ['/roms/switch/hk.nsp'],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Jest aktualizacja'), findsOneWidget);
+    expect(find.text('Pobierz aktualizację · 2 B'), findsOneWidget);
+    expect(find.text('Usuń z urządzenia'), findsOneWidget);
+  });
+
+  testWidgets('partial without update shows the partial pill', (tester) async {
+    await _phoneSurface(tester);
+    await tester.pumpWidget(
+      _screen(
+        _detail,
+        local: const LocalGameState(
+          status: InstallStatus.partial,
+          updateAvailable: false,
+          missing: [],
+          presentPaths: ['/roms/switch/upd.nsp'],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Częściowo'), findsOneWidget);
+  });
+
+  testWidgets('offline disables download', (tester) async {
+    await _phoneSurface(tester);
+    await tester.pumpWidget(
+      _screen(_detail, overrides: [isOfflineProvider.overrideWithValue(true)]),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Offline — pobieranie niedostępne'), findsOneWidget);
+  });
+
+  testWidgets('with a cover the hero renders two images', (tester) async {
+    await _phoneSurface(tester);
+    await tester.pumpWidget(
+      _screen(
+        const GameDetail(
+          id: 7,
+          title: 'Hollow Knight',
+          systemCode: 'switch',
+          systemName: 'Switch',
+          hasCover: true,
+          totalSize: 3,
+          files: [],
+        ),
         overrides: [
-          gameDetailProvider(7)
-              .overrideWith((ref) async => throw StateError('x')),
-          localStateProvider(7).overrideWith((ref) async => _notInstalled),
+          apiClientProvider.overrideWithValue(
+            ApiClient(baseUrl: 'http://nas:8000', token: 't'),
+          ),
         ],
-        child: const MaterialApp(home: GameDetailScreen(gameId: 7)),
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(CoverImage), findsNWidgets(2));
+  });
+
+  testWidgets('an error shows a retry action', (tester) async {
+    await _phoneSurface(tester);
+    await tester.pumpWidget(
+      _screen(
+        _detail,
+        detailOverride: gameDetailProvider(7)
+            .overrideWith((ref) async => throw StateError('x')),
       ),
     );
     await tester.pumpAndSettle();
@@ -124,46 +305,30 @@ void main() {
     expect(find.text('Ponów'), findsOneWidget);
   });
 
-  testWidgets('a game with a cover uses the full-size boxart', (tester) async {
-    const withCover = GameDetail(
-      id: 7,
-      title: 'Hollow Knight',
-      systemCode: 'switch',
-      systemName: 'Switch',
-      hasCover: true,
-      totalSize: 3,
-      files: [],
-    );
+  testWidgets('local state error is humanized', (tester) async {
+    await _phoneSurface(tester);
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          gameDetailProvider(7).overrideWith((ref) async => withCover),
-          localStateProvider(7).overrideWith((ref) async => _notInstalled),
-          apiClientProvider.overrideWithValue(
-            ApiClient(baseUrl: 'http://nas:8000', token: 't'),
-          ),
-        ],
-        child: const MaterialApp(home: GameDetailScreen(gameId: 7)),
+      _screen(
+        _detail,
+        localOverride: localStateProvider(7)
+            .overrideWith((ref) async => throw StateError('dysk')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('dysk'), findsOneWidget);
+  });
+
+  testWidgets('loading skeleton', (tester) async {
+    await _phoneSurface(tester);
+    final completer = Completer<GameDetail>();
+    await tester.pumpWidget(
+      _screen(
+        _detail,
+        detailOverride:
+            gameDetailProvider(7).overrideWith((ref) => completer.future),
       ),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
-    expect(find.byType(GameDetailScreen), findsOneWidget);
+    expect(find.byType(PulseBox), findsWidgets);
   });
-
-  test('gameDetailProvider reads the detail endpoint', () async {
-    final container = ProviderContainer(
-      overrides: [apiClientProvider.overrideWithValue(_FakeClient())],
-    );
-    addTearDown(container.dispose);
-    final game = await container.read(gameDetailProvider(7).future);
-    expect(game.title, 'Hollow Knight');
-  });
-}
-
-class _FakeClient extends ApiClient {
-  _FakeClient() : super(baseUrl: 'http://nas:8000', token: 't');
-
-  @override
-  Future<GameDetail> fetchGame(int id) async => _detail;
 }

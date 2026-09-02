@@ -73,7 +73,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.textContaining('Pobierz'));
+    await tester.tap(find.textContaining('Pobierz ·'));
     await tester.pumpAndSettle();
     expect(port.enqueued.single.url, 'http://nas:8000/api/files/1/download');
   });
@@ -100,7 +100,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.textContaining('Pobierz'));
+    await tester.tap(find.textContaining('Pobierz ·'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('przyznaj uprawnienie'), findsOneWidget);
@@ -139,8 +139,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    // Since M6 the raw exception is replaced by a human message.
-    expect(find.text('Coś poszło nie tak'), findsOneWidget);
+    // Since M6 the raw exception is replaced by a human message; the disk
+    // scan error also keeps the raw detail for diagnosis.
+    expect(find.textContaining('Coś poszło nie tak'), findsOneWidget);
+    expect(find.textContaining('dysk'), findsOneWidget);
   });
 
   group('install badge', () {
@@ -315,7 +317,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.textContaining('Pobierz'));
+    await tester.tap(find.textContaining('Pobierz ·'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('Za mało miejsca'), findsOneWidget);

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/theme.dart';
+import '../../app/tokens.dart';
 import '../../core/downloads/local_state.dart';
 import 'providers.dart';
 
@@ -28,7 +28,7 @@ Future<bool> confirmAndDelete(
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
-      backgroundColor: kSurface,
+      backgroundColor: kDialogBg,
       title: const Text('Usunąć z urządzenia?', style: TextStyle(color: kText)),
       content: Column(
         mainAxisSize: MainAxisSize.min,

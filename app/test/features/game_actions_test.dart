@@ -2,12 +2,17 @@ import 'dart:io';
 
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/local_state.dart';
+import 'package:droplet/core/downloads/storage_settings.dart';
+import 'package:droplet/core/platform/downloader_port.dart';
 import 'package:droplet/features/game/delete_dialog.dart';
 import 'package:droplet/features/game/game_detail_screen.dart';
 import 'package:droplet/features/game/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+
+import '../fakes/fake_downloader_port.dart';
 
 const detail = GameDetail(
   id: 7,
@@ -29,12 +34,33 @@ const detail = GameDetail(
   ],
 );
 
+GoRouter _router() => GoRouter(
+      initialLocation: '/game/7',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, __) => const Scaffold(body: Text('Home')),
+          routes: [
+            GoRoute(
+              path: 'game/:id',
+              builder: (_, s) =>
+                  GameDetailScreen(gameId: int.parse(s.pathParameters['id']!)),
+            ),
+          ],
+        ),
+      ],
+    );
+
 Widget build(LocalGameState state) => ProviderScope(
       overrides: [
         gameDetailProvider(7).overrideWith((ref) async => detail),
         localStateProvider(7).overrideWith((ref) async => state),
+        downloaderPortProvider.overrideWithValue(FakeDownloaderPort()),
+        storageSettingsProvider.overrideWith(
+          (ref) async => StorageSettings('/roms', const {}),
+        ),
       ],
-      child: const MaterialApp(home: GameDetailScreen(gameId: 7)),
+      child: MaterialApp.router(routerConfig: _router()),
     );
 
 void main() {
@@ -50,7 +76,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('Pobierz'), findsOneWidget);
+    expect(find.text('Pobierz · 1.0 KB'), findsOneWidget);
     expect(find.textContaining('1.0 KB'), findsWidgets);
   });
 
@@ -82,7 +108,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Pobierz aktualizację'), findsOneWidget);
+    expect(find.textContaining('Pobierz aktualizację'), findsOneWidget);
   });
 
   testWidgets('delete dialog removes only listed files', (tester) async {
@@ -148,11 +174,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byType(Checkbox).first);
     await tester.pumpAndSettle();
-    expect(find.textContaining('Pobierz (0 B)'), findsOneWidget);
+    expect(find.text('Pobierz · 0 B'), findsOneWidget);
     // ...and selecting it again brings the size back.
     await tester.tap(find.byType(Checkbox).first);
     await tester.pumpAndSettle();
-    expect(find.textContaining('Pobierz (1.0 KB)'), findsOneWidget);
+    expect(find.text('Pobierz · 1.0 KB'), findsOneWidget);
   });
 
   test('deleteLocalFiles ignores missing paths', () async {
