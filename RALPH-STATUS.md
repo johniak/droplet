@@ -1,8 +1,13 @@
 # RALPH-STATUS
 
-Status pętli Ralph budującej Droplet wg planów M0–M6.
+Status pętli Ralph budującej Droplet wg planów M0–M7.
 
 ## Czeka na Jana
+
+- **M7 na NAS-ie**: uporządkuj bibliotekę (każda gra w folderze),
+  `docker compose up -d --build` (migracja 0002), `manage.py scan`, przejrzyj
+  `/admin/library/loosefile/`; w aplikacji 0.3.0 stare płaskie pliki pokażą się
+  w Ustawienia → Nieznane na urządzeniu.
 
 - **M1 Task 11 kroki 2–4 — skan prawdziwej biblioteki na TrueNAS.** Wymaga realnego
   NAS-a z Twoimi ROMami:
@@ -12,7 +17,7 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
      rozjazdy (złe grupowanie Switcha, nieznane katalogi) popraw w adminie albo
      dopisz aliasy do `backend/library/scanner/systems_map.py`.
   3. Drugi `manage.py scan` musi dać `+0 ~0 -0` (idempotencja na realnych danych).
-  4. Ustaw nocny cron na TrueNAS wg `docs/deploy.md` §5
+  4. Ustaw nocny cron na TrueNAS wg `docs/deploy.md` §6
      (`docker exec <kontener-web> python manage.py scan`, 03:00).
 
 - **M2 Task 8 krok 3 — przegląd okładek na realnej kolekcji.** Po skanie prawdziwej
@@ -96,12 +101,6 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   `E2E_SERVER=http://10.0.2.2:8800`, 2026-09-02) — oba pliki `integration_test`
   przechodzą (`All tests passed!`, `+2 -0`). Wizualna akceptacja na fizycznym
   telefonie nadal po Twojej stronie.
-  - Ograniczenie do zapamiętania przy akceptacji: filtry „Na urządzeniu" /
-    „Do aktualizacji" oraz półka „Na urządzeniu" znają tylko te gry, których
-    kafelek już się wyrenderował — zbiory id zasilają odznaki (`InstallBadge`),
-    więc gra spoza obejrzanego kawałka listy nie wpadnie do filtra (to samo
-    ograniczenie co w M6, redesign go nie zmienia). Planowane wyjście: cache
-    lokalnego skanu per system albo zbiorczy endpoint manifestu z serwera.
 
 - **Emulator Androida jest gotowy** — `droplet` (API 35, arm64) w `~/Library/Android/sdk`.
   Odpalenie: `~/Library/Android/sdk/emulator/emulator -avd droplet &`, potem
@@ -115,6 +114,27 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
 (brak)
 
 ## Rozjazdy planu z rzeczywistością
+
+- **M7 Task 9 — `setState() during build` z Riverpoda w e2e (naprawione).** Pierwszy
+  przebieg e2e po M7 wywalał `download_flow_test` na asercji Riverpoda
+  (`setState() or markNeedsBuild() called during build` na
+  `UncontrolledProviderScope`). Powtórzone na commicie `6f48d9b` (Task 7), więc
+  regresja przyszła z indeksu urządzenia, nie z Taska 8. Dwie przyczyny:
+  (1) `DeviceIndexController` **oglądał** (`watch`) bibliotekę i ustawienia, więc
+  zmiana katalogu ROMów unieważniała cały indeks; unieważniony provider
+  przebudowywał się leniwie — przy wznowieniu subskrypcji zakładki (`TickerMode`),
+  czyli w fazie layoutu. Teraz `listen` + `refresh()`, provider nigdy nie jest
+  „brudny". (2) `homeShelvesProvider`/`systemGamesProvider` oglądały
+  `installedIdsProvider`, więc w łańcuchu provider→provider→provider brudne
+  ogniwo w środku unieważniało się w środku budowania. Teraz zbiory liczą się
+  w tych providerach wprost z indeksu (`installedFrom`/`updatableFrom`), a
+  `installedIdsProvider`/`updatableIdsProvider` zostają dla widgetów.
+  Po naprawie oba pliki `integration_test` przechodzą (`All tests passed!`, `+2`).
+- **M7 Task 9 — `pumpAndSettle` nie czeka na sieć (naprawione w testach).**
+  `pumpAndSettle()` wraca, gdy nie ma zaplanowanych klatek, a zapytanie HTTP
+  w locie żadnej nie planuje — karta gry potrafiła być jeszcze szkieletem, gdy
+  test szukał „Aktualizacja"/„Pobierz ·". Oba pliki `integration_test` mają teraz
+  helper `pumpUntil`, który dopompowuje realnym czasem (do 20 s).
 
 - **Task 13 — overflow w `HomeSkeleton` na realnym ekranie (naprawione).** Pierwszy
   przebieg e2e (`E2E_SERVER=http://10.0.2.2:8800 ./scripts/e2e_app.sh` na emulatorze

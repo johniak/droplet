@@ -15,7 +15,7 @@ Kolejność
 jest tak dobrana, żeby backend dało się testować z curla zanim powstanie aplikacja,
 a aplikację rozwijać na prawdziwym API.
 
-Przegląd (każdy milestone M0–M6 ma szczegółowy plan implementacyjny — kolumna „Plan"):
+Przegląd (każdy milestone M0–M7 ma szczegółowy plan implementacyjny — kolumna „Plan"):
 
 | # | Milestone | Efekt | Plan |
 |---|---|---|---|
@@ -26,8 +26,9 @@ Przegląd (każdy milestone M0–M6 ma szczegółowy plan implementacyjny — ko
 | M4 | Fundament aplikacji | Flutter: login + piękna biblioteka + karta gry | [M4](2026-09-01-m4-fundament-aplikacji.md) |
 | M5 | Pobieranie na urządzenie | Download manager + stan „zainstalowane" + usuwanie | [M5](2026-09-01-m5-pobieranie.md) |
 | M6 | Szlif | Animacje, offline, dopracowanie UX | [M6](2026-09-01-m6-szlif.md) |
-| M7 | Save sync (etap 2) | Backup/restore save'ów na NAS | plan powstanie po MVP |
-| M8 | Pełne metadane (etap 2) | Opisy/gatunki/oceny z IGDB lub ScreenScraper | plan powstanie po decyzji o źródle |
+| M7 | Katalog per gra i skan urządzenia | Jedna gra = jeden folder; stan „na urządzeniu" z jednego skanu | [M7](2026-09-02-m7-katalogi-per-gra.md) |
+| M8 | Save sync (etap 3) | Backup/restore save'ów na NAS | plan powstanie po MVP |
+| M9 | Pełne metadane (etap 3) | Opisy/gatunki/oceny z IGDB lub ScreenScraper | plan powstanie po decyzji o źródle |
 
 ---
 
@@ -220,7 +221,37 @@ lista zgłoszonych irytacji pusta albo świadomie odłożona.
 
 ---
 
-## M7 — Save sync (etap 2)
+## M7 — Katalog per gra i skan urządzenia
+
+**Cel:** jedna gra = jeden katalog (na serwerze i na telefonie), a stan
+„zainstalowana / do aktualizacji" liczony jednym skanem urządzenia względem
+manifestu całej biblioteki — bez zapytania per kafelek.
+
+Spec: [`../specs/2026-09-02-m7-katalogi-per-gra-design.md`](../specs/2026-09-02-m7-katalogi-per-gra-design.md).
+Plan implementacji: [`2026-09-02-m7-katalogi-per-gra.md`](2026-09-02-m7-katalogi-per-gra.md).
+
+**Zadania:**
+1. Backend: `Game.folder` jako tożsamość gry, model `LooseFile` na pliki poza
+   katalogami gier, `ScanRun.loose_files`, migracja wypełniająca `folder`
+   dla istniejących gier.
+2. Skaner: podkatalog systemu = gra, role rozpoznawane wewnątrz katalogu,
+   sidecary jako `other`, pliki luzem → `LooseFile`; sync po folderze.
+3. API: `folder` w liście i szczególe gry, `files[].name` jako ścieżka względem
+   katalogu gry, nowy `GET /api/manifest/` (bez paginacji).
+4. Admin: lista „Do uporządkowania" (`LooseFile`), kolumna „luzem" w `ScanRun`.
+5. Aplikacja: ścieżka `<roms>/<system>/<folder>/<plik>`, moduł `device_scan.dart`
+   (jeden skan + diff → `Map<int, LocalGameState>`), `deviceIndexProvider`
+   zasilający odznaki, filtry, półki i kartę gry.
+6. Aplikacja: Ustawienia → „Nieznane na urządzeniu" z usuwaniem pozostałości po
+   płaskim układzie.
+
+**Kryteria ukończenia:** skan realnej biblioteki nie gubi gier, filtry
+„Na urządzeniu"/„Do aktualizacji" działają dla całej biblioteki (nie tylko dla
+obejrzanych kafelków), e2e pobiera i kasuje grę razem z jej katalogiem.
+
+---
+
+## M8 — Save sync (etap 3)
 
 **Cel:** backup i przywracanie save'ów na NAS — odpowiednik cloud saves.
 
@@ -244,7 +275,7 @@ na telefonie B i gra kontynuuje się z tego miejsca.
 
 ---
 
-## M8 — Pełne metadane (etap 2)
+## M9 — Pełne metadane (etap 3)
 
 **Cel:** karta gry jak w Steamie: opis, gatunek, rok, ocena, screenshoty.
 
@@ -262,6 +293,6 @@ na telefonie B i gra kontynuuje się z tego miejsca.
 
 ## Kolejność i zależności
 
-M0 → M1 → M2 → M3 → M4 → M5 → M6, potem M7 i M8 w dowolnej kolejności.
+M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7, potem M8 i M9 w dowolnej kolejności.
 M4 można zacząć równolegle z M2/M3 na zamockowanym API, ale zamknąć dopiero
 na prawdziwym backendzie.

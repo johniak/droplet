@@ -157,6 +157,30 @@ void main() {
     expect(c.read(deviceIndexProvider).hasValue, isFalse);
   });
 
+  test('a settings change rescans instead of rebuilding the index', () async {
+    put('snes/Zelda (USA)/a.sfc');
+    final c = container(manifest);
+    expect(
+      (await c.read(deviceIndexProvider.future))[2]!.status,
+      InstallStatus.partial,
+    );
+    final notifier = c.read(deviceIndexProvider.notifier);
+
+    put('snes/Zelda (USA)/b.sfc');
+    c.invalidate(storageSettingsProvider);
+    // Listener biegnie na mikrozadaniach — dwa obroty pętli wystarczą, żeby
+    // nadpisane ustawienia się policzyły i indeks przeskanował dysk.
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    // Ten sam notifier: indeks się nie unieważnił, tylko przeliczył.
+    expect(identical(c.read(deviceIndexProvider.notifier), notifier), isTrue);
+    expect(
+      c.read(deviceIndexProvider).value![2]!.status,
+      InstallStatus.installed,
+    );
+  });
+
   test('a game outside the manifest is simply not installed', () async {
     final c = container(manifest);
     expect(await c.read(localStateProvider(99).future), kNotInstalled);

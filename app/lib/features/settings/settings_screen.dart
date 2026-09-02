@@ -17,7 +17,7 @@ import '../../core/session/providers.dart';
 import '../game/providers.dart';
 import '../library/providers.dart';
 
-const appVersion = '0.2.0';
+const appVersion = '0.3.0';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});

@@ -110,11 +110,31 @@ class DeviceIndexController extends AsyncNotifier<Map<int, LocalGameState>> {
 
   DeviceIndex get lastIndex => _last;
 
+  /// Pierwszy skan już się policzył — dopiero wtedy zmiany zależności mają
+  /// wołać [refresh] (w trakcie `build` stan jest jeszcze niedostępny).
+  bool _scanned = false;
+
+  /// `listen` zamiast `watch`: zmiana biblioteki albo ustawień ma **przeliczyć**
+  /// indeks, a nie unieważnić provider. Unieważniony indeks przebudowuje się
+  /// leniwie — przy pierwszym odczycie, a ten potrafi wypaść w fazie layoutu
+  /// (wznowienie subskrypcji zakładki po `TickerMode`). Wtedy pochodne
+  /// providery (`installedIdsProvider` i spółka) unieważniają się w środku
+  /// budowania i Riverpod wywraca się na
+  /// „setState() or markNeedsBuild() called during build".
   @override
   Future<Map<int, LocalGameState>> build() async {
-    final snapshot = await ref.watch(librarySnapshotProvider.future);
-    final settings = await ref.watch(storageSettingsProvider.future);
-    return _compute(snapshot, settings);
+    _scanned = false;
+    ref.listen(librarySnapshotProvider, (_, __) => _rescan());
+    ref.listen(storageSettingsProvider, (_, __) => _rescan());
+    final snapshot = await ref.read(librarySnapshotProvider.future);
+    final settings = await ref.read(storageSettingsProvider.future);
+    final states = _compute(snapshot, settings);
+    _scanned = true;
+    return states;
+  }
+
+  void _rescan() {
+    if (_scanned) refresh();
   }
 
   Map<int, LocalGameState> _compute(
@@ -152,21 +172,27 @@ final unknownOnDeviceProvider = Provider<List<UnknownEntry>>((ref) {
   return ref.read(deviceIndexProvider.notifier).lastIndex.unknown;
 });
 
-final installedIdsProvider = Provider<Set<int>>((ref) {
-  final states = ref.watch(deviceIndexProvider).value ?? const {};
-  return {
-    for (final e in states.entries)
-      if (e.value.status != InstallStatus.none) e.key,
-  };
-});
+Set<int> installedFrom(Map<int, LocalGameState> states) => {
+      for (final e in states.entries)
+        if (e.value.status != InstallStatus.none) e.key,
+    };
 
-final updatableIdsProvider = Provider<Set<int>>((ref) {
-  final states = ref.watch(deviceIndexProvider).value ?? const {};
-  return {
-    for (final e in states.entries)
-      if (e.value.updateAvailable) e.key,
-  };
-});
+Set<int> updatableFrom(Map<int, LocalGameState> states) => {
+      for (final e in states.entries)
+        if (e.value.updateAvailable) e.key,
+    };
+
+/// Zbiory czytane przez widgety. Providery **pochodne od providerów** celowo
+/// nie stoją w łańcuchach innych providerów (patrz `homeShelvesProvider`):
+/// unieważnienie ogniwa w środku łańcucha potrafi wypaść w fazie budowania i
+/// wywrócić `UncontrolledProviderScope`.
+final installedIdsProvider = Provider<Set<int>>(
+  (ref) => installedFrom(ref.watch(deviceIndexProvider).value ?? const {}),
+);
+
+final updatableIdsProvider = Provider<Set<int>>(
+  (ref) => updatableFrom(ref.watch(deviceIndexProvider).value ?? const {}),
+);
 
 enum SystemFilter { all, installed, updatable }
 
@@ -260,7 +286,7 @@ final homeShelvesProvider = FutureProvider<HomeShelves>((ref) async {
   return buildShelves(
     snapshot.games,
     snapshot.systems,
-    ref.watch(installedIdsProvider),
+    installedFrom(ref.watch(deviceIndexProvider).value ?? const {}),
     ref.watch(sortProvider),
   );
 });
@@ -274,8 +300,8 @@ final systemGamesProvider =
     applyFilter(
       own,
       ref.watch(systemFilterProvider),
-      ref.watch(installedIdsProvider),
-      ref.watch(updatableIdsProvider),
+      installedFrom(ref.watch(deviceIndexProvider).value ?? const {}),
+      updatableFrom(ref.watch(deviceIndexProvider).value ?? const {}),
     ),
     ref.watch(sortProvider),
   );

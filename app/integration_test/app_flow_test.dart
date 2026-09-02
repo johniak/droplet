@@ -8,6 +8,21 @@ import 'package:integration_test/integration_test.dart';
 
 const server = String.fromEnvironment('E2E_SERVER');
 
+
+/// `pumpAndSettle` wraca, gdy nie ma zaplanowanych klatek — a zapytanie HTTP
+/// w locie żadnej nie planuje, więc ekran potrafi być jeszcze szkieletem.
+/// Na urządzeniu czekamy więc realnym czasem, aż pojawi się treść.
+Future<void> pumpUntil(
+  WidgetTester tester,
+  Finder finder, {
+  int seconds = 20,
+}) async {
+  for (var i = 0; i < seconds && !tester.any(finder); i++) {
+    await tester.pump(const Duration(seconds: 1));
+  }
+  expect(finder, findsWidgets, reason: 'nie doczekałem się $finder');
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -33,7 +48,7 @@ void main() {
     await tester.tap(find.text('Zaloguj'));
     await tester.pumpAndSettle(const Duration(seconds: 10));
 
-    expect(find.text('Super Mario World'), findsWidgets);
+    await pumpUntil(tester, find.text('Super Mario World'));
 
     // Nagłówek półki systemu prowadzi do widoku systemu. Ekran główny ma
     // wiele Scrollable (pionowa lista + pozioma lista w każdej półce) —
@@ -46,17 +61,19 @@ void main() {
     );
     await tester.tap(find.text('Nintendo Switch'));
     await tester.pumpAndSettle();
-    expect(find.text('Hollow Knight'), findsWidgets);
+    await pumpUntil(tester, find.text('Hollow Knight'));
     expect(find.text('Super Mario World'), findsNothing);
 
     await tester.tap(find.text('Hollow Knight').first);
     await tester.pumpAndSettle();
+    await pumpUntil(tester, find.text('Aktualizacja'));
     expect(find.text('Aktualizacja'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('back-button')));
     await tester.pumpAndSettle();
-    expect(find.text('Hollow Knight'), findsWidgets);
+    await pumpUntil(tester, find.text('Hollow Knight'));
 
+    await pumpUntil(tester, find.byKey(const Key('nav-settings')));
     await tester.tap(find.byKey(const Key('nav-settings')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Wyloguj'));

@@ -96,7 +96,53 @@ Na TrueNAS: przebuduj/wypchnij nowy obraz, a następnie zrób **Edit → Update*
 (re-deploy) aplikacji. Migracje bazy wykonają się automatycznie przy starcie
 kontenera `web`.
 
-## 5. Nocny skan biblioteki (od M1)
+## 5. Układ biblioteki (od M7)
+
+Droplet traktuje **katalog jako grę**: pod katalogiem systemu każdy podkatalog to
+jedna pozycja w bibliotece, a wszystko w środku (włącznie z podkatalogami) należy
+do niej.
+
+```
+<biblioteka>/<system>/<Nazwa gry>/<pliki>
+```
+
+Przykład:
+
+```
+/mnt/tank/roms/
+├── snes/
+│   └── Super Mario World (USA)/
+│       └── Super Mario World (USA).sfc
+├── switch/
+│   └── Hollow Knight/                      # baza, aktualizacja i DLC razem
+│       ├── Hollow Knight [0100633007D48000][v0].nsp
+│       ├── Hollow Knight [UPD][0100633007D48800][v196608].nsp
+│       └── Hollow Knight [DLC][01006330124CE000][v0].nsp
+└── psx/
+    └── Final Fantasy VII (USA)/            # podkatalogi są dozwolone
+        ├── Final Fantasy VII (USA).m3u
+        ├── disc1/
+        │   ├── Final Fantasy VII (USA) (Disc 1).cue
+        │   └── Final Fantasy VII (USA) (Disc 1).bin
+        └── disc2/
+            ├── Final Fantasy VII (USA) (Disc 2).cue
+            └── Final Fantasy VII (USA) (Disc 2).bin
+```
+
+Zasady:
+
+- Nazwa katalogu jest tożsamością gry — zmiana nazwy katalogu to dla Dropletu
+  nowa gra (stara zniknie z biblioteki przy kolejnym skanie).
+- Aplikacja odtwarza ten sam układ na telefonie:
+  `<katalog ROMów>/<system>/<Nazwa gry>/<pliki>`.
+- Pliki leżące **luzem** w katalogu systemu (poza katalogiem gry) nie tworzą gry —
+  lądują w adminie pod **„Do uporządkowania"** (`/admin/library/loosefile/`), a
+  `ScanRun` pokazuje ich liczbę w kolumnie „luzem". Przenieś je do katalogu gry
+  i uruchom skan ponownie.
+- Sidecary (`.srm`, `.sav`, obrazki, `.txt`) w katalogu gry są zapisywane z rolą
+  `other` — nie psują rozpoznania roli bazowej.
+
+## 6. Nocny skan biblioteki (od M1)
 
 Skan jest przyrostowy i uruchamiany ręcznie z admina/API, ale warto go odpalać
 też co noc:
@@ -110,7 +156,7 @@ docker exec <nazwa-kontenera-web> python manage.py scan
 Harmonogram: codziennie o 03:00. Nazwę kontenera podejrzysz przez `docker ps`
 (dla compose'a z repo to `droplet-web-1`).
 
-## 6. Wystawienie na świat
+## 7. Wystawienie na świat
 
 Poza zakresem Dropletu — robi to reverse proxy po Twojej stronie (np. Nginx
 Proxy Manager / Traefik z certyfikatem Let's Encrypt). Na razie aplikacja mobilna
@@ -120,7 +166,7 @@ aplikacji.
 Uwaga: bez HTTPS token uwierzytelniający leci po sieci otwartym tekstem — używaj
 tego wyłącznie w zaufanej sieci lokalnej albo postaw reverse proxy z TLS.
 
-## 7. Backup
+## 8. Backup
 
 - **Do backupu**: dataset danych (`/data`) — zawiera bazę SQLite z całym indeksem
   biblioteki, dopasowaniami okładek i ręcznymi poprawkami oraz cache okładek.
