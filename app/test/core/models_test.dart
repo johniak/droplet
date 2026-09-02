@@ -84,4 +84,25 @@ void main() {
     expect(page.results.single.title, 'Tekken');
     expect(page.results.single.hasCover, false);
   });
+
+  test('models survive a json roundtrip', () {
+    const system = SystemModel(
+      id: 1,
+      code: 'snes',
+      name: 'SNES',
+      gameCount: 3,
+    );
+    const game = GameSummary(
+      id: 4,
+      title: 'Tekken',
+      systemCode: 'psx',
+      hasCover: true,
+      totalSize: 1000,
+    );
+    expect(SystemModel.fromJson(system.toJson()).name, 'SNES');
+    final back = GameSummary.fromJson(game.toJson());
+    expect(back.title, 'Tekken');
+    expect(back.hasCover, true);
+    expect(back.totalSize, 1000);
+  });
 }

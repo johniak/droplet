@@ -25,6 +25,13 @@ class SystemModel {
         name: j['name'] as String,
         gameCount: j['game_count'] as int,
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'code': code,
+        'name': name,
+        'game_count': gameCount,
+      };
 }
 
 class GameSummary {
@@ -49,6 +56,14 @@ class GameSummary {
         hasCover: j['has_cover'] as bool,
         totalSize: j['total_size'] as int,
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'system_code': systemCode,
+        'has_cover': hasCover,
+        'total_size': totalSize,
+      };
 }
 
 class GameFileModel {

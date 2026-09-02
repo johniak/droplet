@@ -102,4 +102,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Nic tu nie ma'), findsOneWidget);
   });
+
+  testWidgets('offline mode explains itself with a banner', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          gamesProvider.overrideWith((ref) async => games),
+          systemsProvider.overrideWith((ref) async => systems),
+          isOfflineProvider.overrideWithValue(true),
+        ],
+        child: const MaterialApp(home: LibraryScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Tryb offline — pokazuję ostatnio pobraną bibliotekę'),
+      findsOneWidget,
+    );
+  });
 }

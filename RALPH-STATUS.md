@@ -66,6 +66,10 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   grid -> karta gry (Hero na okladce) jest plynne i czy przy okladce z cache nie
   "mruga" placeholder.
 
+- **M6 Task 2 krok 5 - test trybu offline na telefonie.** Wlacz tryb samolotowy:
+  biblioteka ma sie otworzyc z banerem "Tryb offline", a przycisk Pobierz ma byc
+  nieaktywny; po powrocie sieci i odswiezeniu baner znika.
+
 ## Blokery
 
 (brak)
@@ -164,3 +168,7 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   `DownloadManager` w tym samym isolate (kolejny `ProviderContainer`, np. w testach)
   wywalal sie na `Bad state: Stream has already been listened to`. Adapter trzyma
   teraz jeden `asBroadcastStream()` na poziomie modulu.
+- **M6 Task 2 - `.future` errorujacego providera w Riverpod 3**: gdy `FutureProvider`
+  rzuci, a nikt go nie sluchа, `provider.future` zostaje wiszacy (timeout w tescie).
+  Test sprawdza wiec stan (`container.listen` + `AsyncValue.hasError`) zamiast
+  awaitowac future.

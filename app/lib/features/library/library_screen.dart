@@ -33,13 +33,30 @@ class LibraryScreen extends ConsumerWidget {
           child: _SystemBar(),
         ),
       ),
-      body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(gamesProvider),
+      body: Column(
+        children: [
+          if (ref.watch(isOfflineProvider)) const _OfflineBanner(),
+          Expanded(child: _Grid(games: games)),
+        ],
+      ),
+    );
+  }
+}
+
+class _Grid extends ConsumerWidget {
+  const _Grid({required this.games});
+
+  final AsyncValue<List<GameSummary>> games;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return RefreshIndicator(
+        onRefresh: () async => ref.invalidate(librarySnapshotProvider),
         child: games.when(
           loading: () => const _LibrarySkeleton(),
           error: (error, _) => _ErrorState(
             message: error.toString(),
-            onRetry: () => ref.invalidate(gamesProvider),
+            onRetry: () => ref.invalidate(librarySnapshotProvider),
           ),
           data: (list) => list.isEmpty
               ? const _EmptyState()
@@ -56,9 +73,32 @@ class LibraryScreen extends ConsumerWidget {
                   itemBuilder: (_, i) => GameCard(game: list[i]),
                 ),
         ),
-      ),
-    );
+      );
   }
+}
+
+/// The library still opens without a server; the banner says so plainly.
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        color: kSurface,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: const Row(
+          children: [
+            Icon(Icons.cloud_off, size: 16, color: kTextDim),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Tryb offline — pokazuję ostatnio pobraną bibliotekę',
+                style: TextStyle(color: kTextDim, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 class _SearchField extends ConsumerStatefulWidget {

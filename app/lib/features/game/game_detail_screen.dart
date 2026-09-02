@@ -10,6 +10,7 @@ import '../../core/downloads/storage_settings.dart';
 import '../../core/format.dart';
 import '../../core/session/providers.dart';
 import '../../app/widgets/pulse_box.dart';
+import '../library/providers.dart';
 import '../library/widgets/cover_image.dart';
 import 'delete_dialog.dart';
 import 'providers.dart';
@@ -173,7 +174,9 @@ class _DetailState extends ConsumerState<_Detail> {
                 data: (state) => _Actions(
                   state: state,
                   selectedSize: _selectedSize,
-                  onDownload: () => _download(state),
+                  // Offline the server is unreachable, so downloading is off.
+                  onDownload:
+                      ref.watch(isOfflineProvider) ? null : () => _download(state),
                   onDelete: () =>
                       confirmAndDelete(context, ref, game.id, state),
                 ),
@@ -281,7 +284,7 @@ class _Actions extends StatelessWidget {
 
   final LocalGameState state;
   final int selectedSize;
-  final VoidCallback onDownload;
+  final VoidCallback? onDownload;
   final VoidCallback onDelete;
 
   @override
