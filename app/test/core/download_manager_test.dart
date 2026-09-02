@@ -366,16 +366,76 @@ void main() {
       expect(manager.progress[twoFileGame.id]!.speedBytesPerSec, isNull);
     });
 
-    test('clearFinished drops complete entries only', () async {
+    test('a known speed clears once a later update reports it unknown',
+        () async {
+      await startTwoFile();
+      final task = port.enqueued[0];
+      port.controller.add(TaskProgressUpdate(task, 0.5, 1000, 2.0));
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        manager.progress[twoFileGame.id]!.speedBytesPerSec,
+        2 * 1024 * 1024,
+      );
+      port.controller.add(TaskProgressUpdate(task, 0.6, 1000));
+      await Future<void>.delayed(Duration.zero);
+      expect(manager.progress[twoFileGame.id]!.speedBytesPerSec, isNull);
+    });
+
+    test('pausing clears a known speed', () async {
+      await startTwoFile();
+      final task = port.enqueued[0];
+      port.controller.add(TaskProgressUpdate(task, 0.5, 1000, 2.0));
+      await Future<void>.delayed(Duration.zero);
+      expect(manager.progress[twoFileGame.id]!.speedBytesPerSec, isNotNull);
+      port.controller.add(TaskStatusUpdate(task, TaskStatus.paused));
+      await Future<void>.delayed(Duration.zero);
+      final p = manager.progress[twoFileGame.id]!;
+      expect(p.speedBytesPerSec, isNull);
+      expect(p.status, GameProgressStatus.paused);
+    });
+
+    test('negative progress sentinels are ignored for byte/progress math',
+        () async {
+      await startTwoFile();
+      final task = port.enqueued[0];
+      port.controller.add(TaskProgressUpdate(task, 0.5, 1000, 2.0));
+      await Future<void>.delayed(Duration.zero);
+      final before = manager.progress[twoFileGame.id]!;
+      // -4.0 is background_downloader's waitingToRetry sentinel.
+      port.controller.add(TaskProgressUpdate(task, -4.0));
+      await Future<void>.delayed(Duration.zero);
+      final after = manager.progress[twoFileGame.id]!;
+      expect(after.bytesDone, before.bytesDone);
+      expect(after.progress, before.progress);
+    });
+
+    test('clearFinished drops complete entries only, keeps failed ones',
+        () async {
       await start();
-      for (final t in port.enqueued) {
+      await startTwoFile();
+      for (final t in port.enqueued.where((t) => gameIdOf(t) == game.id)) {
         port.lengths['/${t.directory}/${t.filename}'] = expectedSizeOf(t);
         port.controller.add(TaskStatusUpdate(t, TaskStatus.complete));
         await Future<void>.delayed(Duration.zero);
       }
+      port.controller.add(
+        TaskStatusUpdate(
+          port.enqueued.firstWhere((t) => gameIdOf(t) == twoFileGame.id),
+          TaskStatus.failed,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
       expect(manager.progress[game.id]!.status, GameProgressStatus.complete);
+      expect(
+        manager.progress[twoFileGame.id]!.status,
+        GameProgressStatus.failed,
+      );
       manager.clearFinished();
-      expect(manager.progress, isEmpty);
+      expect(manager.progress.keys, [twoFileGame.id]);
+      expect(
+        manager.progress[twoFileGame.id]!.status,
+        GameProgressStatus.failed,
+      );
     });
   });
 }

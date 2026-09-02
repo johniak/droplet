@@ -48,11 +48,16 @@ class GameProgress {
 
   int get bytesLeft => bytesTotal - bytesDone;
 
+  /// [clearSpeed] forces [speedBytesPerSec] to null even though a plain
+  /// `null` for [speedBytesPerSec] would otherwise mean "leave unchanged" —
+  /// needed so a stalled/paused/failed download can drop a previously known
+  /// speed instead of showing it forever.
   GameProgress copyWith({
     double? progress,
     GameProgressStatus? status,
     int? bytesDone,
     int? speedBytesPerSec,
+    bool clearSpeed = false,
   }) =>
       GameProgress(
         gameId: gameId,
@@ -63,7 +68,8 @@ class GameProgress {
         status: status ?? this.status,
         bytesDone: bytesDone ?? this.bytesDone,
         bytesTotal: bytesTotal,
-        speedBytesPerSec: speedBytesPerSec ?? this.speedBytesPerSec,
+        speedBytesPerSec:
+            clearSpeed ? null : (speedBytesPerSec ?? this.speedBytesPerSec),
       );
 }
 
@@ -191,19 +197,25 @@ class DownloadManager {
     if (!tasks.any((t) => t.taskId == update.task.taskId)) return;
     final gameId = gameIdOf(update.task);
     if (update is TaskProgressUpdate) {
+      // background_downloader reports terminal states via negative progress
+      // sentinels (-1 failed, -2 canceled, -3 notFound, -4 waitingToRetry,
+      // -5 paused) alongside a TaskStatusUpdate; those aren't real byte
+      // counts, so they must not feed the size-weighted progress math.
+      if (update.progress < 0) return;
       _taskProgress[update.task.taskId] = update.progress;
+      final knownSpeed = update.networkSpeed > 0;
       _recomputeProgress(
         gameId,
-        speed: update.networkSpeed > 0
-            ? (update.networkSpeed * 1024 * 1024).round()
-            : null,
+        speed:
+            knownSpeed ? (update.networkSpeed * 1024 * 1024).round() : null,
+        clearSpeed: !knownSpeed,
       );
     } else if (update is TaskStatusUpdate) {
       unawaited(_onStatus(gameId, update));
     }
   }
 
-  void _recomputeProgress(int gameId, {int? speed}) {
+  void _recomputeProgress(int gameId, {int? speed, bool clearSpeed = false}) {
     final tasks = _tasksByGame[gameId] ?? const <DownloadTask>[];
     var total = 0;
     var done = 0.0;
@@ -218,6 +230,7 @@ class DownloadManager {
       progress: done / total,
       bytesDone: done.round(),
       speedBytesPerSec: speed,
+      clearSpeed: clearSpeed,
     );
     _emit();
   }
@@ -229,12 +242,14 @@ class DownloadManager {
       case TaskStatus.paused:
         _progress[gameId] = current.copyWith(
           status: GameProgressStatus.paused,
+          clearSpeed: true,
         );
       case TaskStatus.failed:
       case TaskStatus.canceled:
       case TaskStatus.notFound:
         _progress[gameId] = current.copyWith(
           status: GameProgressStatus.failed,
+          clearSpeed: true,
         );
       case TaskStatus.complete:
         await _onComplete(gameId, update.task);
