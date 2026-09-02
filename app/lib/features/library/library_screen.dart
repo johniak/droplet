@@ -21,6 +21,7 @@ class LibraryScreen extends ConsumerWidget {
         titleSpacing: 16,
         title: const _SearchField(),
         actions: [
+          const _SortAction(),
           const _DownloadsAction(),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
@@ -152,6 +153,11 @@ class _SystemBar extends ConsumerWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
+          _SystemChip(
+            label: 'Tylko zainstalowane',
+            selected: ref.watch(installedOnlyProvider),
+            onTap: () => ref.read(installedOnlyProvider.notifier).toggle(),
+          ),
           _SystemChip(
             label: 'Wszystkie',
             selected: selected == null,
@@ -303,4 +309,29 @@ class _LibrarySkeleton extends StatelessWidget {
         itemCount: 6,
         itemBuilder: (_, __) => const PulseBox(),
       );
+}
+
+
+/// Sorting lives behind one icon: the library is browsed far more often than
+/// it is re-sorted.
+class _SortAction extends ConsumerWidget {
+  const _SortAction();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sort = ref.watch(sortProvider);
+    return PopupMenuButton<LibrarySort>(
+      icon: const Icon(Icons.sort),
+      tooltip: 'Sortowanie',
+      initialValue: sort,
+      onSelected: (value) => ref.read(sortProvider.notifier).select(value),
+      itemBuilder: (_) => const [
+        PopupMenuItem(value: LibrarySort.title, child: Text('Alfabetycznie')),
+        PopupMenuItem(
+          value: LibrarySort.recentlyAdded,
+          child: Text('Ostatnio dodane'),
+        ),
+      ],
+    );
+  }
 }

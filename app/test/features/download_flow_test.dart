@@ -236,4 +236,31 @@ void main() {
     final state = await container.read(localStateProvider(7).future);
     expect(state.status, InstallStatus.installed);
   });
+
+  testWidgets('not enough space is explained in a snackbar', (tester) async {
+    final port = FakeDownloaderPort()..free = 1;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sessionProvider.overrideWith(_Session.new),
+          gameDetailProvider(7).overrideWith((ref) async => _game),
+          localStateProvider(7).overrideWith((ref) async => _none),
+          storageSettingsProvider.overrideWith(
+            (ref) async => StorageSettings('/roms', const {}),
+          ),
+          downloaderPortProvider.overrideWithValue(port),
+          permissionsPortProvider.overrideWithValue(
+            FakePermissionsPort(granted: true),
+          ),
+        ],
+        child: const MaterialApp(home: GameDetailScreen(gameId: 7)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Pobierz'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.textContaining('Za mało miejsca'), findsOneWidget);
+    expect(port.enqueued, isEmpty);
+  });
 }

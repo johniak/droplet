@@ -93,16 +93,84 @@ class SearchQuery extends Notifier<String> {
 final searchQueryProvider =
     NotifierProvider<SearchQuery, String>(SearchQuery.new);
 
+enum LibrarySort { title, recentlyAdded }
+
+class SortOrder extends Notifier<LibrarySort> {
+  @override
+  LibrarySort build() => LibrarySort.title;
+
+  void select(LibrarySort sort) => state = sort;
+}
+
+final sortProvider = NotifierProvider<SortOrder, LibrarySort>(SortOrder.new);
+
+class InstalledOnly extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void toggle() => state = !state;
+}
+
+final installedOnlyProvider =
+    NotifierProvider<InstalledOnly, bool>(InstalledOnly.new);
+
+/// Ids of games with anything on disk — filled by the game cards as they
+/// resolve their local state.
+class InstalledIds extends Notifier<Set<int>> {
+  @override
+  Set<int> build() => {};
+
+  void mark(int id, {required bool installed}) {
+    if (installed == state.contains(id)) return;
+    final next = {...state};
+    if (installed) {
+      next.add(id);
+    } else {
+      next.remove(id);
+    }
+    state = next;
+  }
+}
+
+final installedIdsProvider =
+    NotifierProvider<InstalledIds, Set<int>>(InstalledIds.new);
+
+List<GameSummary> sortAndFilter(
+  List<GameSummary> games,
+  LibrarySort sort,
+  bool installedOnly,
+  Set<int> installedIds,
+) {
+  final out = [
+    for (final game in games)
+      if (!installedOnly || installedIds.contains(game.id)) game,
+  ];
+  out.sort(
+    switch (sort) {
+      LibrarySort.title => (a, b) =>
+          a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+      LibrarySort.recentlyAdded => (a, b) => b.id.compareTo(a.id),
+    },
+  );
+  return out;
+}
+
 /// Client-side projection of the snapshot: the whole library of a single user
 /// fits in memory, and filtering locally keeps offline mode working.
 final gamesProvider = FutureProvider<List<GameSummary>>((ref) async {
   final snapshot = await ref.watch(librarySnapshotProvider.future);
   final system = ref.watch(selectedSystemProvider);
   final search = ref.watch(searchQueryProvider).trim().toLowerCase();
-  return [
+  final matching = [
     for (final game in snapshot.games)
       if ((system == null || game.systemCode == system) &&
           (search.isEmpty || game.title.toLowerCase().contains(search)))
         game,
   ];
+  return sortAndFilter(
+    matching,
+    ref.watch(sortProvider),
+    ref.watch(installedOnlyProvider),
+    ref.watch(installedIdsProvider),
+  );
 });

@@ -18,6 +18,9 @@ abstract class DownloaderPort {
   Future<int?> fileLength(String path);
   Future<void> deleteFile(String path);
   Future<void> ensureNotificationPermission();
+
+  /// Free bytes on the volume holding [path]; null when unknown.
+  Future<int?> freeBytes(String path);
 }
 
 /// `FileDownloader().updates` is a single-subscription stream, so it is turned
@@ -69,6 +72,18 @@ class BackgroundDownloaderPort implements DownloaderPort {
   @override
   Future<void> ensureNotificationPermission() async {
     await FileDownloader().permissions.request(PermissionType.notifications);
+  }
+
+  @override
+  Future<int?> freeBytes(String path) async {
+    try {
+      final stat = await Process.run('df', ['-k', path]);
+      final line = (stat.stdout as String).trim().split('\n').last;
+      final columns = line.split(RegExp(r'\s+'));
+      return int.parse(columns[3]) * 1024;
+    } catch (_) {
+      return null;
+    }
   }
 }
 

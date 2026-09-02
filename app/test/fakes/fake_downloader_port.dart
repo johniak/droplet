@@ -63,4 +63,9 @@ class FakeDownloaderPort implements DownloaderPort {
 
   @override
   Future<void> ensureNotificationPermission() async => notificationRequests++;
+
+  int? free;
+
+  @override
+  Future<int?> freeBytes(String path) async => free;
 }

@@ -2,6 +2,7 @@ import 'package:background_downloader/background_downloader.dart';
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/download_manager.dart';
 import 'package:droplet/core/downloads/local_state.dart';
+import 'package:droplet/core/downloads/space.dart';
 import 'package:droplet/core/downloads/storage_settings.dart';
 import 'package:droplet/core/env.dart';
 import 'package:droplet/core/platform/downloader_port.dart';
@@ -282,5 +283,23 @@ void main() {
     );
     await Future<void>.delayed(Duration.zero);
     expect(provided.progress[7]?.status, GameProgressStatus.complete);
+  });
+
+  test('not enough space stops the download', () async {
+    port.free = 10;
+    await expectLater(start(), throwsA(isA<InsufficientSpaceException>()));
+    expect(port.enqueued, isEmpty);
+  });
+
+  test('unknown free space does not block the download', () async {
+    port.free = null;
+    await start();
+    expect(port.enqueued, hasLength(1));
+  });
+
+  test('enough space lets the download through', () async {
+    port.free = 1024 + kFreeSpaceMargin;
+    await start();
+    expect(port.enqueued, hasLength(1));
   });
 }

@@ -172,3 +172,7 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   rzuci, a nikt go nie sluchа, `provider.future` zostaje wiszacy (timeout w tescie).
   Test sprawdza wiec stan (`container.listen` + `AsyncValue.hasError`) zamiast
   awaitowac future.
+- **M6 Task 3 - wolne miejsce bez `disk_space_plus`**: plan proponowal pakiet
+  `disk_space_plus`, ale `DownloaderPort.freeBytes` realizuje to bez nowej
+  zaleznosci (wywolanie `df -k` w adapterze; blad -> `null`, czyli kontrola
+  pomijana). Lista plikow z `coverage:ignore-file` sie nie rozszerzyla.

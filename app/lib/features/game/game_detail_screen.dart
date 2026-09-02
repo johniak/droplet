@@ -6,6 +6,7 @@ import '../../core/api/models.dart';
 import '../../core/downloads/download_manager.dart';
 import '../../core/downloads/local_state.dart';
 import '../../core/downloads/selection.dart';
+import '../../core/downloads/space.dart';
 import '../../core/downloads/storage_settings.dart';
 import '../../core/format.dart';
 import '../../core/session/providers.dart';
@@ -98,6 +99,10 @@ class _DetailState extends ConsumerState<_Detail> {
           ),
         ),
       );
+    } on InsufficientSpaceException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 

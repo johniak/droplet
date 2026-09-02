@@ -7,6 +7,7 @@ import '../../../core/api/models.dart';
 import '../../../core/downloads/local_state.dart';
 import '../../../core/session/providers.dart';
 import '../../game/providers.dart';
+import '../providers.dart';
 import 'cover_image.dart';
 
 class GameCard extends ConsumerWidget {
@@ -80,6 +81,14 @@ class _InstallBadge extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final local = ref.watch(localStateProvider(gameId)).value;
+    if (local != null) {
+      // Feed the "installed only" filter without a second disk scan.
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => ref
+            .read(installedIdsProvider.notifier)
+            .mark(gameId, installed: local.status != InstallStatus.none),
+      );
+    }
     if (local == null || local.status == InstallStatus.none) {
       return const SizedBox.shrink();
     }

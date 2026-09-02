@@ -10,6 +10,7 @@ import '../platform/downloader_port.dart';
 import '../platform/permissions_port.dart';
 import 'local_state.dart';
 import 'permissions.dart';
+import 'space.dart';
 import 'storage_settings.dart';
 import 'task_builder.dart';
 
@@ -103,6 +104,13 @@ class DownloadManager {
       );
     }
     if (tasks.isEmpty) return;
+    final needed = game.files
+        .where((f) => tasks.any((t) => t.filename == f.name))
+        .fold(0, (sum, f) => sum + f.size);
+    final free = await _port.freeBytes(settings.baseDir);
+    if (!hasEnoughSpace(needed, free)) {
+      throw InsufficientSpaceException(needed, free!);
+    }
     _tasksByGame[game.id] = tasks;
     _progress[game.id] = GameProgress(
       gameId: game.id,

@@ -120,4 +120,40 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('the sort menu switches ordering', (tester) async {
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.sort));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ostatnio dodane'));
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(LibraryScreen)),
+    );
+    expect(container.read(sortProvider), LibrarySort.recentlyAdded);
+  });
+
+  testWidgets('the installed-only chip toggles the filter', (tester) async {
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tylko zainstalowane'));
+    await tester.pump();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(LibraryScreen)),
+    );
+    expect(container.read(installedOnlyProvider), true);
+  });
+
+  test('installedIds tracks games with files on disk', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final ids = container.read(installedIdsProvider.notifier);
+    ids.mark(1, installed: true);
+    expect(container.read(installedIdsProvider), {1});
+    ids.mark(1, installed: true); // no-op
+    expect(container.read(installedIdsProvider), {1});
+    ids.mark(1, installed: false);
+    expect(container.read(installedIdsProvider), isEmpty);
+  });
 }
