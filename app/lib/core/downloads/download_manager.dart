@@ -120,7 +120,8 @@ class DownloadManager {
     final tasks = <DownloadTask>[];
     for (final file in game.files) {
       if (!selectedIds.contains(file.id)) continue;
-      final target = settings.pathFor(game.systemCode, file.name);
+      final target =
+          settings.pathFor(game.systemCode, game.folder, file.name);
       if (local.presentPaths.contains(target)) continue;
       tasks.add(
         buildTask(
@@ -130,13 +131,12 @@ class DownloadManager {
           file: file,
           settings: settings,
           systemCode: game.systemCode,
+          folder: game.folder,
         ),
       );
     }
     if (tasks.isEmpty) return;
-    final needed = game.files
-        .where((f) => tasks.any((t) => t.filename == f.name))
-        .fold(0, (sum, f) => sum + f.size);
+    final needed = tasks.fold(0, (sum, t) => sum + expectedSizeOf(t));
     final free = await _port.freeBytes(settings.baseDir);
     if (!hasEnoughSpace(needed, free)) {
       throw InsufficientSpaceException(needed, free!);

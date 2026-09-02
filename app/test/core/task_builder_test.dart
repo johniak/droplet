@@ -23,6 +23,7 @@ void main() {
       file: file,
       settings: StorageSettings('/storage/emulated/0/RetroArch/roms', {}),
       systemCode: 'snes',
+      folder: 'Mario (USA)',
     );
     expect(task.url, 'http://nas:8000/api/files/42/download');
     expect(task.headers['Authorization'], 'Token abc');
@@ -30,7 +31,10 @@ void main() {
     // so the leading slash is stripped; BaseDirectory.root puts it back when
     // the task resolves its file path.
     expect(task.baseDirectory, BaseDirectory.root);
-    expect(task.directory, 'storage/emulated/0/RetroArch/roms/snes');
+    expect(
+      task.directory,
+      'storage/emulated/0/RetroArch/roms/snes/Mario (USA)',
+    );
     expect(task.filename, 'Mario (USA).sfc');
     expect(task.group, 'game-7');
     expect(task.allowPause, true);
@@ -46,7 +50,30 @@ void main() {
       file: file,
       settings: StorageSettings('/roms', const {}, wifiOnly: true),
       systemCode: 'snes',
+      folder: 'Mario (USA)',
     );
     expect(task.requiresWiFi, isTrue);
+  });
+
+  test('a name with a subdirectory splits into directory and filename', () {
+    final task = buildTask(
+      serverUrl: 'http://nas:8000',
+      authHeaders: const {},
+      gameId: 7,
+      file: const GameFileModel(
+        id: 43,
+        name: 'disc1/a.bin',
+        relativePath: '',
+        role: FileRole.disc,
+        discNumber: 1,
+        version: '',
+        size: 8,
+      ),
+      settings: StorageSettings('/storage/emulated/0/RetroArch/roms', const {}),
+      systemCode: 'snes',
+      folder: 'Mario (USA)',
+    );
+    expect(task.directory, endsWith('/Mario (USA)/disc1'));
+    expect(task.filename, 'a.bin');
   });
 }

@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/models.dart';
-import '../../core/downloads/local_scanner.dart';
+import '../../core/downloads/device_scan.dart';
 import '../../core/downloads/local_state.dart';
 import '../../core/downloads/storage_settings.dart';
 import '../../core/session/providers.dart';
@@ -15,8 +15,23 @@ final localStateProvider = FutureProvider.family<LocalGameState, int>(
   (ref, id) async {
     final game = await ref.watch(gameDetailProvider(id).future);
     final settings = await ref.watch(storageSettingsProvider.future);
-    final sizes = await scanSystemDir(settings.dirFor(game.systemCode));
-    return diffGame(game.files, sizes, settings, game.systemCode);
+    final index = scanDevice(
+      settings,
+      [game.systemCode],
+      {'${game.systemCode}/${game.folder}'},
+    );
+    return buildLocalStates(
+      [
+        ManifestEntry(
+          gameId: game.id,
+          systemCode: game.systemCode,
+          folder: game.folder,
+          files: game.files,
+        ),
+      ],
+      index,
+      settings,
+    )[game.id]!;
   },
 );
 

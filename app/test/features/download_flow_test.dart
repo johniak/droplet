@@ -143,7 +143,8 @@ void main() {
   test('localStateProvider diffs the manifest against the disk', () async {
     final dir = Directory.systemTemp.createTempSync();
     addTearDown(() => dir.deleteSync(recursive: true));
-    File('${dir.path}/m.sfc').writeAsBytesSync(List.filled(1024, 0));
+    Directory('${dir.path}/Mario').createSync();
+    File('${dir.path}/Mario/m.sfc').writeAsBytesSync(List.filled(1024, 0));
     final container = ProviderContainer(
       overrides: [
         gameDetailProvider(7).overrideWith((ref) async => _game),

@@ -244,7 +244,7 @@ void main() {
     await tester.pumpWidget(_screenLive(manager));
     await tester.pumpAndSettle();
 
-    port.lengths['/roms/snes/m.sfc'] = 1024;
+    port.lengths['/roms/snes/Mario/m.sfc'] = 1024;
     await tester.runAsync(() async {
       port.controller.add(TaskStatusUpdate(completedTask, TaskStatus.complete));
       port.controller.add(TaskStatusUpdate(failedTask, TaskStatus.failed));

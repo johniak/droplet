@@ -12,9 +12,15 @@ void main() {
     expect(s.dirFor('snes'), '/roms/snes');
   });
 
-  test('pathFor joins dir and filename', () {
+  test('gameDir and pathFor put every file inside the game folder', () {
     final s = StorageSettings('/roms', {});
-    expect(s.pathFor('snes', 'Mario (USA).sfc'), '/roms/snes/Mario (USA).sfc');
+    expect(s.gameDir('snes', 'Mario (USA)'), '/roms/snes/Mario (USA)');
+    expect(
+      s.pathFor('snes', 'Mario (USA)', 'disc1/a.bin'),
+      '/roms/snes/Mario (USA)/disc1/a.bin',
+    );
+    final mapped = StorageSettings('/roms', {'snes': 'SNES'});
+    expect(mapped.gameDir('snes', 'Mario (USA)'), '/roms/SNES/Mario (USA)');
   });
 
   group('repository', () {

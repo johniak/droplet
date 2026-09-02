@@ -22,8 +22,13 @@ class StorageSettings {
   String dirFor(String systemCode) =>
       '$baseDir/${systemDirs[systemCode] ?? systemCode}';
 
-  String pathFor(String systemCode, String fileName) =>
-      '${dirFor(systemCode)}/$fileName';
+  /// Katalog jednej gry — wszystkie jej pliki mieszkają w środku.
+  String gameDir(String systemCode, String folder) =>
+      '${dirFor(systemCode)}/$folder';
+
+  /// [fileName] to nazwa względem katalogu gry, więc może zawierać podkatalog.
+  String pathFor(String systemCode, String folder, String fileName) =>
+      '${gameDir(systemCode, folder)}/$fileName';
 }
 
 class StorageSettingsRepository {

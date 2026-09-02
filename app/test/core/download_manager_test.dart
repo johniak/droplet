@@ -68,6 +68,7 @@ void main() {
   test('enqueues selected, missing files', () async {
     await start();
     expect(port.enqueued.single.url, 'http://nas:8000/api/files/42/download');
+    expect(port.enqueued.single.directory, 'roms/snes/Mario');
     expect(manager.progress[7]?.status, GameProgressStatus.running);
   });
 
@@ -77,7 +78,7 @@ void main() {
         status: InstallStatus.installed,
         updateAvailable: false,
         missing: [],
-        presentPaths: ['/roms/snes/m.sfc'],
+        presentPaths: ['/roms/snes/Mario/m.sfc'],
       ),
     );
     expect(port.enqueued, isEmpty);
@@ -99,7 +100,7 @@ void main() {
 
   test('complete with matching size -> complete + onGameChanged', () async {
     await start();
-    port.lengths['/roms/snes/m.sfc'] = 1024;
+    port.lengths['/roms/snes/Mario/m.sfc'] = 1024;
     port.controller.add(
       TaskStatusUpdate(port.enqueued.single, TaskStatus.complete),
     );
@@ -111,12 +112,12 @@ void main() {
 
   test('complete with size mismatch -> file deleted, failed', () async {
     await start();
-    port.lengths['/roms/snes/m.sfc'] = 10;
+    port.lengths['/roms/snes/Mario/m.sfc'] = 10;
     port.controller.add(
       TaskStatusUpdate(port.enqueued.single, TaskStatus.complete),
     );
     await Future<void>.delayed(Duration.zero);
-    expect(port.deleted, ['/roms/snes/m.sfc']);
+    expect(port.deleted, ['/roms/snes/Mario/m.sfc']);
     expect(manager.progress[7]?.status, GameProgressStatus.failed);
   });
 
@@ -216,8 +217,8 @@ void main() {
       authHeaders: const {'Authorization': 'Token t'},
       settings: settings,
     );
-    port.lengths['/roms/snes/m.sfc'] = 1024;
-    port.lengths['/roms/snes/d.bin'] = 1024;
+    port.lengths['/roms/snes/Tekken/m.sfc'] = 1024;
+    port.lengths['/roms/snes/Tekken/d.bin'] = 1024;
     port.controller.add(
       TaskStatusUpdate(port.enqueued.first, TaskStatus.complete),
     );
@@ -280,7 +281,7 @@ void main() {
       authHeaders: const {'Authorization': 'Token t'},
       settings: settings,
     );
-    providerPort.lengths['/roms/snes/m.sfc'] = 1024;
+    providerPort.lengths['/roms/snes/Mario/m.sfc'] = 1024;
     providerPort.controller.add(
       TaskStatusUpdate(providerPort.enqueued.single, TaskStatus.complete),
     );

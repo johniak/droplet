@@ -1,7 +1,4 @@
-import 'dart:io';
-
 import 'package:droplet/core/api/models.dart';
-import 'package:droplet/core/downloads/local_scanner.dart';
 import 'package:droplet/core/downloads/local_state.dart';
 import 'package:droplet/core/downloads/storage_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,13 +34,14 @@ void main() {
       {'hk.nsp': 10, 'upd.nsp': 10},
       settings,
       'switch',
+      'HK',
     );
     expect(s.status, InstallStatus.installed);
     expect(s.updateAvailable, false);
   });
 
   test('none present -> none', () {
-    final s = diffGame(files, {}, settings, 'switch');
+    final s = diffGame(files, {}, settings, 'switch', 'HK');
     expect(s.status, InstallStatus.none);
     expect(s.missing.length, 2);
   });
@@ -54,12 +52,13 @@ void main() {
       {'hk.nsp': 999, 'upd.nsp': 10},
       settings,
       'switch',
+      'HK',
     );
     expect(s.status, InstallStatus.partial);
   });
 
   test('base without newest update -> updateAvailable', () {
-    final s = diffGame(files, {'hk.nsp': 10}, settings, 'switch');
+    final s = diffGame(files, {'hk.nsp': 10}, settings, 'switch', 'HK');
     expect(s.status, InstallStatus.partial);
     expect(s.updateAvailable, true);
   });
@@ -74,22 +73,19 @@ void main() {
       {'hk.nsp': 10, 'old-upd.nsp': 10},
       settings,
       'switch',
+      'HK',
     );
-    expect(s.presentPaths, contains('/roms/switch/old-upd.nsp'));
+    expect(s.presentPaths, contains('/roms/switch/HK/old-upd.nsp'));
   });
 
-  group('scanSystemDir', () {
-    test('missing dir -> empty map', () async {
-      expect(await scanSystemDir('/nie/ma/takiego'), isEmpty);
-    });
-
-    test('maps basenames to sizes, skips subdirectories', () async {
-      final dir = await Directory.systemTemp.createTemp();
-      addTearDown(() => dir.deleteSync(recursive: true));
-      File('${dir.path}/a.sfc').writeAsBytesSync(List.filled(3, 0));
-      File('${dir.path}/b.sfc').writeAsBytesSync(List.filled(5, 0));
-      Directory('${dir.path}/sub').createSync();
-      expect(await scanSystemDir(dir.path), {'a.sfc': 3, 'b.sfc': 5});
-    });
+  test('names with subdirectories keep their path inside the game folder', () {
+    final s = diffGame(
+      [f(1, 'disc1/ff7.bin', FileRole.disc)],
+      {'disc1/ff7.bin': 10},
+      settings,
+      'psx',
+      'FF7',
+    );
+    expect(s.presentPaths, ['/roms/psx/FF7/disc1/ff7.bin']);
   });
 }

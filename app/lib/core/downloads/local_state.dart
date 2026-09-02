@@ -31,6 +31,7 @@ LocalGameState diffGame(
   Map<String, int> localSizesByName,
   StorageSettings settings,
   String systemCode,
+  String folder,
 ) {
   bool present(GameFileModel file) => localSizesByName[file.name] == file.size;
 
@@ -53,7 +54,7 @@ LocalGameState diffGame(
 
   final presentPaths = [
     for (final file in files)
-      if (present(file)) settings.pathFor(systemCode, file.name),
+      if (present(file)) settings.pathFor(systemCode, folder, file.name),
   ];
 
   return LocalGameState(
