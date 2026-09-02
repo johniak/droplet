@@ -67,18 +67,20 @@ def _group_folder(folder: Path, root: Path, *, is_switch: bool) -> GameGroup | N
     claimed: set[Path] = set()
 
     def resolve(base: Path, name: str) -> Path | None:
-        cand = (base.parent / name)
+        cand = base.parent / name.replace("\\", "/")
         return cand if cand in file_set else None
 
-    # 1. m3u: płyty z numerami, cue/bin jako support
+    # 1. m3u: płyty z numerami (jeden licznik na cały folder), cue/bin jako support
+    disc_counter = 0
     for m3u in [p for p in files if p.suffix.lower() == ".m3u"]:
         group.files.append(_entry(m3u, root, "support"))
         claimed.add(m3u)
-        for i, name in enumerate(parse_m3u(m3u.read_text(errors="replace")), start=1):
+        for name in parse_m3u(m3u.read_text(errors="replace")):
             disc = resolve(m3u, name)
-            if disc is None:
+            if disc is None or disc in claimed:
                 continue
-            group.files.append(_entry(disc, root, "disc", disc=i))
+            disc_counter += 1
+            group.files.append(_entry(disc, root, "disc", disc=disc_counter))
             claimed.add(disc)
             if disc.suffix.lower() == ".cue":
                 for bin_name in parse_cue(disc.read_text(errors="replace")):
@@ -97,17 +99,17 @@ def _group_folder(folder: Path, root: Path, *, is_switch: bool) -> GameGroup | N
                 group.files.append(_entry(b, root, "support"))
                 claimed.add(b)
 
-    # 3. reszta: Switch wg tagów, sidecar jako other, inne jako base
+    # 3. reszta: sidecar jako other (nawet w folderze Switch), Switch wg tagów, inne jako base
     for p in files:
         if p in claimed:
             continue
-        if is_switch:
+        if p.suffix.lower() in SIDECAR_EXTENSIONS:
+            group.files.append(_entry(p, root, "other"))
+        elif is_switch:
             info = parse_switch(p.stem)
             if info.role == "base" and info.title_id and not group.switch_title_prefix:
                 group.switch_title_prefix = title_prefix(info.title_id)
             group.files.append(_entry(p, root, info.role, version=info.version))
-        elif p.suffix.lower() in SIDECAR_EXTENSIONS:
-            group.files.append(_entry(p, root, "other"))
         else:
             group.files.append(_entry(p, root, "base"))
     return group

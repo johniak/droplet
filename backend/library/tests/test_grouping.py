@@ -98,3 +98,63 @@ def test_empty_folder_yields_no_game(tmp_path):
     (tmp_path / "snes" / "Empty").mkdir(parents=True)
     groups, loose = group_system_dir(tmp_path / "snes", tmp_path, is_switch=False)
     assert groups == [] and loose == []
+
+
+def test_switch_folder_sidecar_files_are_other(tmp_path):
+    root = tmp_path
+    d = root / "switch" / "Game"
+    _write(d / "Game [0100633007D48000][v0].nsp")
+    _write(d / "cover.jpg")
+    groups, _ = group_system_dir(root / "switch", root, is_switch=True)
+    roles = {f.role for f in groups[0].files}
+    assert roles == {"base", "other"}
+
+
+def test_m3u_overlap_disc_guard_and_folder_wide_numbering(tmp_path):
+    root = tmp_path
+    d = root / "psx" / "Game"
+    _write(d / "Disc1.cue", b'FILE "Disc1.bin" BINARY\n')
+    _write(d / "Disc1.bin")
+    _write(d / "Disc2.cue", b'FILE "Disc2.bin" BINARY\n')
+    _write(d / "Disc2.bin")
+    _write(d / "Disc3.cue", b'FILE "Disc3.bin" BINARY\n')
+    _write(d / "Disc3.bin")
+    _write(d / "A.m3u", b"Disc1.cue\nDisc2.cue\n")
+    _write(d / "B.m3u", b"Disc2.cue\nDisc3.cue\n")
+    groups, _ = group_system_dir(root / "psx", root, is_switch=False)
+    discs = [f for f in groups[0].files if f.role == "disc"]
+    assert sorted(f.relative_path.split("/")[-1] for f in discs) == [
+        "Disc1.cue", "Disc2.cue", "Disc3.cue",
+    ]
+    assert sorted(f.disc_number for f in discs) == [1, 2, 3]
+
+
+def test_m3u_entry_with_windows_backslash_path(tmp_path):
+    root = tmp_path
+    d = root / "psx" / "FF7"
+    _write(d / "disc1" / "FF7 (Disc 1).cue", b'FILE "FF7 (Disc 1).bin" BINARY\n')
+    _write(d / "disc1" / "FF7 (Disc 1).bin")
+    _write(d / "FF7.m3u", b"disc1\\FF7 (Disc 1).cue\n")
+    groups, _ = group_system_dir(root / "psx", root, is_switch=False)
+    discs = [f for f in groups[0].files if f.role == "disc"]
+    assert discs[0].relative_path == "psx/FF7/disc1/FF7 (Disc 1).cue"
+
+
+def test_hidden_file_inside_game_folder_is_skipped(tmp_path):
+    root = tmp_path
+    d = root / "snes" / "Game"
+    _write(d / "Game.sfc")
+    _write(d / ".DS_Store")
+    groups, _ = group_system_dir(root / "snes", root, is_switch=False)
+    assert len(groups[0].files) == 1
+    assert groups[0].files[0].relative_path.endswith("Game.sfc")
+
+
+def test_nested_subdirectory_without_playlist(tmp_path):
+    root = tmp_path
+    d = root / "snes" / "Game"
+    _write(d / "extras" / "manual.pdf")
+    _write(d / "extras" / "rom.sfc")
+    groups, _ = group_system_dir(root / "snes", root, is_switch=False)
+    roles = {f.relative_path.split("/")[-1]: f.role for f in groups[0].files}
+    assert roles == {"manual.pdf": "other", "rom.sfc": "base"}
