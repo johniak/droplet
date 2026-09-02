@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:droplet/core/api/api_client.dart';
 import 'package:droplet/core/api/models.dart';
@@ -127,7 +129,48 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byType(CachedNetworkImage), findsOneWidget);
+    final image = tester.widget<CachedNetworkImage>(
+      find.byType(CachedNetworkImage),
+    );
+    expect(image.imageUrl, contains('/api/games/9/cover'));
+    expect(image.httpHeaders, containsPair('Authorization', 'Token t'));
   });
+
+  testWidgets(
+    'GameTile and ShelfCard without a cover never touch apiClientProvider',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            localStateProvider(11).overrideWith(
+              (ref) async => local(InstallStatus.none),
+            ),
+            localStateProvider(12).overrideWith(
+              (ref) async => local(InstallStatus.none),
+            ),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: Column(
+                children: [
+                  SizedBox(
+                    width: 180,
+                    height: 300,
+                    child: GameTile(game: g(11, 'Sonic')),
+                  ),
+                  ShelfCard(game: g(12, 'Rayman')),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Sonic'), findsWidgets);
+      expect(find.text('Rayman'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('GameTile shows title and size and navigates', (tester) async {
     await tester.pumpWidget(
@@ -210,6 +253,54 @@ void main() {
     expect(container.read(updatableIdsProvider), {2});
   });
 
+  testWidgets(
+    'InstallBadge survives being unmounted before its frame callback runs',
+    (tester) async {
+      // Reproduces the real crash site: a badge inside a scrolled list whose
+      // local state resolves in the very frame the list also scrolls it out
+      // of the cache extent. `ListView`'s layout pass unmounts the culled
+      // item's element in the same frame InstallBadge.build() registered
+      // its postFrameCallback, so the callback runs against an unmounted
+      // element unless the notifiers were captured ahead of time.
+      final completer = Completer<LocalGameState>();
+      final controller = ScrollController();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            apiClientProvider.overrideWithValue(
+              ApiClient(baseUrl: 'http://nas:8000', token: 't'),
+            ),
+            localStateProvider(0).overrideWith((ref) async => completer.future),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                height: 300,
+                child: ListView.builder(
+                  controller: controller,
+                  itemExtent: 50,
+                  itemCount: 500,
+                  itemBuilder: (_, i) => SizedBox(
+                    height: 50,
+                    child: i == 0
+                        ? const InstallBadge(gameId: 0)
+                        : Text('item $i'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      completer.complete(local(InstallStatus.installed));
+      // Scrolling far enough evicts item 0 (and its badge) from the cache
+      // extent during this same frame's layout pass.
+      controller.jumpTo(100000);
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('Shelf caps cards and offers "Wszystkie"', (tester) async {
     var seeAll = 0;
     final games = [for (var i = 1; i <= 14; i++) g(i, 'G$i')];
@@ -257,7 +348,7 @@ void main() {
     // 'Tekken' bez okładki renderuje się dwa razy: raz jako tytuł na
     // placeholderze okładki, raz jako podpis kafla (tak jak w teście
     // GameTile powyżej).
-    expect(find.text('Tekken'), findsWidgets);
+    expect(find.text('Tekken'), findsNWidgets(2));
   });
 
   testWidgets('ShelfCard navigates on tap', (tester) async {

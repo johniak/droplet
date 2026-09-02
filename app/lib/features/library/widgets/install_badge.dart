@@ -16,14 +16,17 @@ class InstallBadge extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final local = ref.watch(localStateProvider(gameId)).value;
     if (local != null) {
+      // Notatniki czytamy teraz, przed zaplanowaniem callbacku — po klatce
+      // ten widget mógł już zniknąć z drzewa (np. wyjechał z Shelf), a
+      // wtedy `ref.read` rzuca StateError na odpiętym elemencie.
+      final installedNotifier = ref.read(installedIdsProvider.notifier);
+      final updatableNotifier = ref.read(updatableIdsProvider.notifier);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(installedIdsProvider.notifier).mark(
-              gameId,
-              installed: local.status != InstallStatus.none,
-            );
-        ref
-            .read(updatableIdsProvider.notifier)
-            .mark(gameId, installed: local.updateAvailable);
+        installedNotifier.mark(
+          gameId,
+          installed: local.status != InstallStatus.none,
+        );
+        updatableNotifier.mark(gameId, installed: local.updateAvailable);
       });
     }
     if (local == null || local.status == InstallStatus.none) {

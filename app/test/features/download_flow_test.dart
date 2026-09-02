@@ -265,6 +265,11 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byType(CachedNetworkImage), findsOneWidget);
+      final image = tester.widget<CachedNetworkImage>(
+        find.byType(CachedNetworkImage),
+      );
+      expect(image.imageUrl, contains('/api/games/1/cover'));
+      expect(image.httpHeaders, containsPair('Authorization', 'Token t'));
       await tester.tap(find.byType(GameCard));
       await tester.pumpAndSettle();
       expect(find.text('Gra 1'), findsOneWidget);
