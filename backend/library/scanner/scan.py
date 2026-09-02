@@ -4,32 +4,15 @@ from django.conf import settings
 from django.utils import timezone
 from django.utils.text import slugify
 
-from library.models import Game, GameFile, ScanRun, System
+from library.models import Game, GameFile, LooseFile, ScanRun, System
 
 from .grouping import group_system_dir
 from .systems_map import lookup_system
 
 
 def _find_game(system: System, group) -> Game | None:
-    """Match by title id first (Switch), then by normalized title.
-
-    The title fallback is required: a group with a title id and a group without
-    one (e.g. an update named without the tag) share a normalized_title, and
-    UniqueConstraint (system, normalized_title) forbids two games.
-    """
-    if group.switch_title_prefix:
-        game = Game.objects.filter(
-            system=system, switch_title_prefix=group.switch_title_prefix
-        ).first()
-        if game is not None:
-            return game
-    game = Game.objects.filter(
-        system=system, normalized_title=group.normalized_title
-    ).first()
-    if game is not None and group.switch_title_prefix and not game.switch_title_prefix:
-        game.switch_title_prefix = group.switch_title_prefix
-        game.save(update_fields=["switch_title_prefix"])
-    return game
+    """A game's identity is its folder — matched verbatim against `Game.folder`."""
+    return Game.objects.filter(folder=group.folder).first()
 
 
 def _sync_group(system: System, group, run: ScanRun, seen: set[str]) -> None:
@@ -37,11 +20,15 @@ def _sync_group(system: System, group, run: ScanRun, seen: set[str]) -> None:
     if game is None:
         game = Game.objects.create(
             system=system,
+            folder=group.folder,
             title=group.title,
             normalized_title=group.normalized_title,
             switch_title_prefix=group.switch_title_prefix,
         )
         run.games_created += 1
+    elif group.switch_title_prefix and game.switch_title_prefix != group.switch_title_prefix:
+        game.switch_title_prefix = group.switch_title_prefix
+        game.save(update_fields=["switch_title_prefix"])
     for entry in group.files:
         seen.add(entry.relative_path)
         existing = GameFile.objects.filter(relative_path=entry.relative_path).first()
@@ -62,9 +49,25 @@ def _sync_group(system: System, group, run: ScanRun, seen: set[str]) -> None:
             run.files_updated += 1
 
 
+def _sync_loose(all_loose: dict[str, tuple[System, int]]) -> None:
+    """The set of `LooseFile` rows mirrors exactly the current scan."""
+    existing = {lf.relative_path: lf for lf in LooseFile.objects.all()}
+    for path, lf in existing.items():
+        if path not in all_loose:
+            lf.delete()
+    for path, (system, size) in all_loose.items():
+        lf = existing.get(path)
+        if lf is None:
+            LooseFile.objects.create(system=system, relative_path=path, size=size)
+        elif lf.size != size or lf.system_id != system.pk:
+            lf.size, lf.system = size, system
+            lf.save(update_fields=["size", "system"])
+
+
 def run_scan() -> ScanRun:
     run = ScanRun.objects.create()
     seen: set[str] = set()
+    all_loose: dict[str, tuple[System, int]] = {}
     root = settings.LIBRARY_ROOT
     try:
         for system_dir in sorted(p for p in root.iterdir() if p.is_dir()):
@@ -90,10 +93,15 @@ def run_scan() -> ScanRun:
                 )
                 is_switch = False
             try:
-                for group in group_system_dir(system_dir, root, is_switch=is_switch):
+                groups, loose = group_system_dir(system_dir, root, is_switch=is_switch)
+                for group in groups:
                     _sync_group(system, group, run, seen)
+                for entry in loose:
+                    all_loose[entry.relative_path] = (system, entry.size)
             except OSError as exc:
                 run.errors.append(f"{system_dir.name}: {exc}")
+        _sync_loose(all_loose)
+        run.loose_files = len(all_loose)
         # The difference is computed in Python — `exclude(relative_path__in=seen)`
         # exceeds SQLite's query parameter limit on a large library.
         stale_ids = [
