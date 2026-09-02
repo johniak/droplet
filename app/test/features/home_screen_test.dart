@@ -19,6 +19,7 @@ GameSummary g(int id, String title, String system) => GameSummary(
       systemCode: system,
       hasCover: false,
       totalSize: 5,
+      folder: title,
     );
 
 final games = [g(1, 'Super Mario World', 'snes'), g(2, 'Tekken', 'psx')];
@@ -38,6 +39,7 @@ LibrarySnapshot snap({bool fromCache = false, Set<int> previous = const {1, 2}})
     LibrarySnapshot(
       systems: systems,
       games: games,
+      manifest: [],
       fromCache: fromCache,
       previousIds: previous,
     );
@@ -259,6 +261,7 @@ void main() {
           (ref) async => const LibrarySnapshot(
             systems: [],
             games: [],
+            manifest: [],
             fromCache: false,
             previousIds: {},
           ),

@@ -78,6 +78,19 @@ class ApiClient {
     }
   }
 
+  /// Cała biblioteka w jednym zapytaniu: id, system, katalog i pliki gry.
+  Future<List<ManifestEntry>> fetchManifest() async {
+    try {
+      final resp = await _dio.get('/api/manifest/');
+      return [
+        for (final e in resp.data as List)
+          ManifestEntry.fromJson(e as Map<String, dynamic>),
+      ];
+    } on DioException catch (e) {
+      _mapError(e);
+    }
+  }
+
   Future<void> triggerScan() async {
     try {
       await _dio.post('/api/scan/');

@@ -10,6 +10,7 @@ void main() {
       'system_name': 'Switch',
       'has_cover': true,
       'total_size': 6,
+      'folder': 'Hollow Knight',
       'files': [
         {
           'id': 1,
@@ -77,6 +78,7 @@ void main() {
           'system_code': 'psx',
           'has_cover': false,
           'total_size': 1000,
+          'folder': 'Tekken (USA)',
         },
       ],
     });
@@ -98,11 +100,32 @@ void main() {
       systemCode: 'psx',
       hasCover: true,
       totalSize: 1000,
+      folder: 'Tekken (USA)',
     );
     expect(SystemModel.fromJson(system.toJson()).name, 'SNES');
     final back = GameSummary.fromJson(game.toJson());
     expect(back.title, 'Tekken');
     expect(back.hasCover, true);
     expect(back.totalSize, 1000);
+  });
+
+  test('ManifestEntry roundtrip and GameSummary.folder', () {
+    final entry = ManifestEntry.fromJson({
+      'id': 7,
+      'system_code': 'switch',
+      'folder': 'Hollow Knight',
+      'files': [
+        {'id': 1, 'name': 'hk.nsp', 'role': 'base', 'version': '', 'disc_number': null, 'size': 3},
+      ],
+    });
+    expect(entry.gameId, 7);
+    expect(entry.files.single.role, FileRole.base);
+    expect(ManifestEntry.fromJson(entry.toJson()).files.single.name, 'hk.nsp');
+    final g = GameSummary.fromJson({
+      'id': 1, 'title': 'Mario', 'system_code': 'snes', 'has_cover': false,
+      'total_size': 5, 'folder': 'Mario (USA)',
+    });
+    expect(g.folder, 'Mario (USA)');
+    expect(GameSummary.fromJson(g.toJson()).folder, 'Mario (USA)');
   });
 }

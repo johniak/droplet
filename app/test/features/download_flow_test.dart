@@ -33,6 +33,7 @@ const _game = GameDetail(
   systemName: 'SNES',
   hasCover: false,
   totalSize: 1024,
+  folder: 'Mario',
   files: [_file],
 );
 const _none = LocalGameState(

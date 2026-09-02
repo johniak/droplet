@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:droplet/core/api/models.dart';
@@ -18,13 +19,49 @@ void main() {
           systemCode: 'snes',
           hasCover: true,
           totalSize: 5,
+          folder: 'Mario (USA)',
+        ),
+      ],
+      const [
+        ManifestEntry(
+          gameId: 1,
+          systemCode: 'snes',
+          folder: 'Mario (USA)',
+          files: [
+            GameFileModel(
+              id: 1,
+              name: 'Mario (USA).sfc',
+              relativePath: '',
+              role: FileRole.base,
+              discNumber: null,
+              version: '',
+              size: 5,
+            ),
+          ],
         ),
       ],
     );
     final loaded = await cache.load();
     expect(loaded!.games.single.title, 'Mario');
+    expect(loaded.games.single.folder, 'Mario (USA)');
     expect(loaded.systems.single.code, 'snes');
+    expect(loaded.manifest.single.folder, 'Mario (USA)');
+    expect(loaded.manifest.single.files.single.name, 'Mario (USA).sfc');
     expect(loaded.savedAt.isBefore(DateTime.now().add(const Duration(minutes: 1))), true);
+  });
+
+  test('an older cache file without the manifest key loads as empty', () async {
+    final dir = Directory.systemTemp.createTempSync();
+    addTearDown(() => dir.deleteSync(recursive: true));
+    File('${dir.path}/library.json').writeAsStringSync(
+      jsonEncode({
+        'saved_at': DateTime.now().toIso8601String(),
+        'systems': const <Map<String, dynamic>>[],
+        'games': const <Map<String, dynamic>>[],
+      }),
+    );
+    final loaded = await LibraryCache(dir.path).load();
+    expect(loaded!.manifest, isEmpty);
   });
 
   test('load returns null without file', () async {

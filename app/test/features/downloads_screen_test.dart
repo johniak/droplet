@@ -91,6 +91,7 @@ GameDetail _game(int id) => GameDetail(
       systemName: 'SNES',
       hasCover: false,
       totalSize: 1024,
+      folder: 'Mario',
       files: const [_file],
     );
 

@@ -30,6 +30,7 @@ Widget _screen({
           (ref) async => const LibrarySnapshot(
             systems: [],
             games: [],
+            manifest: [],
             fromCache: false,
             previousIds: {},
           ),
@@ -115,6 +116,7 @@ void main() {
             (ref) async => const LibrarySnapshot(
               systems: [],
               games: [],
+              manifest: [],
               fromCache: false,
               previousIds: {},
             ),

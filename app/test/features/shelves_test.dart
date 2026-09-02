@@ -9,6 +9,7 @@ GameSummary g(int id, String title, String system) => GameSummary(
       systemCode: system,
       hasCover: false,
       totalSize: 1,
+      folder: title,
     );
 
 const systems = [
@@ -59,6 +60,7 @@ void main() {
           (ref) async => LibrarySnapshot(
             systems: systems,
             games: games,
+            manifest: [],
             fromCache: false,
             previousIds: const {},
           ),

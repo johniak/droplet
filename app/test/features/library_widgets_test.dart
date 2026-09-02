@@ -26,6 +26,7 @@ GameSummary g(int id, String title, {bool cover = false}) => GameSummary(
       systemCode: 'snes',
       hasCover: cover,
       totalSize: 1024,
+      folder: title,
     );
 
 LocalGameState local(InstallStatus status, {bool update = false}) =>

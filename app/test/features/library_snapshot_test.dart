@@ -15,6 +15,7 @@ const _mario = GameSummary(
   systemCode: 'snes',
   hasCover: false,
   totalSize: 5,
+  folder: 'Mario (USA)',
 );
 const _tekken = GameSummary(
   id: 2,
@@ -22,6 +23,29 @@ const _tekken = GameSummary(
   systemCode: 'psx',
   hasCover: false,
   totalSize: 9,
+  folder: 'Tekken (USA)',
+);
+const _marioEntry = ManifestEntry(
+  gameId: 1,
+  systemCode: 'snes',
+  folder: 'Mario (USA)',
+  files: [
+    GameFileModel(
+      id: 1,
+      name: 'Mario (USA).sfc',
+      relativePath: '',
+      role: FileRole.base,
+      discNumber: null,
+      version: '',
+      size: 5,
+    ),
+  ],
+);
+const _tekkenEntry = ManifestEntry(
+  gameId: 2,
+  systemCode: 'psx',
+  folder: 'Tekken (USA)',
+  files: [],
 );
 
 class _OkClient extends ApiClient {
@@ -47,6 +71,10 @@ class _OkClient extends ApiClient {
       results: [page == 1 ? _mario : _tekken],
     );
   }
+
+  @override
+  Future<List<ManifestEntry>> fetchManifest() async =>
+      const [_marioEntry, _tekkenEntry];
 }
 
 class _OfflineClient extends ApiClient {
@@ -83,13 +111,18 @@ void main() {
     expect(snapshot.games.map((g) => g.title), ['Mario', 'Tekken']);
     expect(client.pages, [1, 2]);
     expect(container.read(isOfflineProvider), false);
-    expect((await LibraryCache(dir.path).load())!.games.length, 2);
+    expect(snapshot.manifest.length, 2);
+    expect(snapshot.manifest.first.folder, 'Mario (USA)');
+    final cached = (await LibraryCache(dir.path).load())!;
+    expect(cached.games.length, 2);
+    expect(cached.manifest.length, 2);
   });
 
   test('a network error falls back to the cache', () async {
     await LibraryCache(dir.path).save(
       [const SystemModel(id: 1, code: 'snes', name: 'SNES', gameCount: 1)],
       [_mario],
+      const [_marioEntry],
     );
     final container = _container(_OfflineClient(), dir);
     addTearDown(container.dispose);
@@ -97,6 +130,7 @@ void main() {
     final snapshot = await container.read(librarySnapshotProvider.future);
     expect(snapshot.fromCache, true);
     expect(snapshot.games.single.title, 'Mario');
+    expect(snapshot.manifest.single.folder, 'Mario (USA)');
     expect(container.read(isOfflineProvider), true);
   });
 
@@ -118,7 +152,7 @@ void main() {
   });
 
   test('previousIds carry the ids known before the refresh', () async {
-    await LibraryCache(dir.path).save(const [], [_mario]);
+    await LibraryCache(dir.path).save(const [], [_mario], const [_marioEntry]);
     final container = _container(_OkClient(), dir);
     addTearDown(container.dispose);
     final snapshot = await container.read(librarySnapshotProvider.future);

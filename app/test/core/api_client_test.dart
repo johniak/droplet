@@ -36,6 +36,7 @@ void main() {
             'system_code': 'snes',
             'has_cover': true,
             'total_size': 5,
+            'folder': 'Mario (USA)',
           },
         ],
       }),
@@ -80,6 +81,7 @@ void main() {
         'system_name': 'Switch',
         'has_cover': false,
         'total_size': 3,
+        'folder': 'Hollow Knight',
         'files': [
           {
             'id': 1,
@@ -153,5 +155,40 @@ void main() {
     adapter.onPost('/api/scan/', (s) => s.reply(401, {'detail': 'no'}));
     final client = ApiClient(baseUrl: 'http://nas:8000', token: 'zly', dio: dio);
     expect(client.triggerScan(), throwsA(isA<UnauthorizedException>()));
+  });
+
+  test('fetchManifest parses entries', () async {
+    adapter.onGet(
+      '/api/manifest/',
+      (s) => s.reply(200, [
+        {
+          'id': 7,
+          'system_code': 'switch',
+          'folder': 'Hollow Knight',
+          'files': [
+            {
+              'id': 1,
+              'name': 'hk.nsp',
+              'role': 'base',
+              'version': '',
+              'disc_number': null,
+              'size': 3,
+            },
+          ],
+        },
+      ]),
+      headers: {'Authorization': 'Token abc'},
+    );
+    final client = ApiClient(baseUrl: 'http://nas:8000', token: 'abc', dio: dio);
+    final manifest = await client.fetchManifest();
+    expect(manifest, hasLength(1));
+    expect(manifest.single.folder, 'Hollow Knight');
+    expect(manifest.single.files.single.name, 'hk.nsp');
+  });
+
+  test('fetchManifest maps 401 to UnauthorizedException', () async {
+    adapter.onGet('/api/manifest/', (s) => s.reply(401, {'detail': 'no'}));
+    final client = ApiClient(baseUrl: 'http://nas:8000', token: 'zly', dio: dio);
+    expect(client.fetchManifest(), throwsA(isA<UnauthorizedException>()));
   });
 }

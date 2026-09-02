@@ -29,6 +29,7 @@ const _detail = GameDetail(
   systemName: 'Switch',
   hasCover: false,
   totalSize: 3,
+  folder: 'Hollow Knight',
   files: [
     GameFileModel(
       id: 1,
@@ -125,6 +126,7 @@ void main() {
         'system_name': 'Switch',
         'has_cover': false,
         'total_size': 1,
+        'folder': 'Hollow Knight',
         'files': <Map<String, dynamic>>[],
       }),
     );
@@ -204,6 +206,7 @@ void main() {
       systemName: 'PlayStation',
       hasCover: false,
       totalSize: 30,
+      folder: 'Final Fantasy VII',
       files: [
         GameFileModel(
           id: 1,
@@ -308,6 +311,7 @@ void main() {
           systemName: 'Switch',
           hasCover: true,
           totalSize: 3,
+          folder: 'Hollow Knight',
           files: [],
         ),
         overrides: [

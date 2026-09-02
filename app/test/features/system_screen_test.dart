@@ -18,6 +18,7 @@ GameSummary g(int id, String title) => GameSummary(
       systemCode: 'snes',
       hasCover: false,
       totalSize: 5,
+      folder: title,
     );
 
 LocalGameState local(InstallStatus s, {bool update = false}) => LocalGameState(
@@ -67,6 +68,7 @@ Widget _app(List<GameSummary> games, {List<Override> overrides = const []}) =>
           (ref) async => LibrarySnapshot(
             systems: systems,
             games: games,
+            manifest: [],
             fromCache: false,
             previousIds: const {},
           ),
@@ -147,6 +149,7 @@ void main() {
             (ref) async => const LibrarySnapshot(
               systems: [],
               games: [],
+              manifest: [],
               fromCache: false,
               previousIds: {},
             ),

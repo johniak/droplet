@@ -22,6 +22,7 @@ const detail = GameDetail(
   systemName: 'SNES',
   hasCover: false,
   totalSize: 1024,
+  folder: 'Mario',
   files: [
     GameFileModel(
       id: 1,

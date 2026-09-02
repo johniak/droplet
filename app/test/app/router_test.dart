@@ -31,6 +31,7 @@ const _detail = GameDetail(
   systemName: 'Switch',
   hasCover: false,
   totalSize: 1,
+  folder: 'Hollow Knight',
   files: [],
 );
 
@@ -41,6 +42,7 @@ const _games = [
     systemCode: 'switch',
     hasCover: false,
     totalSize: 1,
+    folder: 'Hollow Knight',
   ),
 ];
 const _systems = [
@@ -54,6 +56,7 @@ Widget _app(KeyValueStore store) => ProviderScope(
           (ref) async => const LibrarySnapshot(
             systems: _systems,
             games: _games,
+            manifest: [],
             fromCache: false,
             previousIds: {7},
           ),
@@ -179,6 +182,7 @@ void main() {
             (ref) async => const LibrarySnapshot(
               systems: [],
               games: [],
+              manifest: [],
               fromCache: false,
               previousIds: {},
             ),

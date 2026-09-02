@@ -31,6 +31,7 @@ void main() {
     systemName: 'SNES',
     hasCover: false,
     totalSize: 1024,
+    folder: 'Mario',
     files: [file],
   );
   final settings = StorageSettings('/roms', {});
@@ -204,6 +205,7 @@ void main() {
       systemName: 'SNES',
       hasCover: false,
       totalSize: 2048,
+      folder: 'Tekken',
       files: [file, second],
     );
     await manager.downloadGame(
@@ -333,6 +335,7 @@ void main() {
       systemName: 'SNES',
       hasCover: true,
       totalSize: 4000,
+      folder: 'Zelda',
       files: [fileA, fileB],
     );
 

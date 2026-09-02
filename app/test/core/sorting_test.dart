@@ -8,6 +8,7 @@ GameSummary g(int id, String title, [String system = 'x']) => GameSummary(
       systemCode: system,
       hasCover: false,
       totalSize: 1,
+      folder: title,
     );
 
 void main() {

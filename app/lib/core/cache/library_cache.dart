@@ -7,11 +7,13 @@ class CachedLibrary {
   const CachedLibrary({
     required this.systems,
     required this.games,
+    required this.manifest,
     required this.savedAt,
   });
 
   final List<SystemModel> systems;
   final List<GameSummary> games;
+  final List<ManifestEntry> manifest;
   final DateTime savedAt;
 }
 
@@ -30,6 +32,7 @@ class LibraryCache {
   Future<void> save(
     List<SystemModel> systems,
     List<GameSummary> games,
+    List<ManifestEntry> manifest,
   ) async {
     _file.parent.createSync(recursive: true);
     _file.writeAsStringSync(
@@ -37,6 +40,7 @@ class LibraryCache {
         'saved_at': DateTime.now().toIso8601String(),
         'systems': [for (final s in systems) s.toJson()],
         'games': [for (final g in games) g.toJson()],
+        'manifest': [for (final e in manifest) e.toJson()],
       }),
     );
   }
@@ -52,6 +56,10 @@ class LibraryCache {
       games: [
         for (final g in data['games'] as List)
           GameSummary.fromJson(g as Map<String, dynamic>),
+      ],
+      manifest: [
+        for (final e in (data['manifest'] as List?) ?? const [])
+          ManifestEntry.fromJson(e as Map<String, dynamic>),
       ],
       savedAt: DateTime.parse(data['saved_at'] as String),
     );

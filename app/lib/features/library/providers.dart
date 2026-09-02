@@ -16,12 +16,17 @@ class LibrarySnapshot {
   const LibrarySnapshot({
     required this.systems,
     required this.games,
+    required this.manifest,
     required this.fromCache,
     required this.previousIds,
   });
 
   final List<SystemModel> systems;
   final List<GameSummary> games;
+
+  /// Pliki każdej gry — źródło prawdy dla porównania z dyskiem.
+  final List<ManifestEntry> manifest;
+
   final bool fromCache;
 
   /// Ids known before this refresh — used for the "what's new" hint.
@@ -45,10 +50,12 @@ final librarySnapshotProvider = FutureProvider<LibrarySnapshot>((ref) async {
       if (!result.hasNext) break;
       page += 1;
     }
-    await cache.save(systems, games);
+    final manifest = await client.fetchManifest();
+    await cache.save(systems, games, manifest);
     return LibrarySnapshot(
       systems: systems,
       games: games,
+      manifest: manifest,
       fromCache: false,
       previousIds: previousIds,
     );
@@ -57,6 +64,7 @@ final librarySnapshotProvider = FutureProvider<LibrarySnapshot>((ref) async {
     return LibrarySnapshot(
       systems: previous.systems,
       games: previous.games,
+      manifest: previous.manifest,
       fromCache: true,
       previousIds: previousIds,
     );

@@ -41,6 +41,7 @@ class GameSummary {
     required this.systemCode,
     required this.hasCover,
     required this.totalSize,
+    required this.folder,
   });
 
   final int id;
@@ -49,12 +50,16 @@ class GameSummary {
   final bool hasCover;
   final int totalSize;
 
+  /// Nazwa katalogu gry (bez systemu) — wszystkie pliki gry leżą w środku.
+  final String folder;
+
   factory GameSummary.fromJson(Map<String, dynamic> j) => GameSummary(
         id: j['id'] as int,
         title: j['title'] as String,
         systemCode: j['system_code'] as String,
         hasCover: j['has_cover'] as bool,
         totalSize: j['total_size'] as int,
+        folder: j['folder'] as String,
       );
 
   Map<String, dynamic> toJson() => {
@@ -63,6 +68,7 @@ class GameSummary {
         'system_code': systemCode,
         'has_cover': hasCover,
         'total_size': totalSize,
+        'folder': folder,
       };
 }
 
@@ -88,12 +94,55 @@ class GameFileModel {
   factory GameFileModel.fromJson(Map<String, dynamic> j) => GameFileModel(
         id: j['id'] as int,
         name: j['name'] as String,
-        relativePath: j['relative_path'] as String,
+        relativePath: (j['relative_path'] ?? '') as String,
         role: roleFrom(j['role'] as String),
         discNumber: j['disc_number'] as int?,
         version: (j['version'] ?? '') as String,
         size: j['size'] as int,
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'relative_path': relativePath,
+        'role': role.name,
+        'disc_number': discNumber,
+        'version': version,
+        'size': size,
+      };
+}
+
+/// Jedna gra w manifeście biblioteki (`/api/manifest/`): tyle, ile trzeba, by
+/// porównać serwer z dyskiem bez zapytania per gra.
+class ManifestEntry {
+  const ManifestEntry({
+    required this.gameId,
+    required this.systemCode,
+    required this.folder,
+    required this.files,
+  });
+
+  final int gameId;
+  final String systemCode;
+  final String folder;
+  final List<GameFileModel> files;
+
+  factory ManifestEntry.fromJson(Map<String, dynamic> j) => ManifestEntry(
+        gameId: j['id'] as int,
+        systemCode: j['system_code'] as String,
+        folder: j['folder'] as String,
+        files: [
+          for (final f in j['files'] as List)
+            GameFileModel.fromJson(f as Map<String, dynamic>),
+        ],
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': gameId,
+        'system_code': systemCode,
+        'folder': folder,
+        'files': [for (final f in files) f.toJson()],
+      };
 }
 
 class GameDetail extends GameSummary {
@@ -103,6 +152,7 @@ class GameDetail extends GameSummary {
     required super.systemCode,
     required super.hasCover,
     required super.totalSize,
+    required super.folder,
     required this.systemName,
     required this.files,
   });
@@ -116,6 +166,7 @@ class GameDetail extends GameSummary {
         systemCode: j['system_code'] as String,
         hasCover: j['has_cover'] as bool,
         totalSize: j['total_size'] as int,
+        folder: j['folder'] as String,
         systemName: j['system_name'] as String,
         files: (j['files'] as List)
             .map((f) => GameFileModel.fromJson(f as Map<String, dynamic>))
