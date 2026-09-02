@@ -28,36 +28,41 @@ class Shelf extends StatelessWidget {
     final shown = games.take(limit).toList();
     final overflow = games.length > limit;
     final cardHeight = cardWidth * 4 / 3 + 26;
+    final header = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: kText,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
+              ),
+            ),
+          ),
+          if (trailing != null)
+            Text(
+              trailing!,
+              style: const TextStyle(color: kTextDim, fontSize: 13),
+            ),
+        ],
+      ),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 18, 16, 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    color: kText,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-              ),
-              if (trailing != null)
-                GestureDetector(
-                  onTap: onSeeAll,
-                  behavior: HitTestBehavior.opaque,
-                  child: Text(
-                    trailing!,
-                    style: const TextStyle(color: kTextDim, fontSize: 13),
-                  ),
-                ),
-            ],
-          ),
-        ),
+        // Cały nagłówek — tytuł i "N ›" — to jeden cel dotyku, żeby trafienie
+        // w "Nintendo Switch" działało tak samo jak trafienie w licznik.
+        onSeeAll != null
+            ? GestureDetector(
+                onTap: onSeeAll,
+                behavior: HitTestBehavior.opaque,
+                child: header,
+              )
+            : header,
         SizedBox(
           height: cardHeight,
           child: ListView.builder(

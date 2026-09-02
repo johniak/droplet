@@ -91,10 +91,21 @@ void main() {
     expect(find.text('Na urządzeniu'), findsNothing);
     expect(find.text('SNES'), findsOneWidget);
     expect(find.text('Super Mario World'), findsWidgets);
-    // Shelf wires navigation to the "see all" trailing text next to the
-    // title, not the title itself (see library_widgets_test.dart). Both
-    // fixture systems have exactly one game, so both shelves show "1 ›" —
-    // the SNES shelf is first in system order, hence `.first`.
+    // The whole shelf header — title and trailing "N ›" alike — is one tap
+    // target (see library_widgets_test.dart: 'Shelf header tap fires
+    // onSeeAll from either the title or the trailing text').
+    await tester.tap(find.text('SNES'));
+    await tester.pumpAndSettle();
+    expect(find.text('System snes'), findsOneWidget);
+  });
+
+  testWidgets('shelf header: tapping the trailing count also navigates', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+    // Both fixture systems have exactly one game, so both shelves show
+    // "1 ›" — the SNES shelf is first in system order, hence `.first`.
     await tester.tap(find.text('1 ›').first);
     await tester.pumpAndSettle();
     expect(find.text('System snes'), findsOneWidget);

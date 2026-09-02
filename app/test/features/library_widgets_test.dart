@@ -351,6 +351,55 @@ void main() {
     expect(find.text('Tekken'), findsNWidgets(2));
   });
 
+  testWidgets(
+    'Shelf header tap fires onSeeAll from either the title or the trailing text',
+    (tester) async {
+      var seeAll = 0;
+      await tester.pumpWidget(
+        _app(
+          Shelf(
+            title: 'Nintendo Switch',
+            trailing: '3 ›',
+            games: [g(1, 'Mario')],
+            onSeeAll: () => seeAll++,
+          ),
+          overrides: [
+            localStateProvider(1).overrideWith(
+              (ref) async => local(InstallStatus.none),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Nintendo Switch'));
+      expect(seeAll, 1);
+      await tester.tap(find.text('3 ›'));
+      expect(seeAll, 2);
+    },
+  );
+
+  testWidgets(
+    'Shelf without onSeeAll leaves the title non-interactive',
+    (tester) async {
+      await tester.pumpWidget(
+        _app(
+          Shelf(title: 'PSX', games: [g(1, 'Tekken')]),
+          overrides: [
+            localStateProvider(1).overrideWith(
+              (ref) async => local(InstallStatus.none),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      // No onSeeAll means no navigation to assert — this only needs to not
+      // throw when the header (still just a plain title) is tapped.
+      await tester.tap(find.text('PSX'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('ShelfCard navigates on tap', (tester) async {
     await tester.pumpWidget(
       _app(
