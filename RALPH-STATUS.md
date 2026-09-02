@@ -52,6 +52,10 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   ze przycisk "Przyznaj" w Ustawieniach -> Pobieranie przechodzi przez systemowy ekran
   i wraca ze statusem "Przyznane", oraz ze katalog bazowy da sie utworzyc.
 
+- **M5 Task 8 krok 2 - e2e pobierania na urzadzeniu.** Po podpieciu telefonu:
+  `E2E_SERVER=http://<ip-hosta>:8800 ./scripts/e2e_app.sh` uruchomi oba pliki
+  `integration_test` (logowanie/biblioteka oraz pobranie + usuniecie gry).
+
 ## Blokery
 
 (brak)

@@ -57,7 +57,7 @@ class _Detail extends ConsumerStatefulWidget {
 }
 
 class _DetailState extends ConsumerState<_Detail> {
-  late Set<int> _selected = defaultSelection(widget.game.files);
+  late final Set<int> _selected = defaultSelection(widget.game.files);
 
   GameDetail get game => widget.game;
 

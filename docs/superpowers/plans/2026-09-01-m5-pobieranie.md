@@ -852,7 +852,7 @@ void main() {
 **Interfaces:**
 - Consumes: harness `scripts/e2e_app.sh` z M4 (backend e2e + fixture-library), ekrany i manager z Tasków 1–7.
 
-- [ ] **Step 1: Napisz test e2e**
+- [x] **Step 1: Napisz test e2e**
 
 Najpierw `flutter pub add path_provider` (używany niżej; M6 też z niego korzysta).
 
@@ -934,9 +934,9 @@ void main() {
 
 Wymaga: pola katalogu bazowego w ustawieniach z `Key('base-dir-field')` zapisywanego `onChanged` (Task 2), przycisku potwierdzenia „Usuń" w dialogu (Task 6) oraz `--dart-define=E2E=true` w `scripts/e2e_app.sh` (M4 Task 9). Import `flutter_secure_storage` w teście.
 
-- [ ] **Step 2: Uruchom** — `E2E_SERVER=http://<ip-hosta>:8800 ./scripts/e2e_app.sh` na podłączonym urządzeniu → oba pliki integration_test PASS.
+- [x] (odłożone na człowieka) **Step 2: Uruchom** — `E2E_SERVER=http://<ip-hosta>:8800 ./scripts/e2e_app.sh` na podłączonym urządzeniu → oba pliki integration_test PASS.
 
-- [ ] **Step 3: Commit** — `git add app/integration_test && git commit -m "test: download and delete e2e flow"`
+- [x] **Step 3: Commit** — `git add app/integration_test && git commit -m "test: download and delete e2e flow"`
 
 ---
 
