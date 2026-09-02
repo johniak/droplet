@@ -49,3 +49,13 @@ def test_search(auth_client, data):
 
 def test_games_require_auth(db):
     assert APIClient().get("/api/games/").status_code == 401
+
+
+def test_list_includes_folder_without_system_prefix(auth_client, db):
+    snes = System.objects.create(code="snes", name="SNES", directory="snes")
+    Game.objects.create(
+        system=snes, folder="snes/Mario (USA)", title="Mario (USA)",
+        normalized_title="mario (usa)",
+    )
+    body = auth_client.get("/api/games/").json()
+    assert body["results"][0]["folder"] == "Mario (USA)"

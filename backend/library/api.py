@@ -10,7 +10,12 @@ from rest_framework.response import Response
 from covers.models import Cover
 
 from .models import Game, System
-from .serializers import GameDetailSerializer, GameListSerializer, SystemSerializer
+from .serializers import (
+    GameDetailSerializer,
+    GameListSerializer,
+    ManifestEntrySerializer,
+    SystemSerializer,
+)
 from .tasks import scan_library
 
 
@@ -68,3 +73,11 @@ class GameDetailView(RetrieveAPIView):
 
     def get_queryset(self):
         return annotated_games().prefetch_related("files")
+
+
+class ManifestView(ListAPIView):
+    serializer_class = ManifestEntrySerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        return Game.objects.select_related("system").prefetch_related("files").order_by("id")

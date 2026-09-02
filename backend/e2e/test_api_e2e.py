@@ -7,7 +7,7 @@ def _scan_and_wait(base_url, auth):
     requests.post(f"{base_url}/api/scan/", headers=auth, timeout=10)
     for _ in range(30):
         games = requests.get(f"{base_url}/api/games/", headers=auth, timeout=10).json()
-        if games["count"] >= 4:
+        if games["count"] >= 3:
             return games
         time.sleep(1)
     raise AssertionError("scan nie zaindeksował fixture-library")
@@ -15,10 +15,21 @@ def _scan_and_wait(base_url, auth):
 
 def test_full_flow(base_url, auth):
     games = _scan_and_wait(base_url, auth)
-    assert games["count"] == 4
+    assert games["count"] == 3
 
     systems = requests.get(f"{base_url}/api/systems/", headers=auth, timeout=10).json()
     assert {s["code"] for s in systems} >= {"snes", "psx", "switch"}
+
+    mario = requests.get(
+        f"{base_url}/api/games/",
+        headers=auth,
+        timeout=10,
+        params={"search": "mario"},
+    ).json()["results"][0]
+    detail = requests.get(
+        f"{base_url}/api/games/{mario['id']}/", headers=auth, timeout=10
+    ).json()
+    assert detail["folder"] == "Super Mario World (USA)"
 
     hollow = requests.get(
         f"{base_url}/api/games/",

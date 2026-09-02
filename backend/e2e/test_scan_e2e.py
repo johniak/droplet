@@ -23,3 +23,9 @@ def test_scan_result_contents(base_url, auth):
     games = requests.get(f"{base_url}/api/games/", headers=auth, timeout=10).json()
     titles = {g["title"] for g in games["results"]}
     assert {"Super Mario World", "Tekken", "Hollow Knight"} <= titles
+
+    manifest = requests.get(f"{base_url}/api/manifest/", headers=auth, timeout=10).json()
+    by_folder = {e["folder"]: e for e in manifest}
+    assert set(by_folder) == {"Super Mario World (USA)", "Tekken (USA)", "Hollow Knight"}
+    assert {f["role"] for f in by_folder["Hollow Knight"]["files"]} == {"base", "update"}
+    assert "Luzem" not in titles
