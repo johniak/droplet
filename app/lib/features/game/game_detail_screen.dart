@@ -131,6 +131,8 @@ class _DetailState extends ConsumerState<_Detail> {
                     url: client?.coverUrl(game.id, size: 'full') ?? '',
                     headers: client?.authHeaders ?? const {},
                     hasCover: game.hasCover,
+                    // The detail header is a backdrop, so it may crop.
+                    fit: BoxFit.cover,
                   ),
                 ),
                 const DecoratedBox(

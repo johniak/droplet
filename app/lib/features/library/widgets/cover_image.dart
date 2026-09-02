@@ -12,12 +12,14 @@ class CoverImage extends StatelessWidget {
     required this.url,
     required this.headers,
     required this.hasCover,
+    this.fit = BoxFit.contain,
   });
 
   final String title;
   final String url;
   final Map<String, String> headers;
   final bool hasCover;
+  final BoxFit fit;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +27,9 @@ class CoverImage extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: url,
       httpHeaders: headers,
-      fit: BoxFit.cover,
+      // Boxart aspect ratios differ per system; `contain` keeps the whole box
+      // (and its title) visible instead of cropping it away.
+      fit: fit,
       placeholder: (_, __) => _Placeholder(title: title),
       errorWidget: (_, __, ___) => _Placeholder(title: title),
     );

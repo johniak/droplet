@@ -11,7 +11,7 @@ podłączonym do realnego NAS-a.
 | Testy jednostkowe + widgetowe aplikacji | `cd app && flutter test` | PASS (124 testy) |
 | Pokrycie aplikacji 100% | `./scripts/check_coverage_app.sh` | PASS (827/827 linii) |
 | E2E backendu | `./scripts/e2e_backend.sh` | PASS (12 testów) |
-| E2E aplikacji | `E2E_SERVER=http://<ip-hosta>:8800 ./scripts/e2e_app.sh` | do uruchomienia na urządzeniu |
+| E2E aplikacji | `E2E_SERVER=http://<ip-hosta>:8800 ./scripts/e2e_app.sh` | do uruchomienia (emulator `droplet` już jest — patrz RALPH-STATUS) |
 
 ## Checklista ręczna
 
@@ -20,11 +20,11 @@ zamknięciem milestone'u.
 
 | # | Scenariusz | Jak sprawdzić | Wynik | Notatka |
 |---|---|---|---|---|
-| 1 | Mała gra (kartridż) | Pobierz → plik ląduje w `<base>/<system>/`, badge „zainstalowana", RetroArch widzi grę i ją uruchamia | | |
+| 1 | Mała gra (kartridż) | Pobierz → plik ląduje w `<base>/<system>/`, badge „zainstalowana", RetroArch widzi grę i ją uruchamia | CZĘŚCIOWO | Emulator Android 15 + Pokemon Crystal (2 MB): plik trafił do `/storage/emulated/0/RetroArch/roms/gbc/`, md5 zgodne ze źródłem, UI przełączyło się na „Zainstalowana". Sam RetroArch niesprawdzony — nie ma go na emulatorze |
 | 2 | Duża gra (kilka GB, obraz płyty) | Start → pauza → wznowienie → wyłącz Wi-Fi w trakcie → przywróć sieć → retry/wznowienie → rozmiar pliku zgodny z manifestem | | |
 | 3 | Gra wieloplikowa (cue/bin albo multi-disc) | Wszystkie pliki pobrane, na ekranie „Pobierania" **jedna** pozycja | | |
 | 4 | Switch | Domyślna selekcja = base + najnowszy update + DLC; po pobraniu samego base badge pokazuje „dostępna aktualizacja" | | |
-| 5 | Usuwanie | Pliki ROM znikają, katalogi `saves/` i `states/` RetroArcha **nietknięte** (sprawdź ręcznie), badge wraca do „niezainstalowana" | | |
+| 5 | Usuwanie | Pliki ROM znikają, katalogi `saves/` i `states/` RetroArcha **nietknięte** (sprawdź ręcznie), badge wraca do „niezainstalowana" | PASS (emulator) | Podłożony `…[C][!].srm` obok ROM-a przeżył usunięcie, `.gbc` zniknął. Do powtórzenia na telefonie z prawdziwymi `saves/`/`states/` |
 | 6 | Zabicie aplikacji w trakcie pobierania | Pobieranie leci dalej w tle (powiadomienie z paskiem postępu), po powrocie do aplikacji stan jest poprawny | | |
 
 ## Notatki

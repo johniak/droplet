@@ -83,6 +83,13 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   odlozenie z decyzja w tabeli. Bramki automatyczne w chwili wydania buildu:
   backend 117 testow / 100%, backend e2e 12, aplikacja 148 testow / 1002 linie 100%.
 
+- **Emulator Androida jest gotowy** — `droplet` (API 35, arm64) w `~/Library/Android/sdk`.
+  Odpalenie: `~/Library/Android/sdk/emulator/emulator -avd droplet &`, potem
+  `cd app && flutter run` albo `adb install -r build/app/outputs/flutter-apk/app-release.apk`.
+  Z emulatora backend na hoście jest pod `http://10.0.2.2:8000`.
+  Uwaga: `MANAGE_EXTERNAL_STORAGE` na emulatorze nadaje sie przez
+  `adb shell appops set --uid dev.johniak.droplet MANAGE_EXTERNAL_STORAGE allow`.
+
 ## Blokery
 
 (brak)

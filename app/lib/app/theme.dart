@@ -12,6 +12,8 @@ ThemeData buildTheme() {
     scaffoldBackgroundColor: kBg,
     colorScheme: base.colorScheme.copyWith(
       primary: kAccent,
+      // Without this the default dark onPrimary (violet) lands on the accent.
+      onPrimary: kBg,
       surface: kSurface,
       onSurface: kText,
     ),

@@ -31,8 +31,8 @@ przeglądzie.
 
 | # | Data | Co irytuje / czego brakuje | Ekran | Decyzja (naprawa / odłożone + dlaczego) | Status |
 |---|---|---|---|---|---|
-| 1 | | | | | |
-| 2 | | | | | |
+| 1 | 2026-09-02 | Napis „Zaloguj" był fioletowy na niebieskim przycisku — słaby kontrast | Logowanie | Naprawa: `onPrimary: kBg` w motywie | naprawione |
+| 2 | 2026-09-02 | Okładka w siatce była przycinana (ucinało tytuł z pudełka) | Biblioteka | Naprawa: `BoxFit.contain` w gridzie, `cover` zostaje tylko w hero karty gry | naprawione |
 | 3 | | | | | |
 
 ## Kryterium zamknięcia
