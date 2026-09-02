@@ -140,11 +140,12 @@ void main() {
   testWidgets('folders subtitle lists configured system codes', (
     tester,
   ) async {
-    await StorageSettingsRepository(SharedPreferencesAsync())
-        .saveSystemDir('snes', 'SNES');
+    final repo = StorageSettingsRepository(SharedPreferencesAsync());
+    await repo.saveSystemDir('snes', 'SNES');
+    await repo.saveSystemDir('psx', 'PSX');
     await tester.pumpWidget(_screen(repo: await _signedIn()));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('snes'), 200);
-    expect(find.text('snes'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('snes, psx'), 200);
+    expect(find.text('snes, psx'), findsOneWidget);
   });
 }

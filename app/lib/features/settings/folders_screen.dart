@@ -57,9 +57,13 @@ class FoldersScreen extends ConsumerWidget {
                     labelText: system.name,
                     hintText: system.code,
                   ),
-                  onChanged: (value) => ref
-                      .read(storageSettingsRepositoryProvider)
-                      .saveSystemDir(system.code, value),
+                  onChanged: (value) async {
+                    await ref
+                        .read(storageSettingsRepositoryProvider)
+                        .saveSystemDir(system.code, value);
+                    if (!context.mounted) return;
+                    ref.invalidate(storageSettingsProvider);
+                  },
                 ),
               ),
           ],

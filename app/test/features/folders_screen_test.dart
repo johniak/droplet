@@ -56,4 +56,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Ustawienia'), findsOneWidget);
   });
+
+  testWidgets('saving a folder invalidates storageSettingsProvider', (
+    tester,
+  ) async {
+    final repo = StorageSettingsRepository(SharedPreferencesAsync());
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storageSettingsRepositoryProvider.overrideWithValue(repo),
+          systemsProvider.overrideWith((ref) async => systems),
+        ],
+        child: MaterialApp.router(routerConfig: _router()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(FoldersScreen)),
+    );
+    await tester.enterText(find.byKey(const Key('system-dir-snes')), 'SNES');
+    await tester.pumpAndSettle();
+    final settings = await container.read(storageSettingsProvider.future);
+    expect(settings.systemDirs['snes'], 'SNES');
+  });
 }
