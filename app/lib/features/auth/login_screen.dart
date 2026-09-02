@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../core/api/api_client.dart';
+import '../../core/errors.dart';
 import '../../core/session/providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -54,7 +55,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (e is DioException && e.response?.statusCode == 400) {
       return 'Błędny login lub hasło';
     }
-    return 'Nie mogę połączyć z serwerem';
+    return humanizeError(e);
   }
 
   @override

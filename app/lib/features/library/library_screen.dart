@@ -5,17 +5,44 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme.dart';
 import '../../app/widgets/pulse_box.dart';
 import '../../core/api/models.dart';
+import '../../core/errors.dart';
 import '../../core/downloads/download_manager.dart';
 import '../downloads/downloads_screen.dart';
 import 'providers.dart';
 import 'widgets/game_card.dart';
 
-class LibraryScreen extends ConsumerWidget {
+class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
+}
+
+class _LibraryScreenState extends ConsumerState<LibraryScreen> {
+  var _announcedNew = false;
+
+  /// Tells the user what a refresh actually brought in, once per snapshot.
+  void _announceNewGames(LibrarySnapshot snapshot) {
+    if (_announcedNew) return;
+    final count = newGameCount(
+      snapshot.previousIds,
+      [for (final g in snapshot.games) g.id],
+    );
+    _announcedNew = true;
+    if (count == 0) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nowe w bibliotece: $count gier')),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final games = ref.watch(gamesProvider);
+    final snapshot = ref.watch(librarySnapshotProvider).value;
+    if (snapshot != null) _announceNewGames(snapshot);
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 16,
@@ -56,7 +83,7 @@ class _Grid extends ConsumerWidget {
         child: games.when(
           loading: () => const _LibrarySkeleton(),
           error: (error, _) => _ErrorState(
-            message: error.toString(),
+            message: humanizeError(error),
             onRetry: () => ref.invalidate(librarySnapshotProvider),
           ),
           data: (list) => list.isEmpty

@@ -88,7 +88,7 @@ void main() {
     await _fillIn(tester);
     await tester.tap(find.text('Zaloguj'));
     await tester.pumpAndSettle();
-    expect(find.text('Nie mogę połączyć z serwerem'), findsOneWidget);
+    expect(find.textContaining('Nie mogę połączyć'), findsOneWidget);
   });
 }
 

@@ -156,4 +156,48 @@ void main() {
     ids.mark(1, installed: false);
     expect(container.read(installedIdsProvider), isEmpty);
   });
+
+  testWidgets('a refresh announces what is new', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          gamesProvider.overrideWith((ref) async => games),
+          systemsProvider.overrideWith((ref) async => systems),
+          librarySnapshotProvider.overrideWith(
+            (ref) async => LibrarySnapshot(
+              systems: systems,
+              games: games,
+              fromCache: false,
+              previousIds: const {1},
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: LibraryScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Nowe w bibliotece: 1 gier'), findsOneWidget);
+  });
+
+  testWidgets('nothing new means no snackbar', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          gamesProvider.overrideWith((ref) async => games),
+          systemsProvider.overrideWith((ref) async => systems),
+          librarySnapshotProvider.overrideWith(
+            (ref) async => LibrarySnapshot(
+              systems: systems,
+              games: games,
+              fromCache: false,
+              previousIds: const {1, 2},
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: LibraryScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Nowe w bibliotece'), findsNothing);
+  });
 }

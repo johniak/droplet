@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../core/downloads/permissions.dart';
+import '../../core/errors.dart';
 import '../../core/downloads/storage_settings.dart';
 import '../../core/platform/permissions_port.dart';
 import '../../core/session/providers.dart';
@@ -85,7 +86,7 @@ class _DownloadSection extends ConsumerWidget {
     return settings.when(
       loading: () => const ListTile(title: Text('...')),
       error: (e, _) => ListTile(
-        title: Text('$e', style: const TextStyle(color: kTextDim)),
+        title: Text(humanizeError(e), style: const TextStyle(color: kTextDim)),
       ),
       data: (data) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

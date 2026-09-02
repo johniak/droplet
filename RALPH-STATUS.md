@@ -70,6 +70,12 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   biblioteka ma sie otworzyc z banerem "Tryb offline", a przycisk Pobierz ma byc
   nieaktywny; po powrocie sieci i odswiezeniu baner znika.
 
+- **M6 Task 4 krok 4 - ikona i splash na telefonie.** Ikona jest generowana skryptem
+  `scripts/make_icon.py` (kropla w akcencie na ciemnym tle) i wygenerowana przez
+  `flutter_launcher_icons` jako adaptive icon; splash to jednolity `#0E1116`.
+  Sprawdz na launcherze, czy wyglada dobrze - jesli nie, podmien
+  `app/assets/icon/icon.png` na wlasny projekt i odpal `dart run flutter_launcher_icons`.
+
 ## Blokery
 
 (brak)

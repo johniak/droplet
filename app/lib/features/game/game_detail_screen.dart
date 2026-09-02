@@ -8,6 +8,7 @@ import '../../core/downloads/local_state.dart';
 import '../../core/downloads/selection.dart';
 import '../../core/downloads/space.dart';
 import '../../core/downloads/storage_settings.dart';
+import '../../core/errors.dart';
 import '../../core/format.dart';
 import '../../core/session/providers.dart';
 import '../../app/widgets/pulse_box.dart';
@@ -41,7 +42,7 @@ class GameDetailScreen extends ConsumerWidget {
       body: detail.when(
         loading: () => const _DetailSkeleton(),
         error: (error, _) => _Error(
-          message: error.toString(),
+          message: humanizeError(error),
           onRetry: () => ref.invalidate(gameDetailProvider(gameId)),
         ),
         data: (game) => _Detail(game: game),
@@ -173,7 +174,7 @@ class _DetailState extends ConsumerState<_Detail> {
                   child: Text('Sprawdzam pliki...'),
                 ),
                 error: (e, _) => Text(
-                  '$e',
+                  humanizeError(e),
                   style: const TextStyle(color: kTextDim),
                 ),
                 data: (state) => _Actions(

@@ -137,7 +137,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('dysk'), findsOneWidget);
+    // Since M6 the raw exception is replaced by a human message.
+    expect(find.text('Coś poszło nie tak'), findsOneWidget);
   });
 
   group('install badge', () {
