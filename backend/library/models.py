@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 
 
 class System(models.Model):
@@ -20,6 +21,9 @@ class System(models.Model):
 
 class Game(models.Model):
     system = models.ForeignKey(System, on_delete=models.CASCADE, related_name="games")
+    # Ścieżka katalogu gry względem biblioteki, np. "snes/Super Mario World (USA)".
+    # Tożsamość gry; pusta tylko dla rekordów sprzed M7 (usuwa je pierwszy skan).
+    folder = models.CharField(max_length=1000, default="", blank=True)
     title = models.CharField(max_length=500)
     normalized_title = models.CharField(max_length=500, db_index=True)
     switch_title_prefix = models.CharField(max_length=12, blank=True, db_index=True)
@@ -29,7 +33,7 @@ class Game(models.Model):
         ordering = ["title"]
         constraints = [
             models.UniqueConstraint(
-                fields=["system", "normalized_title"], name="uniq_game_per_system"
+                fields=["folder"], condition=~Q(folder=""), name="uniq_game_folder"
             )
         ]
 
@@ -61,6 +65,22 @@ class GameFile(models.Model):
         return self.relative_path
 
 
+class LooseFile(models.Model):
+    """Plik leżący bezpośrednio w katalogu systemu — poza biblioteką, do uporządkowania."""
+
+    system = models.ForeignKey(System, on_delete=models.CASCADE, related_name="loose_files")
+    relative_path = models.CharField(max_length=1000, unique=True)
+    size = models.BigIntegerField()
+
+    class Meta:
+        ordering = ["relative_path"]
+        verbose_name = "plik do uporządkowania"
+        verbose_name_plural = "Do uporządkowania"
+
+    def __str__(self) -> str:
+        return self.relative_path
+
+
 class ScanRun(models.Model):
     class Status(models.TextChoices):
         RUNNING = "running"
@@ -76,6 +96,7 @@ class ScanRun(models.Model):
     files_created = models.IntegerField(default=0)
     files_updated = models.IntegerField(default=0)
     files_deleted = models.IntegerField(default=0)
+    loose_files = models.IntegerField(default=0)
     errors = models.JSONField(default=list)
 
     class Meta:

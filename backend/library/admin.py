@@ -1,14 +1,22 @@
 from django.contrib import admin
+from django.db.models import Count
 
-from .models import Game, GameFile, ScanRun, System
+from .models import Game, GameFile, LooseFile, ScanRun, System
 from .tasks import scan_library
 
 
 @admin.register(System)
 class SystemAdmin(admin.ModelAdmin):
-    list_display = ["code", "name", "directory", "thumbnail_repo", "needs_config"]
+    list_display = ["code", "name", "directory", "thumbnail_repo", "needs_config", "loose_count"]
     list_editable = ["thumbnail_repo", "needs_config"]
     list_filter = ["needs_config"]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(_loose=Count("loose_files"))
+
+    @admin.display(description="luzem", ordering="_loose")
+    def loose_count(self, obj):
+        return obj._loose
 
 
 class HasCoverFilter(admin.SimpleListFilter):
@@ -35,9 +43,9 @@ class GameFileInline(admin.TabularInline):
 
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ["title", "system", "file_count"]
+    list_display = ["title", "system", "folder", "file_count"]
     list_filter = ["system", HasCoverFilter]
-    search_fields = ["title", "normalized_title"]
+    search_fields = ["title", "normalized_title", "folder"]
     inlines = [GameFileInline]
     actions = ["show_cover_candidates"]
 
@@ -76,6 +84,7 @@ class ScanRunAdmin(admin.ModelAdmin):
         "files_created",
         "files_updated",
         "files_deleted",
+        "loose_files",
     ]
     actions = ["run_scan_action"]
 
@@ -83,3 +92,14 @@ class ScanRunAdmin(admin.ModelAdmin):
     def run_scan_action(self, request, queryset):
         scan_library.enqueue()
         self.message_user(request, "Skan dodany do kolejki")
+
+
+@admin.register(LooseFile)
+class LooseFileAdmin(admin.ModelAdmin):
+    list_display = ["relative_path", "system", "size"]
+    list_filter = ["system"]
+    search_fields = ["relative_path"]
+    readonly_fields = ["system", "relative_path", "size"]
+
+    def has_add_permission(self, request):
+        return False

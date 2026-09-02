@@ -50,3 +50,39 @@ def test_run_scan_action_enqueues(admin_client_, tmp_path):
         )
     assert resp.status_code == 200
     assert ScanRun.objects.count() == 2
+
+
+@pytest.mark.django_db
+def test_loose_file_admin_lists_and_filters(admin_client_):
+    from library.models import LooseFile, System
+
+    snes = System.objects.create(code="snes", name="SNES", directory="snes")
+    psx = System.objects.create(code="psx", name="PSX", directory="psx")
+    LooseFile.objects.create(system=snes, relative_path="snes/a.sfc", size=1)
+    LooseFile.objects.create(system=psx, relative_path="psx/b.bin", size=2)
+    page = admin_client_.get("/admin/library/loosefile/")
+    assert page.status_code == 200
+    assert b"snes/a.sfc" in page.content and b"psx/b.bin" in page.content
+    filtered = admin_client_.get(f"/admin/library/loosefile/?system__id__exact={snes.pk}")
+    assert b"snes/a.sfc" in filtered.content and b"psx/b.bin" not in filtered.content
+    assert admin_client_.get("/admin/library/loosefile/add/").status_code == 403
+
+
+@pytest.mark.django_db
+def test_system_admin_shows_loose_count(admin_client_):
+    from library.models import LooseFile, System
+
+    snes = System.objects.create(code="snes", name="SNES", directory="snes")
+    LooseFile.objects.create(system=snes, relative_path="snes/a.sfc", size=1)
+    page = admin_client_.get("/admin/library/system/")
+    assert page.status_code == 200
+    assert b">1<" in page.content  # kolumna „luzem"
+
+
+@pytest.mark.django_db
+def test_scanrun_admin_shows_loose_files(admin_client_):
+    from library.models import ScanRun
+
+    ScanRun.objects.create(loose_files=4, status=ScanRun.Status.SUCCESS)
+    page = admin_client_.get("/admin/library/scanrun/")
+    assert b">4<" in page.content
