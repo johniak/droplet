@@ -803,7 +803,7 @@ Future<void> deleteLocalFiles(List<String> presentPaths) async {
 **Interfaces:**
 - Produces: `DownloadsScreen` — sekcja „Aktywne" (nazwa gry, pasek postępu, przyciski pauza/wznów/anuluj z `DownloadManager`) i „Historia" (ukończone/błędne z `FileDownloader().database.allRecords()`, błędne z przyciskiem „Ponów" → `retryGame`). Provider `activeDownloadsProvider` eksponujący listę `GameProgress {gameId, title, progress, status}`.
 
-- [ ] **Step 1: Failing test** — widget test: przy nadpisanym `activeDownloadsProvider` z jednym wpisem (progress 0.5) ekran pokazuje tytuł gry i `LinearProgressIndicator`; przy pustym — tekst „Brak aktywnych pobierań". Dodaj też przypadki: wpis `failed` pokazuje „Ponów", a tapnięcie pauzy/ponów woła metody managera (nadpisz `downloadManagerProvider` managerem na `FakeDownloaderPort` z Task 5 i sprawdź `port.paused`/`port.enqueued`) — każdy przycisk musi mieć test, inaczej jego handler jest nieprzykryty.
+- [x] **Step 1: Failing test** — widget test: przy nadpisanym `activeDownloadsProvider` z jednym wpisem (progress 0.5) ekran pokazuje tytuł gry i `LinearProgressIndicator`; przy pustym — tekst „Brak aktywnych pobierań". Dodaj też przypadki: wpis `failed` pokazuje „Ponów", a tapnięcie pauzy/ponów woła metody managera (nadpisz `downloadManagerProvider` managerem na `FakeDownloaderPort` z Task 5 i sprawdź `port.paused`/`port.enqueued`) — każdy przycisk musi mieć test, inaczej jego handler jest nieprzykryty.
 
 ```dart
 import 'package:droplet/features/downloads/downloads_screen.dart';
@@ -838,9 +838,9 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: FAIL**, **Step 3: Implementacja** wg Interfaces, **Step 4: PASS**.
+- [x] **Step 2: FAIL**, **Step 3: Implementacja** wg Interfaces, **Step 4: PASS**.
 
-- [ ] **Step 5: Commit** — `git commit -m "feat: downloads screen with queue and history"`
+- [x] **Step 5: Commit** — `git commit -m "feat: downloads screen with queue and history"`
 
 ---
 

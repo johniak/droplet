@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../core/api/models.dart';
+import '../../core/downloads/download_manager.dart';
+import '../downloads/downloads_screen.dart';
 import 'providers.dart';
 import 'widgets/game_card.dart';
 
@@ -18,6 +20,7 @@ class LibraryScreen extends ConsumerWidget {
         titleSpacing: 16,
         title: const _SearchField(),
         actions: [
+          const _DownloadsAction(),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'Ustawienia',
@@ -215,4 +218,29 @@ class _EmptyState extends StatelessWidget {
           ),
         ],
       );
+}
+
+
+/// Queue shortcut; the badge shows how many games are still downloading.
+class _DownloadsAction extends ConsumerWidget {
+  const _DownloadsAction();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final active = ref
+        .watch(activeDownloadsProvider)
+        .where((d) => d.status != GameProgressStatus.complete)
+        .length;
+    return IconButton(
+      tooltip: 'Pobierania',
+      onPressed: () => context.go('/downloads'),
+      icon: Badge(
+        isLabelVisible: active > 0,
+        label: Text('$active'),
+        backgroundColor: kAccent,
+        textColor: kBg,
+        child: const Icon(Icons.download_outlined),
+      ),
+    );
+  }
 }

@@ -3,6 +3,7 @@ import 'package:droplet/core/api/api_client.dart';
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/session/providers.dart';
 import 'package:droplet/core/session/session_repository.dart';
+import 'package:droplet/features/downloads/downloads_screen.dart';
 import 'package:droplet/features/library/library_screen.dart';
 import 'package:droplet/features/library/providers.dart';
 import 'package:droplet/features/library/widgets/cover_image.dart';
@@ -34,6 +35,10 @@ GoRouter _router() => GoRouter(
             GoRoute(
               path: 'settings',
               builder: (_, __) => const Scaffold(body: Text('Ustawienia')),
+            ),
+            GoRoute(
+              path: 'downloads',
+              builder: (_, __) => const DownloadsScreen(),
             ),
           ],
         ),
@@ -120,5 +125,15 @@ void main() {
     );
     expect(find.byType(CachedNetworkImage), findsNothing);
     expect(find.text('Bez okładki'), findsOneWidget);
+  });
+
+  testWidgets('the downloads action opens the queue', (tester) async {
+    await tester.pumpWidget(_app(const []));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(find.byIcon(Icons.download_outlined));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Pobierania'), findsWidgets);
   });
 }

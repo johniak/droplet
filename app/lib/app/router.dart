@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/session/providers.dart';
 import '../features/auth/login_screen.dart';
+import '../features/downloads/downloads_screen.dart';
 import '../features/game/game_detail_screen.dart';
 import '../features/library/library_screen.dart';
 import '../features/settings/settings_screen.dart';
@@ -35,6 +36,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, s) => GameDetailScreen(
               gameId: int.parse(s.pathParameters['id']!),
             ),
+          ),
+          GoRoute(
+            path: 'downloads',
+            builder: (_, __) => const DownloadsScreen(),
           ),
           GoRoute(
             path: 'settings',

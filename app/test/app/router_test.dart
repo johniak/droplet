@@ -2,6 +2,7 @@ import 'package:droplet/core/session/providers.dart';
 import 'package:droplet/core/session/session_repository.dart';
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/features/auth/login_screen.dart';
+import 'package:droplet/features/downloads/downloads_screen.dart';
 import 'package:droplet/features/game/game_detail_screen.dart';
 import 'package:droplet/features/game/providers.dart';
 import 'package:droplet/features/library/library_screen.dart';
@@ -63,6 +64,10 @@ void main() {
     context.go('/game/7');
     await tester.pumpAndSettle();
     expect(find.byType(GameDetailScreen), findsOneWidget);
+
+    context.go('/downloads');
+    await tester.pumpAndSettle();
+    expect(find.byType(DownloadsScreen), findsOneWidget);
 
     context.go('/settings');
     await tester.pumpAndSettle();

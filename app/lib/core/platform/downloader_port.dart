@@ -20,11 +20,16 @@ abstract class DownloaderPort {
   Future<void> ensureNotificationPermission();
 }
 
+/// `FileDownloader().updates` is a single-subscription stream, so it is turned
+/// into a broadcast stream once per isolate — otherwise a second
+/// DownloadManager (another ProviderContainer, e.g. in tests) throws.
+final _updates = FileDownloader().updates.asBroadcastStream();
+
 class BackgroundDownloaderPort implements DownloaderPort {
   const BackgroundDownloaderPort();
 
   @override
-  Stream<TaskUpdate> get updates => FileDownloader().updates;
+  Stream<TaskUpdate> get updates => _updates;
 
   @override
   Future<bool> enqueue(DownloadTask task) => FileDownloader().enqueue(task);

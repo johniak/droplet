@@ -146,3 +146,7 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
 - **M5 Task 6 - test z M4 zaktualizowany**: `game_detail_test.dart` mial test
   "download button is not active yet" (przycisk byl wylaczony do M5). Task 6 wlacza
   pobieranie, wiec test usunieto - zachowanie przycisku pokrywa `game_actions_test.dart`.
+- **M5 Task 7 - `FileDownloader().updates` to strumien jednorazowy**: drugi
+  `DownloadManager` w tym samym isolate (kolejny `ProviderContainer`, np. w testach)
+  wywalal sie na `Bad state: Stream has already been listened to`. Adapter trzyma
+  teraz jeden `asBroadcastStream()` na poziomie modulu.
