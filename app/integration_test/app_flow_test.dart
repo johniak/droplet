@@ -35,6 +35,15 @@ void main() {
 
     expect(find.text('Super Mario World'), findsWidgets);
 
+    // Nagłówek półki systemu prowadzi do widoku systemu. Ekran główny ma
+    // wiele Scrollable (pionowa lista + pozioma lista w każdej półce) —
+    // trzeba wskazać zewnętrzną listę, bo domyślny find.byType(Scrollable)
+    // jest niejednoznaczny.
+    await tester.scrollUntilVisible(
+      find.text('Nintendo Switch'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.text('Nintendo Switch'));
     await tester.pumpAndSettle();
     expect(find.text('Hollow Knight'), findsWidgets);
@@ -44,9 +53,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Aktualizacja'), findsOneWidget);
 
-    await tester.pageBack();
+    await tester.tap(find.byKey(const Key('back-button')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.settings_outlined));
+    expect(find.text('Hollow Knight'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('nav-settings')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Wyloguj'));
     await tester.pumpAndSettle();

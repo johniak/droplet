@@ -83,6 +83,12 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   odlozenie z decyzja w tabeli. Bramki automatyczne w chwili wydania buildu:
   backend 117 testow / 100%, backend e2e 12, aplikacja 148 testow / 1002 linie 100%.
 
+- **Redesign Glass — akceptacja na urządzeniu.** `cd app && flutter build apk --debug`,
+  wgraj, sprawdź: pasek statusu czytelny na jasnej okładce (Pokémon Crystal), wstecz
+  widoczny na karcie gry i w widoku systemu, dolna nawigacja nie zasłania ostatniego
+  wiersza list, pull‑to‑refresh na ekranie głównym, e2e:
+  `E2E_SERVER=http://<ip>:8800 ./scripts/e2e_app.sh`.
+
 - **Emulator Androida jest gotowy** — `droplet` (API 35, arm64) w `~/Library/Android/sdk`.
   Odpalenie: `~/Library/Android/sdk/emulator/emulator -avd droplet &`, potem
   `cd app && flutter run` albo `adb install -r build/app/outputs/flutter-apk/app-release.apk`.
@@ -92,7 +98,23 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
 
 ## Blokery
 
-(brak)
+- **Task 13 e2e — overflow w `HomeSkeleton` na realnym ekranie.** Uruchomiony e2e
+  (`E2E_SERVER=http://10.0.2.2:8800 ./scripts/e2e_app.sh` na emulatorze `droplet`,
+  API 35) łapie realny bug aplikacji, nie problem testu: `RenderFlex overflowed by
+  29 pixels on the right` w `Row` z `app/lib/features/home/home_screen.dart:257`
+  (skeleton ładowania — 4× `PulseBox(width: 96)` w rzędzie bez `Expanded`/scrolla,
+  łącznie 424 dp, więcej niż szerokość ekranu emulatora ~395 dp). Wyjątek jest
+  łapany przez `flutter test` i wywala obie testy integracyjne (`app_flow_test.dart`,
+  `download_flow_test.dart`) mimo poprawnych asercji nawigacji/pobierania — trzeba
+  poprawić layout `HomeSkeleton` (np. `SingleChildScrollView(scrollDirection:
+  Axis.horizontal, ...)` albo `Expanded` na każdym `PulseBox`) i wtedy ponowić e2e.
+- **`scripts/e2e_app.sh` — sprzątanie kontenerów po nieudanym teście.** `trap cleanup
+  EXIT` woła `$COMPOSE down -v` już po `cd app`, więc ścieżki `docker-compose*.yml`
+  są względne do złego katalogu i czyszczenie faktycznie się nie wykonuje
+  (`open .../app/docker-compose.yml: no such file or directory`) — kontenery
+  `droplet-web-1`/`droplet-worker-1` zostają. Po każdym uruchomieniu ręcznie:
+  `docker compose -f docker-compose.yml -f docker-compose.e2e.yml down -v`
+  z korzenia repo (albo napraw skrypt: zapamiętaj `$PWD` przed `cd app`).
 
 ## Rozjazdy planu z rzeczywistością
 

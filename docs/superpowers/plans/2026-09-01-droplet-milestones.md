@@ -212,6 +212,8 @@ miejsca.
 4. Jakość życia: obsługa błędów z ludzkimi komunikatami, ekran „co nowego
    w bibliotece" po refreshu, ikona i splash aplikacji.
 5. Przegląd całości na urządzeniu + poprawki z Twojego feedbacku.
+6. UI: redesign Glass wg `docs/superpowers/specs/2026-09-02-redesign-glass-design.md`
+   (plan `2026-09-02-redesign-glass.md`).
 
 **Kryteria ukończenia:** Twoja akceptacja po tygodniu normalnego używania —
 lista zgłoszonych irytacji pusta albo świadomie odłożona.
