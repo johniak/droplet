@@ -76,6 +76,13 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   Sprawdz na launcherze, czy wyglada dobrze - jesli nie, podmien
   `app/assets/icon/icon.png` na wlasny projekt i odpal `dart run flutter_launcher_icons`.
 
+- **M6 Task 5 - tydzien uzywania i runda feedbacku (bramka zamkniecia M6 i MVP).**
+  Release APK jest zbudowany (`app/build/app/outputs/flutter-apk/app-release.apk`,
+  51 MB). Zainstaluj go, uzywaj przez ~tydzien i notuj uwagi w `docs/feedback-m6.md`.
+  Potem przechodzimy liste razem: kazdy punkt to albo naprawa, albo swiadome
+  odlozenie z decyzja w tabeli. Bramki automatyczne w chwili wydania buildu:
+  backend 117 testow / 100%, backend e2e 12, aplikacja 148 testow / 1002 linie 100%.
+
 ## Blokery
 
 (brak)
