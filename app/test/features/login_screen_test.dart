@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:droplet/app/widgets/glass_panel.dart';
 import 'package:droplet/core/api/api_client.dart';
 import 'package:droplet/core/session/providers.dart';
 import 'package:droplet/core/session/session_repository.dart';
@@ -72,6 +73,16 @@ void main() {
     await tester.tap(find.text('Zaloguj'));
     await tester.pumpAndSettle();
     expect(find.text('Błędny login lub hasło'), findsOneWidget);
+  });
+
+  testWidgets('glass card and footer are present', (tester) async {
+    await tester.pumpWidget(_wrap());
+    expect(find.byType(GlassPanel), findsOneWidget);
+    expect(find.byType(TextFormField), findsNWidgets(3));
+    expect(
+      find.text('Hasło zostaje na telefonie, appka trzyma tylko token.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('an unreachable server shows a connection error', (tester) async {
