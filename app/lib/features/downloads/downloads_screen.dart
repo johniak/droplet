@@ -160,11 +160,7 @@ class _DownloadCard extends ConsumerWidget {
               onPressed: () => manager.pauseGame(progress.gameId),
             ),
             const SizedBox(width: 6),
-            CircleIconButton(
-              icon: Icons.close_rounded,
-              tooltip: 'Anuluj',
-              onPressed: () => manager.cancelGame(progress.gameId),
-            ),
+            _cancelButton(manager),
           ],
         GameProgressStatus.paused => [
             CircleIconButton(
@@ -173,21 +169,26 @@ class _DownloadCard extends ConsumerWidget {
               onPressed: () => manager.resumeGame(progress.gameId),
             ),
             const SizedBox(width: 6),
-            CircleIconButton(
-              icon: Icons.close_rounded,
-              tooltip: 'Anuluj',
-              onPressed: () => manager.cancelGame(progress.gameId),
-            ),
+            _cancelButton(manager),
           ],
+        // A failed download must stay dismissable, not just retryable.
         GameProgressStatus.failed => [
             CircleIconButton(
               icon: Icons.refresh_rounded,
               tooltip: 'Ponów',
               onPressed: () => manager.retryGame(progress.gameId),
             ),
+            const SizedBox(width: 6),
+            _cancelButton(manager),
           ],
         GameProgressStatus.complete => const [
             Icon(Icons.check_circle_rounded, color: kAccent),
           ],
       };
+
+  CircleIconButton _cancelButton(DownloadManager manager) => CircleIconButton(
+        icon: Icons.close_rounded,
+        tooltip: 'Anuluj',
+        onPressed: () => manager.cancelGame(progress.gameId),
+      );
 }

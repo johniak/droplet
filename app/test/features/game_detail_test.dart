@@ -106,6 +106,8 @@ void main() {
     expect(formatBytes(500), '500 B');
     expect(formatBytes(2048), '2.0 KB');
     expect(formatBytes(1500000000), '1.4 GB');
+    expect(formatBytes(1023), '1023 B');
+    expect(formatBytes(1024), '1.0 KB');
   });
 
   test('bytesToFetch skips files already on disk', () {

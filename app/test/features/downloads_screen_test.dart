@@ -1,4 +1,8 @@
+import 'package:background_downloader/background_downloader.dart';
+import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/download_manager.dart';
+import 'package:droplet/core/downloads/local_state.dart';
+import 'package:droplet/core/downloads/storage_settings.dart';
 import 'package:droplet/features/downloads/downloads_screen.dart';
 import 'package:droplet/features/downloads/providers.dart';
 import 'package:flutter/material.dart';
@@ -30,12 +34,23 @@ GoRouter _router() => GoRouter(
       ],
     );
 
+/// A downloads screen fed by the given static list — used for tests that
+/// only exercise layout/aggregation, not actions that must reach the
+/// manager (those seed a real download instead, see [_screenLive] below).
 Widget _screen(List<GameProgress> active, DownloadManager manager) =>
     ProviderScope(
       overrides: [
         activeDownloadsProvider.overrideWith((ref) => active),
         downloadManagerProvider.overrideWithValue(manager),
       ],
+      child: MaterialApp.router(routerConfig: _router()),
+    );
+
+/// A downloads screen backed by the real [activeDownloadsProvider], reading
+/// straight from [manager] — used whenever a test taps an action and needs
+/// the manager (and its fake port) to actually observe it.
+Widget _screenLive(DownloadManager manager) => ProviderScope(
+      overrides: [downloadManagerProvider.overrideWithValue(manager)],
       child: MaterialApp.router(routerConfig: _router()),
     );
 
@@ -59,6 +74,35 @@ GameProgress at(
       speedBytesPerSec: speed,
     );
 
+const _file = GameFileModel(
+  id: 42,
+  name: 'm.sfc',
+  relativePath: 'snes/m.sfc',
+  role: FileRole.base,
+  discNumber: null,
+  version: '',
+  size: 1024,
+);
+
+GameDetail _game(int id) => GameDetail(
+      id: id,
+      title: 'Mario',
+      systemCode: 'snes',
+      systemName: 'SNES',
+      hasCover: false,
+      totalSize: 1024,
+      files: const [_file],
+    );
+
+const _localNone = LocalGameState(
+  status: InstallStatus.none,
+  updateAvailable: false,
+  missing: [_file],
+  presentPaths: [],
+);
+
+final _settings = StorageSettings('/roms', const {});
+
 void main() {
   late FakeDownloaderPort port;
   late DownloadManager manager;
@@ -73,6 +117,18 @@ void main() {
   });
 
   tearDown(() => manager.dispose());
+
+  /// Seeds a real, running download for [gameId] on [manager] — mirrors
+  /// `test/core/download_manager_test.dart`'s `start()` so action taps have
+  /// a real task in the fake port to act on, instead of a no-op override.
+  Future<void> startDownload(int gameId) => manager.downloadGame(
+        game: _game(gameId),
+        selectedIds: {42},
+        local: _localNone,
+        serverUrl: 'http://nas:8000',
+        authHeaders: const {'Authorization': 'Token t'},
+        settings: _settings,
+      );
 
   test('progressSubtitle per status', () {
     expect(progressSubtitle(at(GameProgressStatus.running, speed: 2048)),
@@ -104,46 +160,104 @@ void main() {
     expect(find.text('Gra 7'), findsOneWidget);
   });
 
-  testWidgets('pause / cancel / resume / retry reach the manager', (
-    tester,
-  ) async {
-    await tester.pumpWidget(_screen([at(GameProgressStatus.running)], manager));
+  testWidgets('pause reaches the manager', (tester) async {
+    await startDownload(7);
+    final taskId = port.enqueued.single.taskId;
+    await tester.pumpWidget(_screenLive(manager));
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.pause_rounded));
-    await tester.tap(find.byIcon(Icons.close_rounded));
     await tester.pumpAndSettle();
-    expect(manager.progress, isEmpty);
+    expect(port.paused, [taskId]);
+  });
 
-    // Riverpod 3 does not re-run a Provider.overrideWith closure when the
-    // ProviderScope above it is merely rebuilt with a new override — its
-    // element only reacts to overrideWithValue changes. Force a fresh
-    // ProviderContainer per pumpWidget so the next override actually applies.
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pumpWidget(_screen([at(GameProgressStatus.paused)], manager));
+  // Note: `port.controller` is a plain (non-`sync`) `StreamController`, so
+  // `.add(...)` delivers to its listener via a real, zero-duration `Timer`
+  // — not a microtask. Under `AutomatedTestWidgetsFlutterBinding`, real
+  // Timers don't fire on their own (nothing advances real wall-clock time),
+  // so neither a bare `await Future.delayed(...)` nor `tester.pumpAndSettle()`
+  // alone flushes it — both leave `_DownloadCard` showing the stale status
+  // until the framework's own timeout. `tester.runAsync(...)` steps outside
+  // that zone into real async execution just long enough for the Timer (and
+  // the resulting `DownloadManager._onStatus` -> `_emit()` -> Riverpod
+  // `StreamProvider` chain) to actually run; `pumpAndSettle()` afterwards
+  // rebuilds the widget tree from the now-updated state.
+  Future<void> deliver(TaskStatusUpdate update, WidgetTester tester) =>
+      tester.runAsync(() async {
+        port.controller.add(update);
+        await Future<void>.delayed(Duration.zero);
+      });
+
+  testWidgets('resume reaches the manager', (tester) async {
+    await startDownload(7);
+    final task = port.enqueued.single;
+    await tester.pumpWidget(_screenLive(manager));
+    await tester.pumpAndSettle();
+    await deliver(TaskStatusUpdate(task, TaskStatus.paused), tester);
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.play_arrow_rounded));
+    await tester.pumpAndSettle();
+    expect(port.resumed, [task.taskId]);
+  });
+
+  testWidgets('cancel reaches the manager', (tester) async {
+    await startDownload(7);
+    final taskId = port.enqueued.single.taskId;
+    await tester.pumpWidget(_screenLive(manager));
+    await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.close_rounded));
     await tester.pumpAndSettle();
+    expect(port.cancelled, [taskId]);
+    expect(manager.progress.containsKey(7), isFalse);
+  });
 
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pumpWidget(_screen([at(GameProgressStatus.failed)], manager));
+  testWidgets('retry reaches the manager', (tester) async {
+    await startDownload(7);
+    final task = port.enqueued.single;
+    await tester.pumpWidget(_screenLive(manager));
+    await tester.pumpAndSettle();
+    await deliver(TaskStatusUpdate(task, TaskStatus.failed), tester);
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.refresh_rounded));
     await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
+    expect(port.enqueued.length, 2);
   });
 
-  testWidgets('finished section and clear', (tester) async {
-    await tester.pumpWidget(
-      _screen([at(GameProgressStatus.complete), at(GameProgressStatus.failed, id: 9)], manager),
-    );
+  testWidgets('a failed download can be cancelled', (tester) async {
+    await startDownload(7);
+    final task = port.enqueued.single;
+    await tester.pumpWidget(_screenLive(manager));
     await tester.pumpAndSettle();
+    await deliver(TaskStatusUpdate(task, TaskStatus.failed), tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.close_rounded));
+    await tester.pumpAndSettle();
+    expect(port.cancelled, [task.taskId]);
+    expect(manager.progress.containsKey(7), isFalse);
+  });
+
+  testWidgets('Wyczyść drops only the complete entry', (tester) async {
+    await startDownload(7);
+    await startDownload(9);
+    final completedTask = port.enqueued[0];
+    final failedTask = port.enqueued[1];
+    await tester.pumpWidget(_screenLive(manager));
+    await tester.pumpAndSettle();
+
+    port.lengths['/roms/snes/m.sfc'] = 1024;
+    await tester.runAsync(() async {
+      port.controller.add(TaskStatusUpdate(completedTask, TaskStatus.complete));
+      port.controller.add(TaskStatusUpdate(failedTask, TaskStatus.failed));
+      await Future<void>.delayed(Duration.zero);
+    });
+    await tester.pumpAndSettle();
+    expect(manager.progress[7]?.status, GameProgressStatus.complete);
+    expect(manager.progress[9]?.status, GameProgressStatus.failed);
+
     expect(find.text('Zakończone'), findsOneWidget);
-    expect(find.text('Gotowe · 1000 B'), findsOneWidget);
     await tester.tap(find.text('Wyczyść'));
     await tester.pumpAndSettle();
-    // Manager had nothing of its own; the tap must not throw.
-    expect(manager.progress, isEmpty);
+    expect(manager.progress.containsKey(7), isFalse);
+    expect(manager.progress.containsKey(9), isTrue);
   });
 
   test('activeCountProvider counts running and paused', () {
