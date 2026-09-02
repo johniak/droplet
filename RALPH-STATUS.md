@@ -88,6 +88,10 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
   widoczny na karcie gry i w widoku systemu, dolna nawigacja nie zasłania ostatniego
   wiersza list, pull‑to‑refresh na ekranie głównym, e2e:
   `E2E_SERVER=http://<ip>:8800 ./scripts/e2e_app.sh`.
+  Status automatyczny: **e2e zielone na emulatorze** (`droplet`, API 35,
+  `E2E_SERVER=http://10.0.2.2:8800`, 2026-09-02) — oba pliki `integration_test`
+  przechodzą (`All tests passed!`, `+2 -0`). Wizualna akceptacja na fizycznym
+  telefonie nadal po Twojej stronie.
 
 - **Emulator Androida jest gotowy** — `droplet` (API 35, arm64) w `~/Library/Android/sdk`.
   Odpalenie: `~/Library/Android/sdk/emulator/emulator -avd droplet &`, potem
@@ -98,25 +102,33 @@ Status pętli Ralph budującej Droplet wg planów M0–M6.
 
 ## Blokery
 
-- **Task 13 e2e — overflow w `HomeSkeleton` na realnym ekranie.** Uruchomiony e2e
-  (`E2E_SERVER=http://10.0.2.2:8800 ./scripts/e2e_app.sh` na emulatorze `droplet`,
-  API 35) łapie realny bug aplikacji, nie problem testu: `RenderFlex overflowed by
-  29 pixels on the right` w `Row` z `app/lib/features/home/home_screen.dart:257`
-  (skeleton ładowania — 4× `PulseBox(width: 96)` w rzędzie bez `Expanded`/scrolla,
-  łącznie 424 dp, więcej niż szerokość ekranu emulatora ~395 dp). Wyjątek jest
-  łapany przez `flutter test` i wywala obie testy integracyjne (`app_flow_test.dart`,
-  `download_flow_test.dart`) mimo poprawnych asercji nawigacji/pobierania — trzeba
-  poprawić layout `HomeSkeleton` (np. `SingleChildScrollView(scrollDirection:
-  Axis.horizontal, ...)` albo `Expanded` na każdym `PulseBox`) i wtedy ponowić e2e.
-- **`scripts/e2e_app.sh` — sprzątanie kontenerów po nieudanym teście.** `trap cleanup
-  EXIT` woła `$COMPOSE down -v` już po `cd app`, więc ścieżki `docker-compose*.yml`
-  są względne do złego katalogu i czyszczenie faktycznie się nie wykonuje
-  (`open .../app/docker-compose.yml: no such file or directory`) — kontenery
-  `droplet-web-1`/`droplet-worker-1` zostają. Po każdym uruchomieniu ręcznie:
-  `docker compose -f docker-compose.yml -f docker-compose.e2e.yml down -v`
-  z korzenia repo (albo napraw skrypt: zapamiętaj `$PWD` przed `cd app`).
+(brak)
 
 ## Rozjazdy planu z rzeczywistością
+
+- **Task 13 — overflow w `HomeSkeleton` na realnym ekranie (naprawione).** Pierwszy
+  przebieg e2e (`E2E_SERVER=http://10.0.2.2:8800 ./scripts/e2e_app.sh` na emulatorze
+  `droplet`, API 35) łapał realny bug aplikacji, nie problem testu: `RenderFlex
+  overflowed by 29 pixels on the right` w `Row` z
+  `app/lib/features/home/home_screen.dart:257` (skeleton ładowania — 4×
+  `PulseBox(width: 96)` w sztywnym `Row` bez scrolla, łącznie 424 dp, więcej niż
+  szerokość ekranu emulatora ~395 dp), wywalający obie testy integracyjne mimo
+  poprawnych asercji nawigacji/pobierania. Naprawione: `Row` zamieniony na
+  `ListView(scrollDirection: Axis.horizontal, physics:
+  NeverScrollableScrollPhysics(), ...)` w tym samym `SizedBox(height: 154)` — ten
+  sam wygląd, ale content jest przycinany zamiast przepełniać layout. Dodany test
+  regresyjny `test/features/home_screen_test.dart` („skeleton does not overflow on
+  a narrow phone screen", `setSurfaceSize(360, 800)` + `takeException()` == null).
+  Po fixie e2e na emulatorze zielone (`All tests passed!`, `+2 -0`).
+- **Task 13 — `scripts/e2e_app.sh` sprzątanie kontenerów (naprawione).** `trap
+  cleanup EXIT` wołał `$COMPOSE down -v` już po `cd app`, więc ścieżki
+  `docker-compose*.yml` były względne do złego katalogu i czyszczenie faktycznie
+  się nie wykonywało (`open .../app/docker-compose.yml: no such file or
+  directory`) — kontenery `droplet-web-1`/`droplet-worker-1` zostawały. Naprawione:
+  skrypt zapamiętuje `ROOT="$(cd "$(dirname "$0")/.." && pwd)"` na starcie,
+  `cleanup()` robi `cd "$ROOT"` przed `down -v`, a krok `flutter test` jest w
+  podshellu `(cd app && ...)`, więc `cd` w nim nie zmienia cwd głównego skryptu.
+  Zweryfikowane: po przebiegu `docker compose ... ps` / `docker ps` puste.
 
 - **M0 Task 1 — backend Tasks**: `django-tasks` 0.12+ nie zawiera już backendu DB
   (`django_tasks.backends.database` zostało wydzielone do pakietu `django-tasks-db`),

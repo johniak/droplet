@@ -230,4 +230,19 @@ void main() {
     await tester.pump();
     expect(find.byType(HomeSkeleton), findsOneWidget);
   });
+
+  testWidgets('skeleton does not overflow on a narrow phone screen', (
+    tester,
+  ) async {
+    // Regression: the skeleton shelf row used to be a fixed-width Row (4 ×
+    // 96 + padding = 424dp) that overflowed on real phone widths narrower
+    // than that — caught by app_flow_test.dart on an emulator (~395dp).
+    await tester.binding.setSurfaceSize(const Size(360, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: HomeSkeleton())),
+    );
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
 }

@@ -254,7 +254,10 @@ class HomeSkeleton extends StatelessWidget {
             const SizedBox(height: 10),
             SizedBox(
               height: 154,
-              child: Row(
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.only(right: 16),
                 children: [
                   for (var i = 0; i < 4; i++)
                     const Padding(
