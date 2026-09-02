@@ -4,9 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/tokens.dart';
 import '../../../core/downloads/local_state.dart';
 import '../../game/providers.dart';
-import '../providers.dart';
 
-/// Odznaka w rogu okładki; przy okazji zasila zbiory id dla filtrów.
+/// Odznaka w rogu okładki — czysty odczyt z indeksu urządzenia.
 class InstallBadge extends ConsumerWidget {
   const InstallBadge({super.key, required this.gameId});
 
@@ -15,20 +14,6 @@ class InstallBadge extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final local = ref.watch(localStateProvider(gameId)).value;
-    if (local != null) {
-      // Notatniki czytamy teraz, przed zaplanowaniem callbacku — po klatce
-      // ten widget mógł już zniknąć z drzewa (np. wyjechał z Shelf), a
-      // wtedy `ref.read` rzuca StateError na odpiętym elemencie.
-      final installedNotifier = ref.read(installedIdsProvider.notifier);
-      final updatableNotifier = ref.read(updatableIdsProvider.notifier);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        installedNotifier.mark(
-          gameId,
-          installed: local.status != InstallStatus.none,
-        );
-        updatableNotifier.mark(gameId, installed: local.updateAvailable);
-      });
-    }
     if (local == null || local.status == InstallStatus.none) {
       return const SizedBox.shrink();
     }

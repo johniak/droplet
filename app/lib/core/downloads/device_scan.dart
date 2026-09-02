@@ -28,8 +28,9 @@ class DeviceIndex {
   final List<UnknownEntry> unknown;
 }
 
-String _rel(FileSystemEntity e, Directory base) =>
-    e.path.substring(base.path.length + 1).replaceAll(Platform.pathSeparator, '/');
+String _rel(FileSystemEntity e, Directory base) => e.path
+    .substring(base.path.length + 1)
+    .replaceAll(Platform.pathSeparator, '/');
 
 Map<String, int> _sizesUnder(Directory dir) => {
       for (final e in dir.listSync(recursive: true))

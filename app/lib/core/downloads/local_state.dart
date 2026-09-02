@@ -26,6 +26,14 @@ class LocalGameState {
   final List<String> presentPaths;
 }
 
+/// Stan gry, o której skan nic nie wie — nic na dysku, nic do aktualizacji.
+const kNotInstalled = LocalGameState(
+  status: InstallStatus.none,
+  updateAvailable: false,
+  missing: [],
+  presentPaths: [],
+);
+
 LocalGameState diffGame(
   List<GameFileModel> files,
   Map<String, int> localSizesByName,

@@ -213,22 +213,16 @@ void main() {
     expect(find.text('X 7'), findsOneWidget);
   });
 
-  testWidgets('InstallBadge reflects state and feeds id sets', (tester) async {
-    late ProviderContainer container;
+  testWidgets('InstallBadge reflects state', (tester) async {
     await tester.pumpWidget(
       _app(
-        Consumer(
-          builder: (context, ref, _) {
-            container = ProviderScope.containerOf(context);
-            return const Row(
-              children: [
-                InstallBadge(gameId: 1),
-                InstallBadge(gameId: 2),
-                InstallBadge(gameId: 3),
-                InstallBadge(gameId: 4),
-              ],
-            );
-          },
+        const Row(
+          children: [
+            InstallBadge(gameId: 1),
+            InstallBadge(gameId: 2),
+            InstallBadge(gameId: 3),
+            InstallBadge(gameId: 4),
+          ],
         ),
         overrides: [
           localStateProvider(1).overrideWith(
@@ -250,19 +244,15 @@ void main() {
     expect(find.byIcon(Icons.check_rounded), findsOneWidget);
     expect(find.byIcon(Icons.arrow_downward_rounded), findsOneWidget);
     expect(find.byIcon(Icons.more_horiz_rounded), findsOneWidget);
-    expect(container.read(installedIdsProvider), {1, 2, 3});
-    expect(container.read(updatableIdsProvider), {2});
   });
 
   testWidgets(
-    'InstallBadge survives being unmounted before its frame callback runs',
+    'InstallBadge survives being culled in the frame its state resolves',
     (tester) async {
-      // Reproduces the real crash site: a badge inside a scrolled list whose
-      // local state resolves in the very frame the list also scrolls it out
-      // of the cache extent. `ListView`'s layout pass unmounts the culled
-      // item's element in the same frame InstallBadge.build() registered
-      // its postFrameCallback, so the callback runs against an unmounted
-      // element unless the notifiers were captured ahead of time.
+      // A badge inside a scrolled list whose local state resolves in the very
+      // frame the list also scrolls it out of the cache extent: `ListView`'s
+      // layout pass unmounts the culled item's element while the provider is
+      // delivering its value.
       final completer = Completer<LocalGameState>();
       final controller = ScrollController();
       await tester.pumpWidget(

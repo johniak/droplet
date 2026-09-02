@@ -1,7 +1,6 @@
 import 'package:droplet/app/widgets/pulse_box.dart';
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/local_state.dart';
-import 'package:droplet/features/game/providers.dart';
 import 'package:droplet/features/library/providers.dart';
 import 'package:droplet/features/library/widgets/game_tile.dart';
 import 'package:droplet/features/library/widgets/sort_menu.dart';
@@ -11,6 +10,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+
+import '../fakes/fake_device_index.dart';
 
 GameSummary g(int id, String title) => GameSummary(
       id: id,
@@ -80,14 +81,15 @@ Widget _app(List<GameSummary> games, {List<Override> overrides = const []}) =>
 
 void main() {
   final games = [g(1, 'Mario'), g(2, 'Zelda'), g(3, 'Metroid')];
+  // Jeden indeks urządzenia zasila i odznaki, i chipy filtrów.
   final states = [
-    localStateProvider(1).overrideWith(
-      (ref) async => local(InstallStatus.installed),
+    deviceIndexProvider.overrideWith(
+      () => FakeDeviceIndex({
+        1: local(InstallStatus.installed),
+        2: local(InstallStatus.partial, update: true),
+        3: local(InstallStatus.none),
+      }),
     ),
-    localStateProvider(2).overrideWith(
-      (ref) async => local(InstallStatus.partial, update: true),
-    ),
-    localStateProvider(3).overrideWith((ref) async => local(InstallStatus.none)),
   ];
 
   testWidgets('header, counts and back', (tester) async {

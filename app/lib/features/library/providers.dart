@@ -4,6 +4,9 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../core/api/models.dart';
 import '../../core/cache/library_cache.dart';
+import '../../core/downloads/device_scan.dart';
+import '../../core/downloads/local_state.dart';
+import '../../core/downloads/storage_settings.dart';
 import '../../core/session/providers.dart';
 
 final libraryCacheProvider = FutureProvider<LibraryCache>(
@@ -100,26 +103,70 @@ class SortOrder extends Notifier<LibrarySort> {
 
 final sortProvider = NotifierProvider<SortOrder, LibrarySort>(SortOrder.new);
 
-/// Zbiór id — jeden typ dla „na urządzeniu" i „do aktualizacji"; zasilany
-/// przez odznaki na kafelkach, gdy rozwiążą stan lokalny.
-class IdSet extends Notifier<Set<int>> {
-  @override
-  Set<int> build() => {};
+/// Jeden skan dysku dla całej biblioteki: stan każdej gry z manifestu, a przy
+/// okazji lista plików i katalogów, których manifest nie zna.
+class DeviceIndexController extends AsyncNotifier<Map<int, LocalGameState>> {
+  DeviceIndex _last = const DeviceIndex(games: {}, unknown: []);
 
-  void mark(int id, {required bool installed}) {
-    if (installed == state.contains(id)) return;
-    final next = {...state};
-    if (installed) {
-      next.add(id);
-    } else {
-      next.remove(id);
-    }
-    state = next;
+  DeviceIndex get lastIndex => _last;
+
+  @override
+  Future<Map<int, LocalGameState>> build() async {
+    final snapshot = await ref.watch(librarySnapshotProvider.future);
+    final settings = await ref.watch(storageSettingsProvider.future);
+    return _compute(snapshot, settings);
+  }
+
+  Map<int, LocalGameState> _compute(
+    LibrarySnapshot snapshot,
+    StorageSettings settings,
+  ) {
+    final known = {
+      for (final e in snapshot.manifest) '${e.systemCode}/${e.folder}',
+    };
+    _last = scanDevice(
+      settings,
+      [for (final s in snapshot.systems) s.code],
+      known,
+    );
+    return buildLocalStates(snapshot.manifest, _last, settings);
+  }
+
+  /// Ponowny skan dysku po pobraniu/usunięciu — bez sieci.
+  Future<void> refresh() async {
+    final snapshot = ref.read(librarySnapshotProvider).value;
+    final settings = ref.read(storageSettingsProvider).value;
+    if (snapshot == null || settings == null) return;
+    state = AsyncData(_compute(snapshot, settings));
   }
 }
 
-final installedIdsProvider = NotifierProvider<IdSet, Set<int>>(IdSet.new);
-final updatableIdsProvider = NotifierProvider<IdSet, Set<int>>(IdSet.new);
+final deviceIndexProvider =
+    AsyncNotifierProvider<DeviceIndexController, Map<int, LocalGameState>>(
+  DeviceIndexController.new,
+);
+
+/// Pliki i katalogi w drzewie ROMów, których nie zna żadna gra z manifestu.
+final unknownOnDeviceProvider = Provider<List<UnknownEntry>>((ref) {
+  ref.watch(deviceIndexProvider); // przelicz po każdym skanie
+  return ref.read(deviceIndexProvider.notifier).lastIndex.unknown;
+});
+
+final installedIdsProvider = Provider<Set<int>>((ref) {
+  final states = ref.watch(deviceIndexProvider).value ?? const {};
+  return {
+    for (final e in states.entries)
+      if (e.value.status != InstallStatus.none) e.key,
+  };
+});
+
+final updatableIdsProvider = Provider<Set<int>>((ref) {
+  final states = ref.watch(deviceIndexProvider).value ?? const {};
+  return {
+    for (final e in states.entries)
+      if (e.value.updateAvailable) e.key,
+  };
+});
 
 enum SystemFilter { all, installed, updatable }
 

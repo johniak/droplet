@@ -1,7 +1,10 @@
 import 'package:droplet/core/api/models.dart';
+import 'package:droplet/core/downloads/local_state.dart';
 import 'package:droplet/features/library/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../fakes/fake_device_index.dart';
 
 GameSummary g(int id, String title, String system) => GameSummary(
       id: id,
@@ -35,17 +38,6 @@ void main() {
     expect(shelves.systems.last.games, isEmpty);
   });
 
-  test('IdSet marks and unmarks', () {
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-    final ids = container.read(updatableIdsProvider.notifier);
-    ids.mark(1, installed: true);
-    ids.mark(1, installed: true);
-    expect(container.read(updatableIdsProvider), {1});
-    ids.mark(1, installed: false);
-    expect(container.read(updatableIdsProvider), isEmpty);
-  });
-
   test('systemFilter provider selects', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
@@ -65,10 +57,22 @@ void main() {
             previousIds: const {},
           ),
         ),
+        deviceIndexProvider.overrideWith(
+          () => FakeDeviceIndex({
+            3: const LocalGameState(
+              status: InstallStatus.installed,
+              updateAvailable: false,
+              missing: [],
+              presentPaths: [],
+            ),
+          }),
+        ),
       ],
     );
     addTearDown(container.dispose);
-    container.read(installedIdsProvider.notifier).mark(3, installed: true);
+    // Zbiory id czyta się synchronicznie z indeksu, więc najpierw czekamy na
+    // jego pierwszy „skan".
+    await container.read(deviceIndexProvider.future);
     container.read(systemFilterProvider.notifier).select(SystemFilter.installed);
     expect(
       (await container.read(systemGamesProvider('snes').future)).single.id,

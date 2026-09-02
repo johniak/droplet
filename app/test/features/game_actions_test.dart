@@ -8,11 +8,13 @@ import 'package:droplet/core/platform/downloader_port.dart';
 import 'package:droplet/features/game/delete_dialog.dart';
 import 'package:droplet/features/game/game_detail_screen.dart';
 import 'package:droplet/features/game/providers.dart';
+import 'package:droplet/features/library/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import '../fakes/fake_device_index.dart';
 import '../fakes/fake_downloader_port.dart';
 
 const detail = GameDetail(
@@ -53,14 +55,17 @@ GoRouter _router() => GoRouter(
       ],
     );
 
-Widget build(LocalGameState state) => ProviderScope(
+late FakeDeviceIndex index;
+
+Widget build(LocalGameState state, {String baseDir = '/roms'}) => ProviderScope(
       overrides: [
         gameDetailProvider(7).overrideWith((ref) async => detail),
         localStateProvider(7).overrideWith((ref) async => state),
         downloaderPortProvider.overrideWithValue(FakeDownloaderPort()),
         storageSettingsProvider.overrideWith(
-          (ref) async => StorageSettings('/roms', const {}),
+          (ref) async => StorageSettings(baseDir, const {}),
         ),
+        deviceIndexProvider.overrideWith(() => index = FakeDeviceIndex({})),
       ],
       child: MaterialApp.router(routerConfig: _router()),
     );
@@ -113,11 +118,15 @@ void main() {
     expect(find.textContaining('Pobierz aktualizację'), findsOneWidget);
   });
 
-  testWidgets('delete dialog removes only listed files', (tester) async {
-    final dir = Directory.systemTemp.createTempSync();
-    addTearDown(() => dir.deleteSync(recursive: true));
-    final rom = File('${dir.path}/m.sfc')..writeAsStringSync('rom');
-    final save = File('${dir.path}/m.srm')..writeAsStringSync('save');
+  testWidgets('delete keeps a game folder that still holds a save', (
+    tester,
+  ) async {
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    final gameDir = Directory('${root.path}/snes/Mario')
+      ..createSync(recursive: true);
+    final rom = File('${gameDir.path}/m.sfc')..writeAsStringSync('rom');
+    final save = File('${gameDir.path}/m.srm')..writeAsStringSync('save');
     await tester.pumpWidget(
       build(
         LocalGameState(
@@ -126,6 +135,7 @@ void main() {
           missing: const [],
           presentPaths: [rom.path],
         ),
+        baseDir: root.path,
       ),
     );
     await tester.pumpAndSettle();
@@ -136,6 +146,34 @@ void main() {
     await tester.pumpAndSettle();
     expect(rom.existsSync(), false);
     expect(save.existsSync(), true);
+    expect(gameDir.existsSync(), true);
+  });
+
+  testWidgets('delete drops the game folder once it is empty', (tester) async {
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    final gameDir = Directory('${root.path}/snes/Mario')
+      ..createSync(recursive: true);
+    final rom = File('${gameDir.path}/m.sfc')..writeAsStringSync('rom');
+    await tester.pumpWidget(
+      build(
+        LocalGameState(
+          status: InstallStatus.installed,
+          updateAvailable: false,
+          missing: const [],
+          presentPaths: [rom.path],
+        ),
+        baseDir: root.path,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Usuń z urządzenia'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Usuń'));
+    await tester.pumpAndSettle();
+    expect(gameDir.existsSync(), false);
+    // Po usunięciu indeks urządzenia przelicza się bez pytania serwera.
+    expect(index.refreshes, 1);
   });
 
   testWidgets('the delete dialog can be dismissed', (tester) async {
@@ -192,9 +230,12 @@ void main() {
     );
   });
 
-  test('deleteLocalFiles ignores missing paths', () async {
+  test('deleteLocalFiles ignores missing paths and folders', () async {
     final dir = Directory.systemTemp.createTempSync();
     addTearDown(() => dir.deleteSync(recursive: true));
-    await deleteLocalFiles(['${dir.path}/nie-ma.sfc']);
+    await deleteLocalFiles(
+      ['${dir.path}/nie-ma.sfc'],
+      gameDir: '${dir.path}/tez-nie-ma',
+    );
   });
 }

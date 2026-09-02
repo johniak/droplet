@@ -215,7 +215,7 @@ class _DetailState extends ConsumerState<_Detail> {
             toFetch: bytesToFetch(game, _selected, state),
             offline: ref.watch(isOfflineProvider),
             onDownload: () => _download(state),
-            onDelete: () => confirmAndDelete(context, ref, game.id, state),
+            onDelete: () => confirmAndDelete(context, ref, game, state),
           ),
         ),
       ),

@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/local_state.dart';
-import 'package:droplet/features/game/providers.dart';
 import 'package:droplet/features/home/home_screen.dart';
 import 'package:droplet/features/library/providers.dart';
 import 'package:droplet/features/library/widgets/games_grid.dart';
@@ -12,6 +11,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+
+import '../fakes/fake_device_index.dart';
 
 GameSummary g(int id, String title, String system) => GameSummary(
       id: id,
@@ -76,8 +77,9 @@ Widget _app({
       overrides: [
         snapshotOverride ??
             librarySnapshotProvider.overrideWith((ref) async => snap()),
-        localStateProvider(1).overrideWith((ref) async => _none),
-        localStateProvider(2).overrideWith((ref) async => local2),
+        deviceIndexProvider.overrideWith(
+          () => FakeDeviceIndex({1: _none, 2: local2}),
+        ),
       ],
       child: MaterialApp.router(routerConfig: _router()),
     );
@@ -87,14 +89,15 @@ Widget _app({
 Widget _appWithContainer(
   void Function(ProviderContainer) onContainer, {
   Override? snapshotOverride,
-  Override? local1Override,
+  Override? indexOverride,
 }) => ProviderScope(
       overrides: [
         snapshotOverride ??
             librarySnapshotProvider.overrideWith((ref) async => snap()),
-        local1Override ??
-            localStateProvider(1).overrideWith((ref) async => _none),
-        localStateProvider(2).overrideWith((ref) async => _none),
+        indexOverride ??
+            deviceIndexProvider.overrideWith(
+              () => FakeDeviceIndex({1: _none, 2: _none}),
+            ),
       ],
       child: Consumer(
         builder: (context, ref, _) {
@@ -109,14 +112,12 @@ void main() {
     tester,
   ) async {
     late ProviderContainer container;
-    // Stan lokalny gry 1 nigdy się nie rozwiązuje, więc jej odznaka nie
-    // zasila zbioru id — o „na urządzeniu" decyduje wyłącznie wpis poniżej.
-    final pending = Completer<LocalGameState>();
+    // Pusty indeks: żadna gra nie jest na urządzeniu, więc półka „Na
+    // urządzeniu" jeszcze nie istnieje.
     await tester.pumpWidget(
       _appWithContainer(
         (c) => container = c,
-        local1Override:
-            localStateProvider(1).overrideWith((ref) => pending.future),
+        indexOverride: deviceIndexProvider.overrideWith(() => FakeDeviceIndex({})),
       ),
     );
     await tester.pumpAndSettle();
@@ -125,9 +126,16 @@ void main() {
     expect(find.byKey(snesKey), findsOneWidget);
     final before = tester.element(find.byKey(snesKey));
 
-    // Odznaka kafelka zgłasza „na urządzeniu" dopiero po rozwiązaniu stanu
-    // lokalnego — półka wskakuje wtedy w środek listy.
-    container.read(installedIdsProvider.notifier).mark(1, installed: true);
+    // Ponowny skan znajduje grę 1 na dysku — półka wskakuje wtedy w środek
+    // listy.
+    final index = container.read(deviceIndexProvider.notifier) as FakeDeviceIndex;
+    index.states[1] = const LocalGameState(
+      status: InstallStatus.installed,
+      updateAvailable: false,
+      missing: [],
+      presentPaths: ['/x'],
+    );
+    await index.refresh();
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('shelf-installed')), findsOneWidget);
     expect(find.byKey(snesKey), findsOneWidget);

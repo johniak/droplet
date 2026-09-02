@@ -10,6 +10,7 @@ import 'package:droplet/core/session/providers.dart';
 import 'package:droplet/core/session/session_repository.dart';
 import 'package:droplet/features/game/game_detail_screen.dart';
 import 'package:droplet/features/game/providers.dart';
+import 'package:droplet/features/library/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -143,15 +144,30 @@ void main() {
   test('localStateProvider diffs the manifest against the disk', () async {
     final dir = Directory.systemTemp.createTempSync();
     addTearDown(() => dir.deleteSync(recursive: true));
-    Directory('${dir.path}/Mario').createSync();
-    File('${dir.path}/Mario/m.sfc').writeAsBytesSync(List.filled(1024, 0));
+    Directory('${dir.path}/snes/Mario').createSync(recursive: true);
+    File('${dir.path}/snes/Mario/m.sfc').writeAsBytesSync(List.filled(1024, 0));
     final container = ProviderContainer(
       overrides: [
-        gameDetailProvider(7).overrideWith((ref) async => _game),
+        librarySnapshotProvider.overrideWith(
+          (ref) async => const LibrarySnapshot(
+            systems: [
+              SystemModel(id: 1, code: 'snes', name: 'SNES', gameCount: 1),
+            ],
+            games: [],
+            manifest: [
+              ManifestEntry(
+                gameId: 7,
+                systemCode: 'snes',
+                folder: 'Mario',
+                files: [_file],
+              ),
+            ],
+            fromCache: false,
+            previousIds: {},
+          ),
+        ),
         storageSettingsProvider.overrideWith(
-          (ref) async => StorageSettings(dir.parent.path, {
-            'snes': dir.uri.pathSegments[dir.uri.pathSegments.length - 2],
-          }),
+          (ref) async => StorageSettings(dir.path, const {}),
         ),
       ],
     );
