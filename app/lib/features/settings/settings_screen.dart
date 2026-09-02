@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/tokens.dart';
 import '../../app/widgets/glass_panel.dart';
 import '../../app/widgets/section_label.dart';
+import '../../core/downloads/device_scan.dart';
 import '../../core/downloads/permissions.dart';
 import '../../core/downloads/storage_settings.dart';
 import '../../core/errors.dart';
@@ -341,13 +344,113 @@ class _DeviceCard extends ConsumerWidget {
         baseDir == null ? null : ref.watch(freeBytesProvider(baseDir)).value;
     return GlassPanel(
       padding: EdgeInsets.zero,
-      child: SettingsRow(
-        title: 'Wolne miejsce',
-        trailing: Text(
-          free == null ? '—' : formatBytes(free),
-          style: const TextStyle(color: kTextDim),
-        ),
+      child: Column(
+        children: [
+          SettingsRow(
+            title: 'Wolne miejsce',
+            trailing: Text(
+              free == null ? '—' : formatBytes(free),
+              style: const TextStyle(color: kTextDim),
+            ),
+          ),
+          const _Divider(),
+          _UnknownRow(baseDir: baseDir),
+        ],
       ),
     );
+  }
+}
+
+String pluralPositions(int n) => switch (n % 10) {
+      1 when n % 100 != 11 => '$n pozycja',
+      2 || 3 || 4 when n % 100 < 10 || n % 100 > 20 => '$n pozycje',
+      _ => '$n pozycji',
+    };
+
+/// Usuwa tylko wpisy leżące pod [baseDir] — nic poza katalogiem ROMów.
+void deleteUnknown(List<UnknownEntry> entries, String baseDir) {
+  for (final e in entries) {
+    if (!e.path.startsWith('$baseDir/')) continue;
+    if (e.isDirectory) {
+      final d = Directory(e.path);
+      if (d.existsSync()) d.deleteSync(recursive: true);
+    } else {
+      final f = File(e.path);
+      if (f.existsSync()) f.deleteSync();
+    }
+  }
+}
+
+/// Pliki i katalogi w drzewie ROMów, których nie zna żadna gra z biblioteki —
+/// zwykle pozostałości po układzie sprzed katalogów per gra.
+class _UnknownRow extends ConsumerWidget {
+  const _UnknownRow({required this.baseDir});
+
+  final String? baseDir;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unknown = ref.watch(unknownOnDeviceProvider);
+    final bytes = unknown.fold(0, (a, e) => a + e.bytes);
+    return SettingsRow(
+      key: const Key('unknown-on-device'),
+      title: 'Nieznane na urządzeniu',
+      subtitle: unknown.isEmpty
+          ? 'Brak'
+          : '${pluralPositions(unknown.length)} · ${formatBytes(bytes)}',
+      trailing: unknown.isEmpty
+          ? null
+          : const Icon(Icons.chevron_right, color: kTextDim),
+      onTap: unknown.isEmpty || baseDir == null
+          ? null
+          : () => _showUnknown(context, ref, unknown, baseDir!),
+    );
+  }
+
+  Future<void> _showUnknown(
+    BuildContext context,
+    WidgetRef ref,
+    List<UnknownEntry> unknown,
+    String baseDir,
+  ) async {
+    final shown = unknown.take(50).toList();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nieznane na urządzeniu'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final e in shown)
+                Text(
+                  e.path.substring(baseDir.length + 1),
+                  style: const TextStyle(color: kTextDim, fontSize: 13),
+                ),
+              if (unknown.length > shown.length)
+                Text(
+                  '… i ${unknown.length - shown.length} więcej',
+                  style: const TextStyle(color: kTextDim, fontSize: 13),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Zamknij'),
+          ),
+          TextButton(
+            key: const Key('unknown-delete-all'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Usuń wszystko'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    deleteUnknown(unknown, baseDir);
+    await ref.read(deviceIndexProvider.notifier).refresh();
   }
 }

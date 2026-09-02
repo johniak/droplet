@@ -82,7 +82,18 @@ void main() {
       _screen(repo: StorageSettingsRepository(SharedPreferencesAsync()), port: port),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Brak'), findsOneWidget);
+    // „Brak" mowi teraz i wiersz uprawnien, i „Nieznane na urzadzeniu",
+    // wiec finder celuje w konkretny wiersz.
+    expect(
+      find.descendant(
+        of: find.ancestor(
+          of: find.text('Dostęp do plików'),
+          matching: find.byType(SettingsRow),
+        ),
+        matching: find.text('Brak'),
+      ),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const Key('grant-permission')));
     await tester.pumpAndSettle();
     expect(port.requests, 1);

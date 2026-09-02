@@ -64,6 +64,34 @@ void main() {
     expect(loaded!.manifest, isEmpty);
   });
 
+  test('a legacy cache file without game folders loads as null', () async {
+    final dir = Directory.systemTemp.createTempSync();
+    addTearDown(() => dir.deleteSync(recursive: true));
+    File('${dir.path}/library.json').writeAsStringSync(
+      jsonEncode({
+        'saved_at': DateTime.now().toIso8601String(),
+        'systems': const <Map<String, dynamic>>[],
+        'games': [
+          {
+            'id': 1,
+            'title': 'Mario',
+            'system_code': 'snes',
+            'has_cover': true,
+            'total_size': 5,
+          },
+        ],
+      }),
+    );
+    expect(await LibraryCache(dir.path).load(), isNull);
+  });
+
+  test('a cache file that is not JSON at all loads as null', () async {
+    final dir = Directory.systemTemp.createTempSync();
+    addTearDown(() => dir.deleteSync(recursive: true));
+    File('${dir.path}/library.json').writeAsStringSync('nie-json');
+    expect(await LibraryCache(dir.path).load(), isNull);
+  });
+
   test('load returns null without file', () async {
     final dir = Directory.systemTemp.createTempSync();
     addTearDown(() => dir.deleteSync(recursive: true));

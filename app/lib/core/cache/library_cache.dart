@@ -45,23 +45,31 @@ class LibraryCache {
     );
   }
 
+  /// Zwraca `null` także wtedy, gdy plik jest, ale nie daje się przeczytać w
+  /// dzisiejszym kształcie — np. zapisany przez starszą wersję aplikacji, gdzie
+  /// gry nie miały jeszcze `folder`. Wtedy lepiej odbudować bibliotekę z
+  /// serwera niż pokazać błąd, którego użytkownik nie ma jak naprawić.
   Future<CachedLibrary?> load() async {
     if (!_file.existsSync()) return null;
-    final data = jsonDecode(_file.readAsStringSync()) as Map<String, dynamic>;
-    return CachedLibrary(
-      systems: [
-        for (final s in data['systems'] as List)
-          SystemModel.fromJson(s as Map<String, dynamic>),
-      ],
-      games: [
-        for (final g in data['games'] as List)
-          GameSummary.fromJson(g as Map<String, dynamic>),
-      ],
-      manifest: [
-        for (final e in (data['manifest'] as List?) ?? const [])
-          ManifestEntry.fromJson(e as Map<String, dynamic>),
-      ],
-      savedAt: DateTime.parse(data['saved_at'] as String),
-    );
+    try {
+      final data = jsonDecode(_file.readAsStringSync()) as Map<String, dynamic>;
+      return CachedLibrary(
+        systems: [
+          for (final s in data['systems'] as List)
+            SystemModel.fromJson(s as Map<String, dynamic>),
+        ],
+        games: [
+          for (final g in data['games'] as List)
+            GameSummary.fromJson(g as Map<String, dynamic>),
+        ],
+        manifest: [
+          for (final e in (data['manifest'] as List?) ?? const [])
+            ManifestEntry.fromJson(e as Map<String, dynamic>),
+        ],
+        savedAt: DateTime.parse(data['saved_at'] as String),
+      );
+    } on Object {
+      return null;
+    }
   }
 }
