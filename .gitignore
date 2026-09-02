@@ -11,3 +11,6 @@ app/test/all_imports_test.dart
 app/coverage/
 app/.dart_tool/
 app/build/
+
+# lokalna biblioteka ROMów do prób (nie commitujemy dumpów)
+/library/

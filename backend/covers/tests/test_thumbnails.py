@@ -74,3 +74,38 @@ def test_download_boxart(settings, tmp_path):
     dest = tmp_path / "out.png"
     download_boxart("R", "Mario (USA)", dest)
     assert dest.read_bytes() == b"PNGDATA"
+
+
+@responses.activate
+def test_download_boxart_follows_a_symlink(settings, tmp_path):
+    # Regional duplicates in libretro-thumbnails are git symlinks: raw returns
+    # the target's name, not a PNG.
+    settings.DATA_DIR = tmp_path
+    responses.get(
+        "https://raw.githubusercontent.com/libretro-thumbnails/R"
+        "/master/Named_Boxarts/Mario%20%28Australia%29.png",
+        body=b"Mario (USA).png",
+    )
+    responses.get(
+        "https://raw.githubusercontent.com/libretro-thumbnails/R"
+        "/master/Named_Boxarts/Mario%20%28USA%29.png",
+        body=b"\x89PNG\r\n\x1a\nREAL",
+    )
+    dest = tmp_path / "out.png"
+    download_boxart("R", "Mario (Australia)", dest)
+    assert dest.read_bytes() == b"\x89PNG\r\n\x1a\nREAL"
+
+
+@responses.activate
+def test_download_boxart_keeps_a_non_png_body_when_it_is_not_a_symlink(
+    settings, tmp_path
+):
+    settings.DATA_DIR = tmp_path
+    responses.get(
+        "https://raw.githubusercontent.com/libretro-thumbnails/R"
+        "/master/Named_Boxarts/Mario.png",
+        body=b"nie-obrazek-ale-i-nie-symlink",
+    )
+    dest = tmp_path / "out.png"
+    download_boxart("R", "Mario", dest)
+    assert dest.read_bytes() == b"nie-obrazek-ale-i-nie-symlink"

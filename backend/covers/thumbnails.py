@@ -46,9 +46,20 @@ def fetch_index(repo: str) -> list[str]:
     return names
 
 
-def download_boxart(repo: str, name: str, dest: Path) -> None:
+_PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+
+
+def download_boxart(repo: str, name: str, dest: Path, *, follow: bool = True) -> None:
     url = _RAW.format(repo=repo, name=quote(name))
     resp = requests.get(url, timeout=60)
     resp.raise_for_status()
+    content = resp.content
+    # libretro-thumbnails stores regional duplicates as git symlinks; the raw
+    # endpoint answers 200 with the *target file name* instead of the image.
+    if follow and not content.startswith(_PNG_MAGIC):
+        target = content.decode("utf-8", "replace").strip()
+        if target.endswith(".png") and "\n" not in target and len(target) < 300:
+            download_boxart(repo, target[:-4], dest, follow=False)
+            return
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(resp.content)
+    dest.write_bytes(content)
