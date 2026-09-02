@@ -105,8 +105,7 @@ def _group_folder(folder: Path, root: Path, *, is_switch: bool) -> GameGroup | N
             info = parse_switch(p.stem)
             if info.role == "base" and info.title_id and not group.switch_title_prefix:
                 group.switch_title_prefix = title_prefix(info.title_id)
-            version = "" if info.role == "base" else info.version
-            group.files.append(_entry(p, root, info.role, version=version))
+            group.files.append(_entry(p, root, info.role, version=info.version))
         elif p.suffix.lower() in SIDECAR_EXTENSIONS:
             group.files.append(_entry(p, root, "other"))
         else:

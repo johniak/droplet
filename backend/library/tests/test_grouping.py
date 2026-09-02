@@ -83,7 +83,7 @@ def test_switch_folder_roles_and_prefix(tmp_path):
     assert g.title == "Hollow Knight"
     assert g.switch_title_prefix == "0100633007D4"
     roles = sorted((f.role, f.version) for f in g.files)
-    assert roles == [("base", ""), ("dlc", ""), ("update", "v196608")]
+    assert roles == [("base", "v0"), ("dlc", ""), ("update", "v196608")]
 
 
 def test_switch_folder_without_base_has_no_prefix(tmp_path):
