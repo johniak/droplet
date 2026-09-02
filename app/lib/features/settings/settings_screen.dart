@@ -170,8 +170,7 @@ class _DownloadCard extends ConsumerWidget {
       padding: EdgeInsets.zero,
       child: settings.when(
         loading: () => const SettingsRow(title: '...'),
-        error: (e, _) =>
-            SettingsRow(title: humanizeError(e), subtitle: '$e'),
+        error: (e, _) => SettingsRow(title: humanizeError(e)),
         data: (data) => Column(
           children: [
             SettingsRow(

@@ -124,6 +124,6 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('prefs'), findsOneWidget);
+    expect(find.text('Coś poszło nie tak'), findsOneWidget);
   });
 }
