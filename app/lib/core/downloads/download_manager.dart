@@ -25,21 +25,45 @@ class GameProgress {
   const GameProgress({
     required this.gameId,
     required this.title,
+    required this.systemCode,
+    required this.hasCover,
     required this.progress,
     required this.status,
+    this.bytesDone = 0,
+    this.bytesTotal = 0,
+    this.speedBytesPerSec,
   });
 
   final int gameId;
   final String title;
+  final String systemCode;
+  final bool hasCover;
   final double progress;
   final GameProgressStatus status;
+  final int bytesDone;
+  final int bytesTotal;
 
-  GameProgress copyWith({double? progress, GameProgressStatus? status}) =>
+  /// null, gdy plugin nie zna prędkości (networkSpeed == -1).
+  final int? speedBytesPerSec;
+
+  int get bytesLeft => bytesTotal - bytesDone;
+
+  GameProgress copyWith({
+    double? progress,
+    GameProgressStatus? status,
+    int? bytesDone,
+    int? speedBytesPerSec,
+  }) =>
       GameProgress(
         gameId: gameId,
         title: title,
+        systemCode: systemCode,
+        hasCover: hasCover,
         progress: progress ?? this.progress,
         status: status ?? this.status,
+        bytesDone: bytesDone ?? this.bytesDone,
+        bytesTotal: bytesTotal,
+        speedBytesPerSec: speedBytesPerSec ?? this.speedBytesPerSec,
       );
 }
 
@@ -115,8 +139,11 @@ class DownloadManager {
     _progress[game.id] = GameProgress(
       gameId: game.id,
       title: game.title,
+      systemCode: game.systemCode,
+      hasCover: game.hasCover,
       progress: 0,
       status: GameProgressStatus.running,
+      bytesTotal: needed,
     );
     _emit();
     for (final task in tasks) {
@@ -165,13 +192,18 @@ class DownloadManager {
     final gameId = gameIdOf(update.task);
     if (update is TaskProgressUpdate) {
       _taskProgress[update.task.taskId] = update.progress;
-      _recomputeProgress(gameId);
+      _recomputeProgress(
+        gameId,
+        speed: update.networkSpeed > 0
+            ? (update.networkSpeed * 1024 * 1024).round()
+            : null,
+      );
     } else if (update is TaskStatusUpdate) {
       unawaited(_onStatus(gameId, update));
     }
   }
 
-  void _recomputeProgress(int gameId) {
+  void _recomputeProgress(int gameId, {int? speed}) {
     final tasks = _tasksByGame[gameId] ?? const <DownloadTask>[];
     var total = 0;
     var done = 0.0;
@@ -182,7 +214,11 @@ class DownloadManager {
     }
     final current = _progress[gameId];
     if (current == null || total == 0) return;
-    _progress[gameId] = current.copyWith(progress: done / total);
+    _progress[gameId] = current.copyWith(
+      progress: done / total,
+      bytesDone: done.round(),
+      speedBytesPerSec: speed,
+    );
     _emit();
   }
 
@@ -231,9 +267,16 @@ class DownloadManager {
         status: allDone
             ? GameProgressStatus.complete
             : GameProgressStatus.running,
+        bytesDone: allDone ? current.bytesTotal : current.bytesDone,
       );
     }
     onGameChanged(gameId);
+  }
+
+  /// Usuwa wpisy zakończone sukcesem; błędy zostają do ponowienia/anulowania.
+  void clearFinished() {
+    _progress.removeWhere((_, p) => p.status == GameProgressStatus.complete);
+    _emit();
   }
 }
 

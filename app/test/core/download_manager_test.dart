@@ -4,6 +4,7 @@ import 'package:droplet/core/downloads/download_manager.dart';
 import 'package:droplet/core/downloads/local_state.dart';
 import 'package:droplet/core/downloads/space.dart';
 import 'package:droplet/core/downloads/storage_settings.dart';
+import 'package:droplet/core/downloads/task_builder.dart';
 import 'package:droplet/core/env.dart';
 import 'package:droplet/core/platform/downloader_port.dart';
 import 'package:droplet/core/platform/permissions_port.dart';
@@ -301,5 +302,80 @@ void main() {
     port.free = 1024 + kFreeSpaceMargin;
     await start();
     expect(port.enqueued, hasLength(1));
+  });
+
+  group('bytes, speed and clearFinished', () {
+    // The brief's two-file fixture (1000 B + 3000 B) doesn't match the
+    // shared single-file `game`/`start()` helpers above, so it's defined
+    // locally here for the byte/speed tests that need it.
+    const fileA = GameFileModel(
+      id: 100,
+      name: 'a.sfc',
+      relativePath: 'snes/a.sfc',
+      role: FileRole.base,
+      discNumber: null,
+      version: '',
+      size: 1000,
+    );
+    const fileB = GameFileModel(
+      id: 101,
+      name: 'b.sfc',
+      relativePath: 'snes/b.sfc',
+      role: FileRole.support,
+      discNumber: null,
+      version: '',
+      size: 3000,
+    );
+    const twoFileGame = GameDetail(
+      id: 9,
+      title: 'Zelda',
+      systemCode: 'snes',
+      systemName: 'SNES',
+      hasCover: true,
+      totalSize: 4000,
+      files: [fileA, fileB],
+    );
+
+    Future<void> startTwoFile() => manager.downloadGame(
+          game: twoFileGame,
+          selectedIds: {100, 101},
+          local: none,
+          serverUrl: 'http://nas:8000',
+          authHeaders: const {'Authorization': 'Token t'},
+          settings: settings,
+        );
+
+    test('progress carries bytes, speed, system and cover', () async {
+      await startTwoFile();
+      final tasks = port.enqueued;
+      port.controller.add(TaskProgressUpdate(tasks[0], 0.5, 1000, 2.0));
+      await Future<void>.delayed(Duration.zero);
+      final p = manager.progress[twoFileGame.id]!;
+      expect(p.systemCode, twoFileGame.systemCode);
+      expect(p.hasCover, twoFileGame.hasCover);
+      expect(p.bytesTotal, 4000);
+      expect(p.bytesDone, 500);
+      expect(p.bytesLeft, 3500);
+      expect(p.speedBytesPerSec, 2 * 1024 * 1024);
+    });
+
+    test('unknown network speed is null', () async {
+      await startTwoFile();
+      port.controller.add(TaskProgressUpdate(port.enqueued[0], 0.1));
+      await Future<void>.delayed(Duration.zero);
+      expect(manager.progress[twoFileGame.id]!.speedBytesPerSec, isNull);
+    });
+
+    test('clearFinished drops complete entries only', () async {
+      await start();
+      for (final t in port.enqueued) {
+        port.lengths['/${t.directory}/${t.filename}'] = expectedSizeOf(t);
+        port.controller.add(TaskStatusUpdate(t, TaskStatus.complete));
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(manager.progress[game.id]!.status, GameProgressStatus.complete);
+      manager.clearFinished();
+      expect(manager.progress, isEmpty);
+    });
   });
 }

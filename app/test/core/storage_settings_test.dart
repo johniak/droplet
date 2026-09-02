@@ -51,5 +51,12 @@ void main() {
       final settings = await container.read(storageSettingsProvider.future);
       expect(settings.baseDir, '/storage/emulated/0/RetroArch/roms');
     });
+
+    test('wifiOnly defaults to false and persists', () async {
+      final repo = StorageSettingsRepository(SharedPreferencesAsync());
+      expect((await repo.load()).wifiOnly, isFalse);
+      await repo.saveWifiOnly(true);
+      expect((await repo.load()).wifiOnly, isTrue);
+    });
   });
 }

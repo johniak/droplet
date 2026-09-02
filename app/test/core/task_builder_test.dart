@@ -37,4 +37,16 @@ void main() {
     expect(gameIdOf(task), 7);
     expect(expectedSizeOf(task), 1024);
   });
+
+  test('wifiOnly setting makes the task require Wi-Fi', () {
+    final task = buildTask(
+      serverUrl: 'http://nas:8000',
+      authHeaders: const {'Authorization': 'Token t'},
+      gameId: 7,
+      file: file,
+      settings: StorageSettings('/roms', const {}, wifiOnly: true),
+      systemCode: 'snes',
+    );
+    expect(task.requiresWiFi, isTrue);
+  });
 }

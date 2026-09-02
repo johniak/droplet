@@ -24,6 +24,7 @@ DownloadTask buildTask({
       group: 'game-$gameId',
       allowPause: true,
       retries: 3,
+      requiresWiFi: settings.wifiOnly,
       updates: Updates.statusAndProgress,
       metaData: jsonEncode({'gameId': gameId, 'size': file.size}),
     );

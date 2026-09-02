@@ -38,6 +38,8 @@ void main() {
       GameProgress(
         gameId: 7,
         title: 'Mario',
+        systemCode: 'snes',
+        hasCover: false,
         progress: progress,
         status: status,
       );
@@ -118,6 +120,8 @@ void main() {
         const GameProgress(
           gameId: 8,
           title: 'Tekken',
+          systemCode: 'snes',
+          hasCover: false,
           progress: 0.1,
           status: GameProgressStatus.running,
         ),

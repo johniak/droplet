@@ -5,15 +5,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const _kBaseDir = 'storage.base_dir';
 const _kSystemDirs = 'storage.system_dirs';
+const _kWifiOnly = 'storage.wifi_only';
 const defaultBaseDir = '/storage/emulated/0/RetroArch/roms';
 
 class StorageSettings {
-  StorageSettings(this.baseDir, this.systemDirs);
+  StorageSettings(this.baseDir, this.systemDirs, {this.wifiOnly = false});
 
   final String baseDir;
 
   /// system code -> subdirectory; no entry means the code itself.
   final Map<String, String> systemDirs;
+
+  /// Kolejkuj pobierania tylko na Wi‑Fi (flaga `requiresWiFi` taska).
+  final bool wifiOnly;
 
   String dirFor(String systemCode) =>
       '$baseDir/${systemDirs[systemCode] ?? systemCode}';
@@ -33,7 +37,8 @@ class StorageSettingsRepository {
     final dirs = raw == null
         ? <String, String>{}
         : (jsonDecode(raw) as Map).cast<String, String>();
-    return StorageSettings(baseDir, dirs);
+    final wifiOnly = await _prefs.getBool(_kWifiOnly) ?? false;
+    return StorageSettings(baseDir, dirs, wifiOnly: wifiOnly);
   }
 
   Future<void> saveBaseDir(String dir) => _prefs.setString(_kBaseDir, dir);
@@ -43,6 +48,8 @@ class StorageSettingsRepository {
     final dirs = Map<String, String>.from(settings.systemDirs)..[code] = dir;
     await _prefs.setString(_kSystemDirs, jsonEncode(dirs));
   }
+
+  Future<void> saveWifiOnly(bool value) => _prefs.setBool(_kWifiOnly, value);
 }
 
 final storageSettingsRepositoryProvider = Provider<StorageSettingsRepository>(
