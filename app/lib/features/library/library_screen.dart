@@ -7,7 +7,7 @@ import '../../app/widgets/pulse_box.dart';
 import '../../core/api/models.dart';
 import '../../core/errors.dart';
 import '../../core/downloads/download_manager.dart';
-import '../downloads/downloads_screen.dart';
+import '../downloads/providers.dart';
 import 'providers.dart';
 import 'widgets/game_card.dart';
 

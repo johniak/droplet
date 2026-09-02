@@ -1,22 +1,62 @@
 import 'package:droplet/core/downloads/download_manager.dart';
 import 'package:droplet/features/downloads/downloads_screen.dart';
+import 'package:droplet/features/downloads/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import '../fakes/fake_downloader_port.dart';
 import '../fakes/fake_permissions_port.dart';
 
-/// Every test overrides the manager: the real one listens to
-/// `FileDownloader().updates`, a single-subscription stream that blows up when
-/// a second manager is built in the same test isolate.
+GoRouter _router() => GoRouter(
+      initialLocation: '/downloads',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, __) => const Scaffold(body: Text('Home')),
+          routes: [
+            GoRoute(
+              path: 'downloads',
+              builder: (_, __) => const DownloadsScreen(),
+            ),
+            GoRoute(
+              path: 'game/:id',
+              builder: (_, s) =>
+                  Scaffold(body: Text('Gra ${s.pathParameters['id']}')),
+            ),
+          ],
+        ),
+      ],
+    );
+
 Widget _screen(List<GameProgress> active, DownloadManager manager) =>
     ProviderScope(
       overrides: [
         activeDownloadsProvider.overrideWith((ref) => active),
         downloadManagerProvider.overrideWithValue(manager),
       ],
-      child: const MaterialApp(home: DownloadsScreen()),
+      child: MaterialApp.router(routerConfig: _router()),
+    );
+
+GameProgress at(
+  GameProgressStatus status, {
+  int id = 7,
+  double progress = 0.5,
+  int done = 500,
+  int total = 1000,
+  int? speed,
+}) =>
+    GameProgress(
+      gameId: id,
+      title: 'Mario',
+      systemCode: 'snes',
+      hasCover: false,
+      progress: progress,
+      status: status,
+      bytesDone: done,
+      bytesTotal: total,
+      speedBytesPerSec: speed,
     );
 
 void main() {
@@ -34,100 +74,91 @@ void main() {
 
   tearDown(() => manager.dispose());
 
-  GameProgress at(GameProgressStatus status, {double progress = 0.5}) =>
-      GameProgress(
-        gameId: 7,
-        title: 'Mario',
-        systemCode: 'snes',
-        hasCover: false,
-        progress: progress,
-        status: status,
-      );
+  test('progressSubtitle per status', () {
+    expect(progressSubtitle(at(GameProgressStatus.running, speed: 2048)),
+        '500 B / 1000 B · 2.0 KB/s');
+    expect(progressSubtitle(at(GameProgressStatus.running)), '500 B / 1000 B');
+    expect(progressSubtitle(at(GameProgressStatus.paused)),
+        'Wstrzymane · 500 B / 1000 B');
+    expect(progressSubtitle(at(GameProgressStatus.failed)),
+        'Błąd pobierania — ponów');
+    expect(progressSubtitle(at(GameProgressStatus.complete)), 'Gotowe · 1000 B');
+  });
 
   testWidgets('empty state', (tester) async {
     await tester.pumpWidget(_screen(const [], manager));
     await tester.pumpAndSettle();
-    expect(find.text('Brak aktywnych pobierań'), findsOneWidget);
+    expect(find.text('Brak pobierań'), findsOneWidget);
+    expect(find.text('Brak aktywnych'), findsOneWidget);
   });
 
-  testWidgets('active download row', (tester) async {
+  testWidgets('header sums what is left; card opens the game', (tester) async {
     await tester.pumpWidget(
-      _screen([at(GameProgressStatus.running)], manager),
+      _screen([at(GameProgressStatus.running), at(GameProgressStatus.paused, id: 8)], manager),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Mario'), findsOneWidget);
-    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    expect(find.text('2 aktywnych · pozostało 1000 B'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsNWidgets(2));
+    await tester.tap(find.text('Mario').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Gra 7'), findsOneWidget);
   });
 
-  testWidgets('pause reaches the manager', (tester) async {
-    await tester.pumpWidget(
-      _screen([at(GameProgressStatus.running)], manager),
-    );
+  testWidgets('pause / cancel / resume / retry reach the manager', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_screen([at(GameProgressStatus.running)], manager));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.pause));
+    await tester.tap(find.byIcon(Icons.pause_rounded));
+    await tester.tap(find.byIcon(Icons.close_rounded));
     await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.pause), findsOneWidget);
+    expect(manager.progress, isEmpty);
+
+    // Riverpod 3 does not re-run a Provider.overrideWith closure when the
+    // ProviderScope above it is merely rebuilt with a new override — its
+    // element only reacts to overrideWithValue changes. Force a fresh
+    // ProviderContainer per pumpWidget so the next override actually applies.
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(_screen([at(GameProgressStatus.paused)], manager));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.play_arrow_rounded));
+    await tester.tap(find.byIcon(Icons.close_rounded));
+    await tester.pumpAndSettle();
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(_screen([at(GameProgressStatus.failed)], manager));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.refresh_rounded));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
   });
 
-  testWidgets('cancel reaches the manager', (tester) async {
+  testWidgets('finished section and clear', (tester) async {
     await tester.pumpWidget(
-      _screen([at(GameProgressStatus.running)], manager),
+      _screen([at(GameProgressStatus.complete), at(GameProgressStatus.failed, id: 9)], manager),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.close));
+    expect(find.text('Zakończone'), findsOneWidget);
+    expect(find.text('Gotowe · 1000 B'), findsOneWidget);
+    await tester.tap(find.text('Wyczyść'));
     await tester.pumpAndSettle();
+    // Manager had nothing of its own; the tap must not throw.
     expect(manager.progress, isEmpty);
   });
 
-  testWidgets('resume reaches the manager', (tester) async {
-    await tester.pumpWidget(_screen([at(GameProgressStatus.paused)], manager));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.play_arrow));
-    await tester.pumpAndSettle();
-    expect(port.resumed, isEmpty);
-  });
-
-  testWidgets('a failed download offers a retry', (tester) async {
-    await tester.pumpWidget(
-      _screen([at(GameProgressStatus.failed, progress: 0.2)], manager),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Ponów'), findsOneWidget);
-    await tester.tap(find.text('Ponów'));
-    await tester.pumpAndSettle();
-  });
-
-  testWidgets('a finished download shows as done', (tester) async {
-    await tester.pumpWidget(
-      _screen([at(GameProgressStatus.complete, progress: 1)], manager),
-    );
-    await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.check_circle), findsOneWidget);
-  });
-
-  test('activeDownloadsProvider reads the manager', () async {
+  test('activeCountProvider counts running and paused', () {
     final container = ProviderContainer(
-      overrides: [downloadManagerProvider.overrideWithValue(manager)],
+      overrides: [
+        activeDownloadsProvider.overrideWith(
+          (ref) => [
+            at(GameProgressStatus.running),
+            at(GameProgressStatus.paused, id: 8),
+            at(GameProgressStatus.complete, id: 9),
+          ],
+        ),
+      ],
     );
     addTearDown(container.dispose);
-    expect(container.read(activeDownloadsProvider), isEmpty);
-  });
-
-  testWidgets('two downloads are separated', (tester) async {
-    await tester.pumpWidget(
-      _screen([
-        at(GameProgressStatus.running),
-        const GameProgress(
-          gameId: 8,
-          title: 'Tekken',
-          systemCode: 'snes',
-          hasCover: false,
-          progress: 0.1,
-          status: GameProgressStatus.running,
-        ),
-      ], manager),
-    );
-    await tester.pumpAndSettle();
-    expect(find.byType(Divider), findsOneWidget);
+    expect(container.read(activeCountProvider), 2);
   });
 }
