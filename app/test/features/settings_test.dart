@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/device_scan.dart';
+import 'package:droplet/core/downloads/local_state.dart';
 import 'package:droplet/core/downloads/storage_settings.dart';
 import 'package:droplet/core/platform/downloader_port.dart';
 import 'package:droplet/core/platform/permissions_port.dart';
@@ -11,6 +12,7 @@ import 'package:droplet/core/session/session_repository.dart';
 import 'package:droplet/features/library/providers.dart';
 import 'package:droplet/features/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -30,35 +32,63 @@ const systems = [
 /// A non-empty manifest means the library is known, so "unknown" really
 /// means "redundant" and it's fine to delete it.
 final knownLibrary = [
+  ManifestEntry(gameId: 1, systemCode: 'snes', folder: 'G1', files: const []),
+];
+
+const _biosPack = GameSummary(
+  id: 10,
+  title: 'RetroArch',
+  systemCode: 'bios',
+  hasCover: false,
+  totalSize: 4,
+  folder: 'RetroArch',
+);
+
+final _biosManifest = [
   ManifestEntry(
-    gameId: 1,
-    systemCode: 'snes',
-    folder: 'G1',
-    files: const [],
+    gameId: 10,
+    systemCode: 'bios',
+    folder: 'RetroArch',
+    files: const [
+      GameFileModel(
+        id: 1,
+        name: 'scph1001.bin',
+        relativePath: '',
+        role: FileRole.other,
+        discNumber: null,
+        version: '',
+        size: 4,
+      ),
+    ],
   ),
 ];
 
 GoRouter _router() => GoRouter(
-      initialLocation: '/settings',
+  initialLocation: '/settings',
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (_, __) => const Scaffold(body: Text('Home')),
       routes: [
         GoRoute(
-          path: '/',
-          builder: (_, __) => const Scaffold(body: Text('Home')),
+          path: 'settings',
+          builder: (_, __) => const SettingsScreen(),
           routes: [
             GoRoute(
-              path: 'settings',
-              builder: (_, __) => const SettingsScreen(),
-              routes: [
-                GoRoute(
-                  path: 'folders',
-                  builder: (_, __) => const Scaffold(body: Text('Folders')),
-                ),
-              ],
+              path: 'folders',
+              builder: (_, __) => const Scaffold(body: Text('Folders')),
+            ),
+            GoRoute(
+              path: 'game/:id',
+              builder: (_, s) =>
+                  Scaffold(body: Text('Game ${s.pathParameters['id']}')),
             ),
           ],
         ),
       ],
-    );
+    ),
+  ],
+);
 
 Widget _screen({
   required SessionRepository repo,
@@ -70,45 +100,57 @@ Widget _screen({
   List<UnknownEntry> unknown = const [],
   List<ManifestEntry> manifest = const [],
   FakeDeviceIndex? index,
-}) =>
-    ProviderScope(
-      overrides: [
-        sessionRepositoryProvider.overrideWithValue(repo),
-        deviceIndexProvider.overrideWith(
-          () => index ?? FakeDeviceIndex(const {}, unknown: unknown),
+  List<GameSummary> supportPacks = const [],
+  Map<int, LocalGameState> packStates = const {},
+  bool pendingSnapshot = false,
+}) => ProviderScope(
+  overrides: [
+    sessionRepositoryProvider.overrideWithValue(repo),
+    deviceIndexProvider.overrideWith(
+      () => index ?? FakeDeviceIndex(packStates, unknown: unknown),
+    ),
+    if (pendingSettings)
+      storageSettingsProvider.overrideWith(
+        (ref) => Completer<StorageSettings>().future,
+      ),
+    if (baseDir != null)
+      storageSettingsProvider.overrideWith(
+        (ref) async => StorageSettings(baseDir, const {}),
+      ),
+    permissionsPortProvider.overrideWithValue(
+      port ?? FakePermissionsPort(granted: true),
+    ),
+    downloaderPortProvider.overrideWithValue(
+      downloader ?? FakeDownloaderPort(),
+    ),
+    if (pendingSnapshot)
+      librarySnapshotProvider.overrideWith(
+        (ref) => Completer<LibrarySnapshot>().future,
+      ),
+    if (!pendingSnapshot)
+      librarySnapshotProvider.overrideWith(
+        (ref) async => LibrarySnapshot(
+          systems: systems,
+          games: [
+            for (var i = 1; i <= 3; i++)
+              GameSummary(
+                id: i,
+                title: 'G$i',
+                systemCode: 'snes',
+                hasCover: false,
+                totalSize: 1,
+                folder: 'G$i',
+              ),
+          ],
+          supportPacks: supportPacks,
+          manifest: manifest,
+          fromCache: offline,
+          previousIds: const {},
         ),
-        if (pendingSettings)
-          storageSettingsProvider
-              .overrideWith((ref) => Completer<StorageSettings>().future),
-        if (baseDir != null)
-          storageSettingsProvider
-              .overrideWith((ref) async => StorageSettings(baseDir, const {})),
-        permissionsPortProvider
-            .overrideWithValue(port ?? FakePermissionsPort(granted: true)),
-        downloaderPortProvider
-            .overrideWithValue(downloader ?? FakeDownloaderPort()),
-        librarySnapshotProvider.overrideWith(
-          (ref) async => LibrarySnapshot(
-            systems: systems,
-            games: [
-              for (var i = 1; i <= 3; i++)
-                GameSummary(
-                  id: i,
-                  title: 'G$i',
-                  systemCode: 'snes',
-                  hasCover: false,
-                  totalSize: 1,
-                  folder: 'G$i',
-                ),
-            ],
-            manifest: manifest,
-            fromCache: offline,
-            previousIds: const {},
-          ),
-        ),
-      ],
-      child: MaterialApp.router(routerConfig: _router()),
-    );
+      ),
+  ],
+  child: MaterialApp.router(routerConfig: _router()),
+);
 
 Future<SessionRepository> _signedIn() async {
   final repo = SessionRepository(MemoryKeyValueStore());
@@ -142,6 +184,7 @@ void main() {
     await tester.pumpWidget(_screen(repo: await _signedIn(), offline: true));
     await tester.pumpAndSettle();
     expect(find.text('Offline'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('—'), 200);
     expect(find.text('—'), findsOneWidget);
   });
 
@@ -151,8 +194,166 @@ void main() {
       _screen(repo: await _signedIn(), downloader: downloader),
     );
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('2.0 KB'), 200);
     expect(find.text('2.0 KB'), findsOneWidget);
   });
+
+  testWidgets('system files: nothing special while the snapshot loads', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _screen(repo: await _signedIn(), pendingSnapshot: true),
+    );
+    await tester.pump();
+    expect(find.text('No system files on the server'), findsNothing);
+    expect(find.text('RetroArch'), findsNothing);
+  });
+
+  testWidgets('system files: empty state has no hint row', (tester) async {
+    await tester.pumpWidget(_screen(repo: await _signedIn()));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('No system files on the server'),
+      200,
+    );
+    expect(find.text('No system files on the server'), findsOneWidget);
+    expect(
+      find.text('Put BIOS or firmware packs in bios/<pack>/ on the server'),
+      findsOneWidget,
+    );
+    expect(find.text('Copy path'), findsNothing);
+  });
+
+  testWidgets(
+    'system files: pack row shows files, size and the installed pill',
+    (tester) async {
+      await tester.pumpWidget(
+        _screen(
+          repo: await _signedIn(),
+          baseDir: '/roms',
+          supportPacks: const [_biosPack],
+          manifest: _biosManifest,
+          packStates: {
+            10: const LocalGameState(
+              status: InstallStatus.installed,
+              updateAvailable: false,
+              missing: [],
+              presentPaths: ['/roms/bios/RetroArch/scph1001.bin'],
+            ),
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('RetroArch'), 200);
+      expect(find.text('RetroArch'), findsOneWidget);
+      expect(find.text('1 file · 4 B'), findsOneWidget);
+      expect(find.text('Installed'), findsOneWidget);
+    },
+  );
+
+  testWidgets('system files: partial pill for a partly downloaded pack', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _screen(
+        repo: await _signedIn(),
+        baseDir: '/roms',
+        supportPacks: const [_biosPack],
+        manifest: _biosManifest,
+        packStates: {
+          10: const LocalGameState(
+            status: InstallStatus.partial,
+            updateAvailable: false,
+            missing: [],
+            presentPaths: [],
+          ),
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Partial'), 200);
+    expect(find.text('Partial'), findsOneWidget);
+  });
+
+  testWidgets('system files: no pill for a pack not on the device', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _screen(
+        repo: await _signedIn(),
+        baseDir: '/roms',
+        supportPacks: const [_biosPack],
+        manifest: _biosManifest,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('RetroArch'), 200);
+    expect(find.text('Installed'), findsNothing);
+    expect(find.text('Partial'), findsNothing);
+  });
+
+  testWidgets('system files: tapping a pack opens its game screen', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _screen(
+        repo: await _signedIn(),
+        baseDir: '/roms',
+        supportPacks: const [_biosPack],
+        manifest: _biosManifest,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('RetroArch'), 200);
+    await tester.tap(find.text('RetroArch'));
+    await tester.pumpAndSettle();
+    expect(find.text('Game 10'), findsOneWidget);
+  });
+
+  testWidgets(
+    'system files: copy path copies the bios dir and shows a snackbar',
+    (tester) async {
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String;
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      await tester.pumpWidget(
+        _screen(
+          repo: await _signedIn(),
+          baseDir: '/roms',
+          supportPacks: const [_biosPack],
+          manifest: _biosManifest,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Point your emulator at /roms/bios/<pack>'),
+        200,
+      );
+      expect(
+        find.text('Point your emulator at /roms/bios/<pack>'),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(find.text('Copy path'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Copy path'));
+      await tester.pump();
+      expect(copied, '/roms/bios');
+      expect(find.text('Path copied'), findsOneWidget);
+    },
+  );
 
   testWidgets('no session shows placeholder', (tester) async {
     await tester.pumpWidget(
@@ -171,9 +372,7 @@ void main() {
     expect(find.text('Folders'), findsOneWidget);
   });
 
-  testWidgets('folders subtitle lists configured system codes', (
-    tester,
-  ) async {
+  testWidgets('folders subtitle lists configured system codes', (tester) async {
     final repo = StorageSettingsRepository(SharedPreferencesAsync());
     await repo.saveSystemDir('snes', 'SNES');
     await repo.saveSystemDir('psx', 'PSX');
@@ -241,7 +440,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(stray.existsSync(), isFalse);
     expect(strayDir.existsSync(), isFalse);
-    expect(index.refreshes, 1, reason: 'the index should refresh after deleting');
+    expect(
+      index.refreshes,
+      1,
+      reason: 'the index should refresh after deleting',
+    );
   });
 
   testWidgets('an empty manifest disables deleting everything', (tester) async {

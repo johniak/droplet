@@ -1,13 +1,17 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
 import '../../app/widgets/glass_panel.dart';
+import '../../app/widgets/pill.dart';
 import '../../app/widgets/section_label.dart';
+import '../../core/api/models.dart';
 import '../../core/downloads/device_scan.dart';
+import '../../core/downloads/local_state.dart';
 import '../../core/downloads/permissions.dart';
 import '../../core/downloads/storage_settings.dart';
 import '../../core/errors.dart';
@@ -17,45 +21,47 @@ import '../../core/session/providers.dart';
 import '../game/providers.dart';
 import '../library/providers.dart';
 
-const appVersion = '0.4.0';
+const appVersion = '0.5.0';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => Scaffold(
-        body: SafeArea(
-          bottom: false,
-          child: ListView(
-            padding: EdgeInsets.fromLTRB(16, 10, 16, listBottomPad(context)),
-            children: const [
-              Text(
-                'Settings',
-                style: TextStyle(
-                  color: kText,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.6,
-                ),
-              ),
-              SizedBox(height: 12),
-              _ServerCard(),
-              SectionLabel('Downloads'),
-              _DownloadCard(),
-              SectionLabel('Device'),
-              _DeviceCard(),
-              SectionLabel('About'),
-              GlassPanel(
-                padding: EdgeInsets.zero,
-                child: SettingsRow(
-                  title: 'Droplet $appVersion',
-                  trailing: Text('API v1', style: TextStyle(color: kTextDim)),
-                ),
-              ),
-            ],
+    body: SafeArea(
+      bottom: false,
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(16, 10, 16, listBottomPad(context)),
+        children: const [
+          Text(
+            'Settings',
+            style: TextStyle(
+              color: kText,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.6,
+            ),
           ),
-        ),
-      );
+          SizedBox(height: 12),
+          _ServerCard(),
+          SectionLabel('Downloads'),
+          _DownloadCard(),
+          SectionLabel('System files'),
+          _SystemFilesCard(),
+          SectionLabel('Device'),
+          _DeviceCard(),
+          SectionLabel('About'),
+          GlassPanel(
+            padding: EdgeInsets.zero,
+            child: SettingsRow(
+              title: 'Droplet $appVersion',
+              trailing: Text('API v1', style: TextStyle(color: kTextDim)),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// One row of a settings card.
@@ -77,37 +83,36 @@ class SettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                if (leading != null) ...[leading!, const SizedBox(width: 10)],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(color: kText, fontSize: 14),
-                      ),
-                      if (subtitle != null)
-                        Text(
-                          subtitle!,
-                          style:
-                              const TextStyle(color: kTextDim, fontSize: 12),
-                        ),
-                    ],
+    type: MaterialType.transparency,
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            if (leading != null) ...[leading!, const SizedBox(width: 10)],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(color: kText, fontSize: 14),
                   ),
-                ),
-                if (trailing != null) trailing!,
-              ],
+                  if (subtitle != null)
+                    Text(
+                      subtitle!,
+                      style: const TextStyle(color: kTextDim, fontSize: 12),
+                    ),
+                ],
+              ),
             ),
-          ),
+            if (trailing != null) trailing!,
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _Divider extends StatelessWidget {
@@ -131,7 +136,7 @@ class _ServerCard extends ConsumerWidget {
     final counts = snapshot == null
         ? ''
         : ' · ${_count(snapshot.games.length, 'game')}'
-            ' · ${_count(snapshot.systems.length, 'system')}';
+              ' · ${_count(snapshot.systems.length, 'system')}';
     return GlassPanel(
       padding: EdgeInsets.zero,
       child: Column(
@@ -260,27 +265,118 @@ class _BaseDirDialogState extends State<_BaseDirDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: const Text('ROM folder'),
-        content: TextField(
-          key: const Key('base-dir-field'),
-          controller: _controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            helperText: 'RetroArch folder on the phone',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () =>
-                Navigator.of(context).pop(_controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
+    title: const Text('ROM folder'),
+    content: TextField(
+      key: const Key('base-dir-field'),
+      controller: _controller,
+      autofocus: true,
+      decoration: const InputDecoration(
+        helperText: 'RetroArch folder on the phone',
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Cancel'),
+      ),
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+        child: const Text('Save'),
+      ),
+    ],
+  );
+}
+
+/// `Installed` / `Partial` for a support pack — the same words the game
+/// detail screen uses, minus "Update available": packs have no update role.
+String? _packPillText(LocalGameState state) => switch (state.status) {
+  InstallStatus.installed => 'Installed',
+  InstallStatus.partial => 'Partial',
+  InstallStatus.none => null,
+};
+
+/// BIOS, firmware and key packs — games of the `bios` system, kept out of
+/// the library shelves and shown here instead (see `LibrarySnapshot`).
+class _SystemFilesCard extends ConsumerWidget {
+  const _SystemFilesCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final snapshot = ref.watch(librarySnapshotProvider).value;
+    if (snapshot == null) {
+      // Loading: no snapshot yet to tell an empty library from one full of
+      // packs — an empty card beats a wrong guess either way.
+      return const GlassPanel(
+        padding: EdgeInsets.zero,
+        child: SizedBox.shrink(),
       );
+    }
+    final packs = snapshot.supportPacks;
+    final settings = ref.watch(storageSettingsProvider).value;
+    return GlassPanel(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          if (packs.isEmpty)
+            const SettingsRow(
+              title: 'No system files on the server',
+              subtitle:
+                  'Put BIOS or firmware packs in bios/<pack>/ on the server',
+            )
+          else ...[
+            for (var i = 0; i < packs.length; i++) ...[
+              if (i > 0) const _Divider(),
+              _packRow(context, ref, packs[i], snapshot.manifest),
+            ],
+            if (settings != null) ...[
+              const _Divider(),
+              SettingsRow(
+                title:
+                    'Point your emulator at '
+                    '${settings.dirFor(kBiosSystemCode)}/<pack>',
+                trailing: TextButton(
+                  onPressed: () => _copyBiosPath(context, settings),
+                  child: const Text('Copy path'),
+                ),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _packRow(
+    BuildContext context,
+    WidgetRef ref,
+    GameSummary pack,
+    List<ManifestEntry> manifest,
+  ) {
+    final local = ref.watch(localStateProvider(pack.id)).value;
+    final fileCount = manifest
+        .where((e) => e.gameId == pack.id)
+        .fold(0, (sum, e) => sum + e.files.length);
+    final pillText = local == null ? null : _packPillText(local);
+    return SettingsRow(
+      title: pack.title,
+      subtitle: '${_count(fileCount, 'file')} · ${formatBytes(pack.totalSize)}',
+      trailing: pillText == null ? null : Pill(pillText, accent: true),
+      onTap: () => context.push('/settings/game/${pack.id}'),
+    );
+  }
+
+  Future<void> _copyBiosPath(
+    BuildContext context,
+    StorageSettings settings,
+  ) async {
+    await Clipboard.setData(
+      ClipboardData(text: settings.dirFor(kBiosSystemCode)),
+    );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Path copied')));
+  }
 }
 
 class _PermissionRow extends ConsumerStatefulWidget {
@@ -309,8 +405,10 @@ class _PermissionRowState extends ConsumerState<_PermissionRow> {
 
   Future<void> _refresh() async {
     final port = ref.read(permissionsPortProvider);
-    final needed =
-        needsAllFilesAccess(widget.baseDir, await port.appPrivateDirs());
+    final needed = needsAllFilesAccess(
+      widget.baseDir,
+      await port.appPrivateDirs(),
+    );
     final granted = !needed || await port.hasAllFilesAccess();
     if (mounted) setState(() => _granted = granted);
   }
@@ -325,16 +423,16 @@ class _PermissionRowState extends ConsumerState<_PermissionRow> {
 
   @override
   Widget build(BuildContext context) => SettingsRow(
-        title: 'File access',
-        subtitle: _granted == true ? 'Granted' : 'None',
-        trailing: _granted == true
-            ? const Icon(Icons.check_rounded, color: kAccent, size: 18)
-            : TextButton(
-                key: const Key('grant-permission'),
-                onPressed: _grant,
-                child: const Text('Grant'),
-              ),
-      );
+    title: 'File access',
+    subtitle: _granted == true ? 'Granted' : 'None',
+    trailing: _granted == true
+        ? const Icon(Icons.check_rounded, color: kAccent, size: 18)
+        : TextButton(
+            key: const Key('grant-permission'),
+            onPressed: _grant,
+            child: const Text('Grant'),
+          ),
+  );
 }
 
 class _DeviceCard extends ConsumerWidget {
@@ -488,11 +586,9 @@ class _UnknownRow extends ConsumerWidget {
       ),
     );
     if (confirmed != true) return;
-    deleteUnknown(
-      unknown,
-      settings,
-      [for (final s in snapshot?.systems ?? const []) s.code],
-    );
+    deleteUnknown(unknown, settings, [
+      for (final s in snapshot?.systems ?? const []) s.code,
+    ]);
     await ref.read(deviceIndexProvider.notifier).refresh();
   }
 }
