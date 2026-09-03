@@ -134,11 +134,16 @@ Zasady:
 - Nazwa katalogu jest tożsamością gry — zmiana nazwy katalogu to dla Dropletu
   nowa gra (stara zniknie z biblioteki przy kolejnym skanie).
 - Aplikacja odtwarza ten sam układ na telefonie:
-  `<katalog ROMów>/<system>/<Nazwa gry>/<pliki>`.
+  `<katalog ROMów>/<system>/<Nazwa gry>/<pliki>`. Środkowy segment bierze się z
+  kodu systemu, ale **Ustawienia → Foldery per system** potrafią go nadpisać
+  (np. `snes` → `SNES`) — wtedy na telefonie jest
+  `<katalog ROMów>/SNES/<Nazwa gry>/<pliki>`, a reszta układu bez zmian.
 - Pliki leżące **luzem** w katalogu systemu (poza katalogiem gry) nie tworzą gry —
-  lądują w adminie pod **„Do uporządkowania"** (`/admin/library/loosefile/`), a
-  `ScanRun` pokazuje ich liczbę w kolumnie „luzem". Przenieś je do katalogu gry
-  i uruchom skan ponownie.
+  lądują w adminie pod **„Do uporządkowania"** (`/admin/library/loosefile/`).
+  Ile ich jest, pokazuje kolumna „luzem" na liście **systemów**
+  (`/admin/library/system/`); pojedynczy skan raportuje swoje w polu
+  `loose_files` wpisu `ScanRun`. Przenieś je do katalogu gry i uruchom skan
+  ponownie.
 - Sidecary (`.srm`, `.sav`, obrazki, `.txt`) w katalogu gry są zapisywane z rolą
   `other` — nie psują rozpoznania roli bazowej.
 
