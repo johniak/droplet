@@ -16,12 +16,13 @@ import '../../core/downloads/permissions.dart';
 import '../../core/downloads/storage_settings.dart';
 import '../../core/errors.dart';
 import '../../core/format.dart';
+import '../../core/platform/folder_picker_port.dart';
 import '../../core/platform/permissions_port.dart';
 import '../../core/session/providers.dart';
 import '../game/providers.dart';
 import '../library/providers.dart';
 
-const appVersion = '0.5.0';
+const appVersion = '0.5.2';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -245,16 +246,16 @@ class _DownloadCard extends ConsumerWidget {
 /// A separate widget for the dialog: the controller lives in its own `State`,
 /// so it is disposed only once the route is fully popped — not during the
 /// closing animation, which would mean using an already disposed controller.
-class _BaseDirDialog extends StatefulWidget {
+class _BaseDirDialog extends ConsumerStatefulWidget {
   const _BaseDirDialog({required this.current});
 
   final String current;
 
   @override
-  State<_BaseDirDialog> createState() => _BaseDirDialogState();
+  ConsumerState<_BaseDirDialog> createState() => _BaseDirDialogState();
 }
 
-class _BaseDirDialogState extends State<_BaseDirDialog> {
+class _BaseDirDialogState extends ConsumerState<_BaseDirDialog> {
   late final _controller = TextEditingController(text: widget.current);
 
   @override
@@ -263,16 +264,36 @@ class _BaseDirDialogState extends State<_BaseDirDialog> {
     super.dispose();
   }
 
+  /// The system folder picker; a cancelled pick leaves the field alone, so
+  /// typing the path by hand stays possible (SD cards come back as `null`).
+  Future<void> _browse() async {
+    final picked = await ref.read(folderPickerPortProvider).pickDirectory();
+    if (picked == null || !mounted) return;
+    setState(() => _controller.text = picked);
+  }
+
   @override
   Widget build(BuildContext context) => AlertDialog(
     title: const Text('ROM folder'),
-    content: TextField(
-      key: const Key('base-dir-field'),
-      controller: _controller,
-      autofocus: true,
-      decoration: const InputDecoration(
-        helperText: 'RetroArch folder on the phone',
-      ),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          key: const Key('base-dir-field'),
+          controller: _controller,
+          decoration: const InputDecoration(
+            helperText: 'Where your emulators keep ROMs',
+          ),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          key: const Key('browse-folder'),
+          onPressed: _browse,
+          icon: const Icon(Icons.folder_open),
+          label: const Text('Browse'),
+        ),
+      ],
     ),
     actions: [
       TextButton(

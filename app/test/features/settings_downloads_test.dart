@@ -1,5 +1,6 @@
 import 'package:droplet/core/downloads/storage_settings.dart';
 import 'package:droplet/core/platform/downloader_port.dart';
+import 'package:droplet/core/platform/folder_picker_port.dart';
 import 'package:droplet/core/platform/permissions_port.dart';
 import 'package:droplet/core/session/providers.dart';
 import 'package:droplet/core/session/session_repository.dart';
@@ -13,14 +14,18 @@ import 'package:shared_preferences_platform_interface/in_memory_shared_preferenc
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 import '../fakes/fake_downloader_port.dart';
+import '../fakes/fake_folder_picker_port.dart';
 import '../fakes/fake_permissions_port.dart';
 
 Widget _screen({
   required StorageSettingsRepository repo,
   required PermissionsPort port,
+  FakeFolderPickerPort? picker,
 }) =>
     ProviderScope(
       overrides: [
+        folderPickerPortProvider
+            .overrideWithValue(picker ?? FakeFolderPickerPort(null)),
         sessionRepositoryProvider
             .overrideWithValue(SessionRepository(MemoryKeyValueStore())),
         storageSettingsRepositoryProvider.overrideWithValue(repo),
@@ -138,5 +143,44 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Something went wrong'), findsOneWidget);
+  });
+
+  testWidgets('Browse fills the field from the folder picker and Save persists it',
+      (tester) async {
+    final repo = StorageSettingsRepository(SharedPreferencesAsync());
+    final picker = FakeFolderPickerPort('/storage/emulated/0/EMU/ROMs');
+    await tester.pumpWidget(_screen(
+      repo: repo,
+      port: FakePermissionsPort(granted: true),
+      picker: picker,
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Change'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('browse-folder')));
+    await tester.pumpAndSettle();
+    expect(picker.calls, 1);
+    expect(find.text('/storage/emulated/0/EMU/ROMs'), findsOneWidget);
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect((await repo.load()).baseDir, '/storage/emulated/0/EMU/ROMs');
+  });
+
+  testWidgets('a cancelled pick leaves the typed path alone', (tester) async {
+    final repo = StorageSettingsRepository(SharedPreferencesAsync());
+    final picker = FakeFolderPickerPort(null);
+    await tester.pumpWidget(_screen(
+      repo: repo,
+      port: FakePermissionsPort(granted: true),
+      picker: picker,
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Change'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('base-dir-field')), '/typed');
+    await tester.tap(find.byKey(const Key('browse-folder')));
+    await tester.pumpAndSettle();
+    expect(picker.calls, 1);
+    expect(find.text('/typed'), findsOneWidget);
   });
 }
