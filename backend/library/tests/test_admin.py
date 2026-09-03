@@ -100,3 +100,16 @@ def test_loose_file_admin_refuses_edits_and_deletes(admin_client_):
     assert admin_client_.get(f"/admin/library/loosefile/{lf.pk}/delete/").status_code == 403
     assert LooseFileAdmin.has_change_permission(None, None, lf) is False
     assert LooseFileAdmin.has_delete_permission(None, None, lf) is False
+
+
+@pytest.mark.django_db
+def test_loose_file_hint_distinguishes_unpacked_mods():
+    from library.admin import LooseFileAdmin
+    from library.models import LooseFile, System
+
+    system = System.objects.create(code="switch", name="Switch")
+    a = LooseFile.objects.create(system=system, relative_path="switch/HK/mods/Unpacked/", size=1)
+    b = LooseFile.objects.create(system=system, relative_path="switch/loose.nsp", size=1)
+    admin_obj = LooseFileAdmin(LooseFile, None)
+    assert admin_obj.hint(a).startswith("rozpakowany mod")
+    assert admin_obj.hint(b) == "przenieś do katalogu gry"

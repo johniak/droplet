@@ -201,3 +201,37 @@ def test_second_legacy_game_in_one_folder_is_absorbed_by_the_folder_game(tmp_pat
     assert Game.objects.count() == 1
     assert Game.objects.get().files.count() == 2
     assert (run2.files_created, run2.files_updated, run2.files_deleted) == (0, 0, 0)
+
+
+@pytest.mark.django_db
+def test_rescan_rewrites_role_version_and_disc_when_rules_change(library):
+    game = library / "switch" / "Hollow Knight"
+    _write(game / "Hollow Knight [0100633007D48000][v0].nsp", b"base")
+    _write(game / "mods" / "Skin Pack.zip", b"zip")
+    with override_settings(LIBRARY_ROOT=library):
+        run_scan()
+        # symulacja bazy sprzed M8: mod zapisany jako base z wersją i płytą
+        gf = GameFile.objects.get(relative_path__endswith="Skin Pack.zip")
+        GameFile.objects.filter(pk=gf.pk).update(role="base", version="v9", disc_number=3)
+        run2 = run_scan()
+    gf.refresh_from_db()
+    assert (gf.role, gf.version, gf.disc_number) == ("mod", "", None)
+    assert run2.files_updated == 1 and run2.files_created == 0
+    with override_settings(LIBRARY_ROOT=library):
+        run3 = run_scan()
+    assert (run3.files_created, run3.files_updated, run3.files_deleted) == (0, 0, 0)
+
+
+@pytest.mark.django_db
+def test_unpacked_mod_counts_as_one_loose_entry(library):
+    game = library / "switch" / "Hollow Knight"
+    _write(game / "hk.nsp", b"base")
+    _write(game / "mods" / "Unpacked" / "romfs" / "a.bin", b"aaa")
+    _write(game / "mods" / "Unpacked" / "exefs" / "b.ips", b"bb")
+    with override_settings(LIBRARY_ROOT=library):
+        run = run_scan()
+    entry = LooseFile.objects.get(relative_path__startswith="switch/")
+    assert (entry.relative_path, entry.size) == ("switch/Hollow Knight/mods/Unpacked/", 5)
+    assert entry.system.code == "switch"
+    assert run.loose_files == 2  # + snes/Loose (USA).sfc z fixture
+    assert GameFile.objects.filter(game__folder="switch/Hollow Knight").count() == 1

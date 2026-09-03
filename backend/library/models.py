@@ -48,6 +48,7 @@ class GameFile(models.Model):
         DLC = "dlc"
         DISC = "disc"
         SUPPORT = "support"
+        MOD = "mod"
         OTHER = "other"
 
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="files")

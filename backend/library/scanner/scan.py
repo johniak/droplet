@@ -54,6 +54,17 @@ def _sync_group(system: System, group, run: ScanRun, seen: set[str]) -> None:
         if (existing.size, existing.mtime_ns) != (entry.size, entry.mtime_ns):
             existing.size, existing.mtime_ns = entry.size, entry.mtime_ns
             fields += ["size", "mtime_ns"]
+        # Reguły grupowania mogą się zmienić między wersjami (np. mods/ → rola
+        # mod, DLC po title id) — skan musi przepisać metadane, nie tylko rozmiar.
+        if (existing.role, existing.version, existing.disc_number) != (
+            entry.role,
+            entry.version,
+            entry.disc_number,
+        ):
+            existing.role = entry.role
+            existing.version = entry.version
+            existing.disc_number = entry.disc_number
+            fields += ["role", "version", "disc_number"]
         if fields:
             existing.save(update_fields=fields)
             run.files_updated += 1

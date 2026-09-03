@@ -56,3 +56,24 @@ def test_detail_with_empty_folder_uses_basename(auth_client, db):
     body = auth_client.get(f"/api/games/{g.id}/").json()
     assert body["folder"] == ""
     assert body["files"][0]["name"] == "legacy.nsp"
+
+
+def test_files_are_ordered_by_role_with_mod_before_other(auth_client, db):
+    system = System.objects.create(code="switch", name="Switch", directory="switch")
+    game = Game.objects.create(
+        system=system, folder="switch/HK", title="HK", normalized_title="hk"
+    )
+    for i, (path, role) in enumerate(
+        [
+            ("switch/HK/z.txt", "other"),
+            ("switch/HK/mods/skin.zip", "mod"),
+            ("switch/HK/hk.nsp", "base"),
+            ("switch/HK/upd.nsp", "update"),
+        ]
+    ):
+        GameFile.objects.create(
+            game=game, relative_path=path, role=role, size=i + 1, mtime_ns=0
+        )
+    resp = auth_client.get(f"/api/games/{game.pk}/")
+    assert [f["role"] for f in resp.json()["files"]] == ["base", "update", "mod", "other"]
+    assert [f["name"] for f in resp.json()["files"]][2] == "mods/skin.zip"

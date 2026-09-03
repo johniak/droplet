@@ -96,10 +96,16 @@ class ScanRunAdmin(admin.ModelAdmin):
 
 @admin.register(LooseFile)
 class LooseFileAdmin(admin.ModelAdmin):
-    list_display = ["relative_path", "system", "size"]
+    list_display = ["relative_path", "hint", "system", "size"]
     list_filter = ["system"]
     search_fields = ["relative_path"]
     readonly_fields = ["system", "relative_path", "size"]
+
+    @admin.display(description="co zrobić")
+    def hint(self, obj):
+        if obj.relative_path.endswith("/"):
+            return "rozpakowany mod — spakuj do zipa w mods/"
+        return "przenieś do katalogu gry"
 
     # Widok wyłącznie do podglądu: wiersze są lustrem skanu, więc ręczna edycja
     # albo kasowanie i tak zniknęłyby przy najbliższym przebiegu.

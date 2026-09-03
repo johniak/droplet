@@ -10,7 +10,8 @@ ROLE_ORDER = {
     "dlc": 2,
     "disc": 3,
     "support": 4,
-    "other": 5,
+    "mod": 5,
+    "other": 6,
 }
 
 
