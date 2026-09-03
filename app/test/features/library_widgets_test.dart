@@ -567,7 +567,7 @@ void main() {
     expect(container.read(sortProvider), LibrarySort.recentlyAdded);
   });
 
-  testWidgets('a Switch tile is square, a SNES tile is portrait', (
+  testWidgets('tiles are square for every system', (
     tester,
   ) async {
     GameSummary g(int id, String system) => GameSummary(
@@ -592,6 +592,6 @@ void main() {
       for (final e in find.byType(AspectRatio).evaluate())
         (e.widget as AspectRatio).aspectRatio,
     ];
-    expect(ratios, [1, 3 / 4]);
+    expect(ratios, [1, 1]);
   });
 }

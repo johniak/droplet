@@ -9,21 +9,16 @@ bool isWideWidth(double width) => width >= kWideBreakpoint;
 /// Width of the inline search field in a wide header.
 const double kInlineSearchWidth = 360;
 
-/// Cover aspect ratio (width / height) per system. libretro boxarts are
-/// portrait; Switch covers are eShop icons, which are square.
-double coverAspectRatio(String systemCode) => systemCode == 'switch' ? 1 : 3 / 4;
+/// Every tile is square, whatever the art: Switch covers are square eShop
+/// icons and portrait boxarts sit on their blurred backdrop. One shape keeps
+/// shelves and grids even.
+const double kCoverAspectRatio = 1;
 
-/// Height-to-width factor of the tallest cover among [systemCodes] — a mixed
-/// shelf or grid sizes its cells for the tallest card.
-double tallestCoverFactor(Iterable<String> systemCodes) {
-  var factor = 0.0;
-  for (final code in systemCodes) {
-    final f = 1 / coverAspectRatio(code);
-    if (f > factor) factor = f;
-  }
-  return factor == 0 ? 1 / coverAspectRatio('') : factor;
-}
+double coverAspectRatio(String systemCode) => kCoverAspectRatio;
+
+/// Height-to-width factor of a cover cell.
+double tallestCoverFactor(Iterable<String> systemCodes) => 1 / kCoverAspectRatio;
 
 /// Vertical space (as a fraction of the card width) the title and size text
-/// take under a cover in the grid: the old 0.58 cell held a 4:3-tall cover.
+/// take under a cover in the grid: the original 0.58 cell held a 4:3-tall cover.
 const double kGridTextFactor = 1 / 0.58 - 4 / 3;
