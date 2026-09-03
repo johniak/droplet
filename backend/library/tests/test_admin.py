@@ -113,3 +113,5 @@ def test_loose_file_hint_distinguishes_unpacked_mods():
     admin_obj = LooseFileAdmin(LooseFile, None)
     assert admin_obj.hint(a).startswith("rozpakowany mod")
     assert admin_obj.hint(b) == "przenieś do katalogu gry"
+    c = LooseFile.objects.create(system=system, relative_path="switch/Orphan/mods/skin.zip", size=1)
+    assert admin_obj.hint(c).startswith("mod bez gry")

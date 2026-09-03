@@ -78,6 +78,12 @@ def _group_folder(folder: Path, root: Path, *, is_switch: bool) -> GameGroup | N
     files = [p for p in files if _mod_kind(p, folder) is None]
     if not files and not mods and not nested:
         return None
+    if not files:
+        # Mod bez gry (folder z samym mods/) nie jest grą — spakowane mody
+        # zgłaszamy do uporządkowania obok rozpakowanych.
+        for p in mods:
+            nested[p] = p.stat().st_size
+        mods = []
     file_set = set(files)
     group = GameGroup(
         folder=folder.relative_to(root).as_posix(),
@@ -136,7 +142,8 @@ def _group_folder(folder: Path, root: Path, *, is_switch: bool) -> GameGroup | N
     for p in mods:
         group.files.append(_entry(p, root, "mod"))
     for top, size in sorted(nested.items()):
-        group.loose.append(LooseEntry(top.relative_to(root).as_posix() + "/", size))
+        rel = top.relative_to(root).as_posix()
+        group.loose.append(LooseEntry(rel if top.is_file() else rel + "/", size))
     return group
 
 

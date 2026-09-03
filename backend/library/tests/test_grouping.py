@@ -166,26 +166,48 @@ def test_files_directly_in_mods_get_mod_role_for_any_extension(tmp_path):
     _write(game / "Pokemon Brilliant Diamond [0100000011D90000][v0].xci")
     _write(game / "mods" / "Luminescent Platinum 2.2F.zip", b"zip")
     _write(game / "mods" / "readme.txt", b"txt")
-    _write(game / "MODS" / "Other Case.7z", b"7z")
     groups, loose = group_system_dir(root / "switch", root, is_switch=True)
     (g,) = groups
     roles = {e.relative_path.split("/", 2)[2]: e.role for e in g.files}
-    # Na filesystemach bez rozróżniania wielkości liter (domyślny APFS na macOS)
-    # "mods" i "MODS" to ten sam katalog, więc drugi zapis ląduje pod pierwszą
-    # napotkaną pisownią — sprawdzamy rolę niezależnie od dokładnej wielkości liter.
-    other_case_key = next(k for k in roles if k.endswith("Other Case.7z"))
-    assert other_case_key.lower() == "mods/other case.7z"
     assert roles == {
         "Pokemon Brilliant Diamond [0100000011D90000][v0].xci": "base",
         "mods/Luminescent Platinum 2.2F.zip": "mod",
         "mods/readme.txt": "mod",
-        other_case_key: "mod",
     }
     mod = next(e for e in g.files if e.relative_path.endswith(".zip"))
     assert (mod.version, mod.disc_number) == ("", None)
     assert loose == []
     # tytuł i prefix Switcha nadal z base, nie z moda
     assert g.switch_title_prefix == "0100000011D9"
+
+
+def test_mods_directory_name_is_case_insensitive(tmp_path):
+    # Osobny folder gry z samym "MODS/" — na APFS bez rozróżniania wielkości
+    # liter "mods/" i "MODS/" w jednym folderze zlałyby się w jeden katalog i
+    # test niczego by nie dowodził.
+    root = tmp_path
+    game = root / "gba" / "Metroid"
+    _write(game / "metroid.gba")
+    _write(game / "MODS" / "Other Case.7z", b"7z")
+    groups, loose = group_system_dir(root / "gba", root, is_switch=False)
+    (g,) = groups
+    assert {e.relative_path.rsplit("/", 1)[1]: e.role for e in g.files} == {
+        "metroid.gba": "base",
+        "Other Case.7z": "mod",
+    }
+    assert loose == []
+
+
+def test_folder_with_only_mods_is_not_a_game_but_reported_loose(tmp_path):
+    root = tmp_path
+    _write(root / "switch" / "Orphan" / "mods" / "skin.zip", b"zip")
+    _write(root / "switch" / "Orphan" / "mods" / "Unpacked" / "romfs" / "a", b"ab")
+    groups, loose = group_system_dir(root / "switch", root, is_switch=True)
+    assert groups == []
+    assert [(l.relative_path, l.size) for l in loose] == [
+        ("switch/Orphan/mods/Unpacked/", 2),
+        ("switch/Orphan/mods/skin.zip", 3),
+    ]
 
 
 def test_unpacked_mod_directory_is_one_loose_entry_with_total_size(tmp_path):

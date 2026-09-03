@@ -105,6 +105,8 @@ class LooseFileAdmin(admin.ModelAdmin):
     def hint(self, obj):
         if obj.relative_path.endswith("/"):
             return "rozpakowany mod — spakuj do zipa w mods/"
+        if "/mods/" in obj.relative_path:
+            return "mod bez gry — dodaj pliki gry do tego folderu"
         return "przenieś do katalogu gry"
 
     # Widok wyłącznie do podglądu: wiersze są lustrem skanu, więc ręczna edycja
