@@ -381,6 +381,15 @@ void deleteUnknown(List<UnknownEntry> entries, String baseDir) {
   }
 }
 
+/// Ścieżka pokazywana użytkownikowi: względem katalogu ROMów, a gdy wpis leży
+/// poza nim (i tak nie zostanie usunięty) — w całości.
+String displayPath(String path, String baseDir) =>
+    path.startsWith('$baseDir/') ? path.substring(baseDir.length + 1) : path;
+
+String _summary(List<UnknownEntry> entries) =>
+    '${pluralPositions(entries.length)} · '
+    '${formatBytes(entries.fold(0, (a, e) => a + e.bytes))}';
+
 /// Pliki i katalogi w drzewie ROMów, których nie zna żadna gra z biblioteki —
 /// zwykle pozostałości po układzie sprzed katalogów per gra.
 class _UnknownRow extends ConsumerWidget {
@@ -391,19 +400,19 @@ class _UnknownRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unknown = ref.watch(unknownOnDeviceProvider);
-    final bytes = unknown.fold(0, (a, e) => a + e.bytes);
+    // Bez katalogu ROMów (ustawienia jeszcze się ładują) nie ma czego usuwać,
+    // więc wiersz nie jest klikalny — i nie udaje klikalnego szewronem.
+    final open = unknown.isEmpty || baseDir == null
+        ? null
+        : () => _showUnknown(context, ref, unknown, baseDir!);
     return SettingsRow(
       key: const Key('unknown-on-device'),
       title: 'Nieznane na urządzeniu',
-      subtitle: unknown.isEmpty
-          ? 'Brak'
-          : '${pluralPositions(unknown.length)} · ${formatBytes(bytes)}',
-      trailing: unknown.isEmpty
+      subtitle: unknown.isEmpty ? 'Brak' : _summary(unknown),
+      trailing: open == null
           ? null
           : const Icon(Icons.chevron_right, color: kTextDim),
-      onTap: unknown.isEmpty || baseDir == null
-          ? null
-          : () => _showUnknown(context, ref, unknown, baseDir!),
+      onTap: open,
     );
   }
 
@@ -414,6 +423,11 @@ class _UnknownRow extends ConsumerWidget {
     String baseDir,
   ) async {
     final shown = unknown.take(50).toList();
+    // „Nieznane" znaczy „nie ma tego w manifeście" — a przy pustym manifeście
+    // (biblioteka jeszcze nie pobrana) nieznane jest *wszystko*. Kasowanie
+    // hurtem skasowałoby wtedy całą kolekcję, więc przycisk jest wyłączony.
+    final manifest =
+        ref.read(librarySnapshotProvider).value?.manifest ?? const [];
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -423,9 +437,19 @@ class _UnknownRow extends ConsumerWidget {
           child: ListView(
             shrinkWrap: true,
             children: [
+              Text(
+                _summary(unknown),
+                style: const TextStyle(color: kText, fontSize: 13),
+              ),
+              if (manifest.isEmpty)
+                const Text(
+                  'Najpierw pobierz bibliotekę z serwera',
+                  style: TextStyle(color: kDanger, fontSize: 13),
+                ),
+              const SizedBox(height: 8),
               for (final e in shown)
                 Text(
-                  e.path.substring(baseDir.length + 1),
+                  displayPath(e.path, baseDir),
                   style: const TextStyle(color: kTextDim, fontSize: 13),
                 ),
               if (unknown.length > shown.length)
@@ -443,7 +467,9 @@ class _UnknownRow extends ConsumerWidget {
           ),
           TextButton(
             key: const Key('unknown-delete-all'),
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: manifest.isEmpty
+                ? null
+                : () => Navigator.of(context).pop(true),
             child: const Text('Usuń wszystko'),
           ),
         ],

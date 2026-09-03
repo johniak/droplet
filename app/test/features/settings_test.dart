@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:droplet/core/api/models.dart';
@@ -24,6 +25,17 @@ import '../fakes/fake_permissions_port.dart';
 const systems = [
   SystemModel(id: 1, code: 'snes', name: 'SNES', gameCount: 2),
   SystemModel(id: 2, code: 'psx', name: 'PSX', gameCount: 1),
+];
+
+/// Manifest niepusty = biblioteka znana, więc „nieznane" naprawdę znaczy
+/// „zbędne" i wolno je kasować.
+final knownLibrary = [
+  ManifestEntry(
+    gameId: 1,
+    systemCode: 'snes',
+    folder: 'G1',
+    files: const [],
+  ),
 ];
 
 GoRouter _router() => GoRouter(
@@ -54,14 +66,20 @@ Widget _screen({
   FakeDownloaderPort? downloader,
   bool offline = false,
   String? baseDir,
+  bool pendingSettings = false,
   List<UnknownEntry> unknown = const [],
+  List<ManifestEntry> manifest = const [],
+  FakeDeviceIndex? index,
 }) =>
     ProviderScope(
       overrides: [
         sessionRepositoryProvider.overrideWithValue(repo),
         deviceIndexProvider.overrideWith(
-          () => FakeDeviceIndex(const {}, unknown: unknown),
+          () => index ?? FakeDeviceIndex(const {}, unknown: unknown),
         ),
+        if (pendingSettings)
+          storageSettingsProvider
+              .overrideWith((ref) => Completer<StorageSettings>().future),
         if (baseDir != null)
           storageSettingsProvider
               .overrideWith((ref) async => StorageSettings(baseDir, const {})),
@@ -83,7 +101,7 @@ Widget _screen({
                   folder: 'G$i',
                 ),
             ],
-            manifest: [],
+            manifest: manifest,
             fromCache: offline,
             previousIds: const {},
           ),
@@ -190,8 +208,15 @@ void main() {
         isDirectory: true,
       ),
     ];
+    final index = FakeDeviceIndex(const {}, unknown: unknown);
     await tester.pumpWidget(
-      _screen(repo: await _signedIn(), baseDir: root.path, unknown: unknown),
+      _screen(
+        repo: await _signedIn(),
+        baseDir: root.path,
+        unknown: unknown,
+        manifest: knownLibrary,
+        index: index,
+      ),
     );
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
@@ -201,12 +226,130 @@ void main() {
     expect(find.text('2 pozycje · 5 B'), findsOneWidget);
     await tester.tap(find.byKey(const Key('unknown-on-device')));
     await tester.pumpAndSettle();
+    // Podsumowanie także w oknie — użytkownik widzi skalę kasowania tam, gdzie
+    // klika, a nie tylko w wierszu za oknem.
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('2 pozycje · 5 B'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('snes/old.sfc'), findsOneWidget);
     expect(find.text('snes/Old Game'), findsOneWidget);
     await tester.tap(find.byKey(const Key('unknown-delete-all')));
     await tester.pumpAndSettle();
     expect(stray.existsSync(), isFalse);
     expect(strayDir.existsSync(), isFalse);
+    expect(index.refreshes, 1, reason: 'po usunięciu indeks ma się przeliczyć');
+  });
+
+  testWidgets('an empty manifest disables deleting everything', (tester) async {
+    final root = Directory.systemTemp.createTempSync('roms');
+    addTearDown(() => root.deleteSync(recursive: true));
+    final stray = File('${root.path}/snes/old.sfc')
+      ..createSync(recursive: true)
+      ..writeAsBytesSync([1, 2]);
+    final index = FakeDeviceIndex(
+      const {},
+      unknown: [
+        UnknownEntry(
+          systemCode: 'snes',
+          path: stray.path,
+          bytes: 2,
+          isDirectory: false,
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      _screen(
+        repo: await _signedIn(),
+        baseDir: root.path,
+        unknown: index.unknown,
+        index: index,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('unknown-on-device')),
+      200,
+    );
+    await tester.tap(find.byKey(const Key('unknown-on-device')));
+    await tester.pumpAndSettle();
+    expect(find.text('Najpierw pobierz bibliotekę z serwera'), findsOneWidget);
+    final button = tester.widget<TextButton>(
+      find.byKey(const Key('unknown-delete-all')),
+    );
+    expect(button.onPressed, isNull);
+    await tester.tap(find.byKey(const Key('unknown-delete-all')));
+    await tester.pumpAndSettle();
+    expect(stray.existsSync(), isTrue);
+    expect(index.refreshes, 0);
+  });
+
+  testWidgets('an entry outside the ROM dir keeps its full path', (
+    tester,
+  ) async {
+    final root = Directory.systemTemp.createTempSync('roms');
+    addTearDown(() => root.deleteSync(recursive: true));
+    const outside = '/var/elsewhere/stray.sfc';
+    await tester.pumpWidget(
+      _screen(
+        repo: await _signedIn(),
+        baseDir: root.path,
+        manifest: knownLibrary,
+        unknown: const [
+          UnknownEntry(
+            systemCode: 'snes',
+            path: outside,
+            bytes: 1,
+            isDirectory: false,
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('unknown-on-device')),
+      200,
+    );
+    await tester.tap(find.byKey(const Key('unknown-on-device')));
+    await tester.pumpAndSettle();
+    expect(find.text(outside), findsOneWidget);
+  });
+
+  testWidgets('without a known ROM dir the row is not tappable', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _screen(
+        repo: await _signedIn(),
+        pendingSettings: true,
+        unknown: const [
+          UnknownEntry(
+            systemCode: 'snes',
+            path: '/roms/snes/old.sfc',
+            bytes: 1,
+            isDirectory: false,
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('unknown-on-device')),
+      200,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('unknown-on-device')),
+        matching: find.byIcon(Icons.chevron_right),
+      ),
+      findsNothing,
+    );
+    await tester.tap(find.byKey(const Key('unknown-on-device')));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
   });
 
   testWidgets('the dialog closes without deleting anything', (tester) async {
@@ -225,7 +368,12 @@ void main() {
         ),
     ];
     await tester.pumpWidget(
-      _screen(repo: await _signedIn(), baseDir: root.path, unknown: unknown),
+      _screen(
+        repo: await _signedIn(),
+        baseDir: root.path,
+        unknown: unknown,
+        manifest: knownLibrary,
+      ),
     );
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
@@ -305,6 +453,12 @@ void main() {
       root.path,
     );
     expect(Directory(root.path).listSync(), isEmpty);
+  });
+
+  test('displayPath trims the ROM dir, keeps anything outside it', () {
+    expect(displayPath('/roms/snes/x.sfc', '/roms'), 'snes/x.sfc');
+    expect(displayPath('/other/x.sfc', '/roms'), '/other/x.sfc');
+    expect(displayPath('/roms', '/roms/deeper'), '/roms');
   });
 
   test('Polish plural of "pozycja"', () {
