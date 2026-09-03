@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/layout.dart';
 import '../../../app/tokens.dart';
 import '../../../app/widgets/glass_panel.dart';
 import '../../../core/api/models.dart';
@@ -27,7 +28,8 @@ class Shelf extends StatelessWidget {
   Widget build(BuildContext context) {
     final shown = games.take(limit).toList();
     final overflow = games.length > limit;
-    final cardHeight = cardWidth * 4 / 3 + 26;
+    final cardHeight =
+        cardWidth * tallestCoverFactor(shown.map((g) => g.systemCode)) + 26;
     final header = Padding(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 10),
       child: Row(

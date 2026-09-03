@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/layout.dart';
 import '../../../app/tokens.dart';
 import '../../../core/api/models.dart';
 import 'game_tile.dart';
@@ -23,18 +24,22 @@ class GamesGrid extends StatelessWidget {
   /// back to the system list instead of the library.
   final String Function(int id)? routeFor;
 
-  static const delegate = SliverGridDelegateWithFixedCrossAxisCount(
-    crossAxisCount: 2,
-    crossAxisSpacing: 14,
-    mainAxisSpacing: 18,
-    childAspectRatio: 0.58,
-  );
+  /// Cell shape follows the tallest cover in the list (square Switch icons
+  /// get shorter cells than portrait boxarts), plus room for two text lines.
+  static SliverGridDelegate delegateFor(Iterable<String> systemCodes) =>
+      SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 18,
+        childAspectRatio:
+            1 / (tallestCoverFactor(systemCodes) + kGridTextFactor),
+      );
 
   @override
   Widget build(BuildContext context) => GridView.builder(
         padding: padding ??
             EdgeInsets.fromLTRB(16, 12, 16, listBottomPad(context)),
-        gridDelegate: delegate,
+        gridDelegate: delegateFor(games.map((g) => g.systemCode)),
         itemCount: games.length,
         itemBuilder: (_, i) => GameTile(
           game: games[i],

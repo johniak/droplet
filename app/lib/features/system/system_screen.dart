@@ -252,7 +252,7 @@ class _Skeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => GridView.builder(
     padding: EdgeInsets.fromLTRB(16, 12, 16, listBottomPad(context)),
-    gridDelegate: GamesGrid.delegate,
+    gridDelegate: GamesGrid.delegateFor(const []),
     itemCount: 6,
     itemBuilder: (_, __) => const PulseBox(),
   );

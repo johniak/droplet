@@ -566,4 +566,32 @@ void main() {
     await tester.pumpAndSettle();
     expect(container.read(sortProvider), LibrarySort.recentlyAdded);
   });
+
+  testWidgets('a Switch tile is square, a SNES tile is portrait', (
+    tester,
+  ) async {
+    GameSummary g(int id, String system) => GameSummary(
+          id: id,
+          title: 'G$id',
+          systemCode: system,
+          hasCover: false,
+          totalSize: 1,
+          folder: 'G$id',
+        );
+    await tester.pumpWidget(
+      _app(
+        Row(
+          children: [
+            SizedBox(width: 100, child: CoverThumb(game: g(1, 'switch'))),
+            SizedBox(width: 100, child: CoverThumb(game: g(2, 'snes'))),
+          ],
+        ),
+      ),
+    );
+    final ratios = [
+      for (final e in find.byType(AspectRatio).evaluate())
+        (e.widget as AspectRatio).aspectRatio,
+    ];
+    expect(ratios, [1, 3 / 4]);
+  });
 }

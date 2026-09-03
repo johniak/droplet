@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/layout.dart';
 import '../../../app/tokens.dart';
 import '../../../core/api/models.dart';
 import '../../../core/format.dart';
@@ -40,7 +41,7 @@ class CoverThumb extends ConsumerWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(kRadiusCover),
       child: AspectRatio(
-        aspectRatio: 3 / 4,
+        aspectRatio: coverAspectRatio(game.systemCode),
         child: Stack(
           fit: StackFit.expand,
           children: [
