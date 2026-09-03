@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -103,16 +105,30 @@ class SortOrder extends Notifier<LibrarySort> {
 
 final sortProvider = NotifierProvider<SortOrder, LibrarySort>(SortOrder.new);
 
+/// Skan dysku wstrzykiwany do kontrolera — testy liczą dzięki temu, ile razy
+/// indeks naprawdę dotknął dysku.
+typedef DeviceScanner = DeviceIndex Function(
+  StorageSettings settings,
+  Iterable<String> systemCodes,
+  Set<String> knownFolderKeys,
+);
+
 /// Jeden skan dysku dla całej biblioteki: stan każdej gry z manifestu, a przy
 /// okazji lista plików i katalogów, których manifest nie zna.
 class DeviceIndexController extends AsyncNotifier<Map<int, LocalGameState>> {
+  DeviceIndexController({DeviceScanner? scan}) : _scan = scan ?? scanDevice;
+
+  final DeviceScanner _scan;
+
   DeviceIndex _last = const DeviceIndex(games: {}, unknown: []);
 
   DeviceIndex get lastIndex => _last;
 
-  /// Pierwszy skan już się policzył — dopiero wtedy zmiany zależności mają
-  /// wołać [refresh] (w trakcie `build` stan jest jeszcze niedostępny).
+  /// Pierwszy `build` się domknął (udanie albo nie) — dopiero wtedy zmiany
+  /// zależności mają wołać [refresh]; w trakcie `build` stanu jeszcze nie ma.
   bool _scanned = false;
+
+  bool _disposed = false;
 
   /// `listen` zamiast `watch`: zmiana biblioteki albo ustawień ma **przeliczyć**
   /// indeks, a nie unieważnić provider. Unieważniony indeks przebudowuje się
@@ -124,17 +140,44 @@ class DeviceIndexController extends AsyncNotifier<Map<int, LocalGameState>> {
   @override
   Future<Map<int, LocalGameState>> build() async {
     _scanned = false;
-    ref.listen(librarySnapshotProvider, (_, __) => _rescan());
-    ref.listen(storageSettingsProvider, (_, __) => _rescan());
-    final snapshot = await ref.read(librarySnapshotProvider.future);
-    final settings = await ref.read(storageSettingsProvider.future);
-    final states = _compute(snapshot, settings);
-    _scanned = true;
-    return states;
+    _disposed = false;
+    ref.onDispose(() => _disposed = true);
+    ref.listen(librarySnapshotProvider, (_, next) => _rescan(next));
+    ref.listen(storageSettingsProvider, (_, next) => _rescan(next));
+    LibrarySnapshot? usedSnapshot;
+    StorageSettings? usedSettings;
+    try {
+      final snapshot = await ref.read(librarySnapshotProvider.future);
+      usedSnapshot = snapshot;
+      final settings = await ref.read(storageSettingsProvider.future);
+      usedSettings = settings;
+      return _compute(snapshot, settings);
+    } finally {
+      // `finally`, więc także po błędzie: inaczej nieudany pierwszy skan
+      // (offline, pusty cache) zamykałby drogę do przeliczenia po każdym
+      // późniejszym, udanym snapshocie.
+      _scanned = true;
+      // Zmiana, która przyszła *w trakcie* pierwszego skanu, nie miała komu
+      // zlecić przeliczenia — stan jeszcze nie istniał. Porównanie z tym, na
+      // czym skan faktycznie policzył, odróżnia taką zmianę od zwykłego
+      // rozwiązania się zależności (to drugie zdarza się przy każdym starcie).
+      if (!identical(ref.read(librarySnapshotProvider).value, usedSnapshot) ||
+          !identical(ref.read(storageSettingsProvider).value, usedSettings)) {
+        // Timer, nie mikrozadanie: mikrozadanie z `finally` wyprzedziłoby
+        // przypisanie stanu przez Riverpoda i `state` byłoby jeszcze puste.
+        Timer.run(() {
+          if (!_disposed) refresh();
+        });
+      }
+    }
   }
 
-  void _rescan() {
-    if (_scanned) refresh();
+  /// Jedno unieważnienie zależności to dwa powiadomienia (najpierw „ładuję",
+  /// potem dane albo błąd) — skan ma się policzyć raz, przy tym drugim, czyli
+  /// już na aktualnych danych.
+  void _rescan(AsyncValue<Object?> next) {
+    if (next.isLoading || !_scanned) return;
+    refresh();
   }
 
   Map<int, LocalGameState> _compute(
@@ -144,7 +187,7 @@ class DeviceIndexController extends AsyncNotifier<Map<int, LocalGameState>> {
     final known = {
       for (final e in snapshot.manifest) '${e.systemCode}/${e.folder}',
     };
-    _last = scanDevice(
+    _last = _scan(
       settings,
       [for (final s in snapshot.systems) s.code],
       known,

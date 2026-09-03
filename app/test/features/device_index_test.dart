@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:droplet/core/api/models.dart';
+import 'package:droplet/core/downloads/device_scan.dart';
 import 'package:droplet/core/downloads/local_state.dart';
 import 'package:droplet/core/downloads/storage_settings.dart';
 import 'package:droplet/features/game/providers.dart';
@@ -23,6 +24,16 @@ const _systems = [
   SystemModel(id: 1, code: 'snes', name: 'SNES', gameCount: 2),
 ];
 
+/// Kilka obrotów pętli zdarzeń, z odczytem indeksu w każdym: Riverpod
+/// przelicza unieważniony provider dopiero, gdy ktoś go czyta — w aplikacji
+/// robią to widgety, w teście musi to zrobić pętla.
+Future<void> settle(ProviderContainer c, [int turns = 5]) async {
+  for (var i = 0; i < turns; i++) {
+    await Future<void>.delayed(Duration.zero);
+    c.read(deviceIndexProvider);
+  }
+}
+
 void main() {
   late Directory root;
 
@@ -34,7 +45,10 @@ void main() {
     file.writeAsBytesSync(List.filled(size, 0));
   }
 
-  ProviderContainer container(List<ManifestEntry> manifest) {
+  ProviderContainer container(
+    List<ManifestEntry> manifest, {
+    DeviceScanner? scan,
+  }) {
     final c = ProviderContainer(
       overrides: [
         storageSettingsProvider.overrideWith(
@@ -49,6 +63,9 @@ void main() {
             previousIds: const {},
           ),
         ),
+        if (scan != null)
+          deviceIndexProvider
+              .overrideWith(() => DeviceIndexController(scan: scan)),
       ],
     );
     addTearDown(c.dispose);
@@ -168,16 +185,124 @@ void main() {
 
     put('snes/Zelda (USA)/b.sfc');
     c.invalidate(storageSettingsProvider);
-    // Listener biegnie na mikrozadaniach — dwa obroty pętli wystarczą, żeby
-    // nadpisane ustawienia się policzyły i indeks przeskanował dysk.
-    await Future<void>.delayed(Duration.zero);
-    await Future<void>.delayed(Duration.zero);
+    await settle(c);
 
     // Ten sam notifier: indeks się nie unieważnił, tylko przeliczył.
     expect(identical(c.read(deviceIndexProvider.notifier), notifier), isTrue);
     expect(
       c.read(deviceIndexProvider).value![2]!.status,
       InstallStatus.installed,
+    );
+  });
+
+  test('one invalidation of a dependency means one disk scan', () async {
+    put('snes/Zelda (USA)/a.sfc');
+    var scans = 0;
+    final c = container(
+      manifest,
+      scan: (settings, codes, known) {
+        scans++;
+        return scanDevice(settings, codes, known);
+      },
+    );
+    await c.read(deviceIndexProvider.future);
+    expect(scans, 1);
+
+    // Unieważnienie daje dwa powiadomienia (loading + dane) — skan ma być jeden.
+    c.invalidate(storageSettingsProvider);
+    await settle(c);
+    expect(scans, 2);
+
+    c.invalidate(librarySnapshotProvider);
+    await settle(c);
+    expect(scans, 3);
+  });
+
+  test('a change during the first scan is applied after it finishes', () async {
+    put('snes/Zelda (USA)/a.sfc');
+    var scans = 0;
+    final settings = Completer<StorageSettings>();
+    final c = ProviderContainer(
+      overrides: [
+        storageSettingsProvider.overrideWith((ref) => settings.future),
+        librarySnapshotProvider.overrideWith(
+          (ref) async => LibrarySnapshot(
+            systems: _systems,
+            games: const [],
+            manifest: manifest,
+            fromCache: false,
+            previousIds: const {},
+          ),
+        ),
+        deviceIndexProvider.overrideWith(
+          () => DeviceIndexController(
+            scan: (s, codes, known) {
+              scans++;
+              return scanDevice(s, codes, known);
+            },
+          ),
+        ),
+      ],
+    );
+    addTearDown(c.dispose);
+
+    final built = c.read(deviceIndexProvider.future);
+    // Snapshot już wczytany, `build` wisi na ustawieniach — teraz zmieniamy
+    // bibliotekę, czyli zależność, o której pierwszy skan się nie dowie.
+    await settle(c);
+    c.invalidate(librarySnapshotProvider);
+    await settle(c);
+    expect(scans, 0, reason: 'pierwszy skan jeszcze nie ruszył');
+
+    settings.complete(StorageSettings(root.path, const {}));
+    await built;
+    await settle(c);
+    // Skan z `build` plus doskan zlecony przez zmianę z czasu budowania —
+    // bez niej indeks stałby na nieaktualnej bibliotece (patrz test wyżej:
+    // zwykły `build` liczy dokładnie jeden skan).
+    expect(scans, 2);
+  });
+
+  test('a failed first scan still rescans once the library loads', () async {
+    put('snes/Zelda (USA)/a.sfc');
+    var offline = true;
+    final c = ProviderContainer(
+      // Riverpod 3 sam ponawia nieudany build providera (i trzyma go wtedy w
+      // `AsyncLoading`); w teście chcemy zobaczyć błąd od razu.
+      retry: (_, __) => null,
+      overrides: [
+        storageSettingsProvider.overrideWith(
+          (ref) async => StorageSettings(root.path, const {}),
+        ),
+        librarySnapshotProvider.overrideWith((ref) async {
+          if (offline) throw Exception('brak sieci i cache');
+          return LibrarySnapshot(
+            systems: _systems,
+            games: const [],
+            manifest: manifest,
+            fromCache: false,
+            previousIds: const {},
+          );
+        }),
+      ],
+    );
+    addTearDown(c.dispose);
+
+    await expectLater(
+      c.read(deviceIndexProvider.future),
+      throwsA(isA<Exception>()),
+    );
+    expect(c.read(deviceIndexProvider).hasValue, isFalse);
+
+    offline = false;
+    c.invalidate(librarySnapshotProvider);
+    for (var i = 0; i < 20 && !c.read(deviceIndexProvider).hasValue; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    expect(
+      c.read(deviceIndexProvider).value![2]!.status,
+      InstallStatus.partial,
     );
   });
 
