@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/layout.dart';
 import '../../app/tokens.dart';
 import '../../app/widgets/primary_button.dart';
 import '../../app/widgets/pulse_box.dart';
@@ -29,10 +30,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _announceNewGames(LibrarySnapshot snapshot) {
     if (identical(snapshot, _lastAnnounced)) return;
     _lastAnnounced = snapshot;
-    final count = newGameCount(
-      snapshot.previousIds,
-      [for (final g in snapshot.games) g.id],
-    );
+    final count = newGameCount(snapshot.previousIds, [
+      for (final g in snapshot.games) g.id,
+    ]);
     if (count == 0) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -53,43 +53,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final snapshot = ref.watch(librarySnapshotProvider);
     if (snapshot.hasValue) _announceNewGames(snapshot.requireValue);
     final query = ref.watch(searchQueryProvider).trim();
+    final search = SearchField(
+      hint: 'Search the library',
+      onChanged: (v) => ref.read(searchQueryProvider.notifier).update(v),
+    );
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            const _Header(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: SearchField(
-                hint: 'Search the library',
-                onChanged: (v) =>
-                    ref.read(searchQueryProvider.notifier).update(v),
-              ),
-            ),
-            if (ref.watch(isOfflineProvider)) const _OfflinePill(),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async => ref.invalidate(librarySnapshotProvider),
-                child: snapshot.when(
-                  loading: () => const HomeSkeleton(),
-                  error: (e, _) => _Message(
-                    title: humanizeError(e),
-                    action: 'Retry',
-                    onAction: () => ref.invalidate(librarySnapshotProvider),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = isWideWidth(constraints.maxWidth);
+            return Column(
+              children: [
+                _Header(search: wide ? search : null),
+                if (!wide)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                    child: search,
                   ),
-                  data: (s) => s.games.isEmpty
-                      ? const _Message(
-                          title: 'Nothing here yet',
-                          subtitle: 'Run a scan on the server.',
-                        )
-                      : query.isEmpty
+                if (ref.watch(isOfflineProvider)) const _OfflinePill(),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: () async =>
+                        ref.invalidate(librarySnapshotProvider),
+                    child: snapshot.when(
+                      loading: () => const HomeSkeleton(),
+                      error: (e, _) => _Message(
+                        title: humanizeError(e),
+                        action: 'Retry',
+                        onAction: () => ref.invalidate(librarySnapshotProvider),
+                      ),
+                      data: (s) => s.games.isEmpty
+                          ? const _Message(
+                              title: 'Nothing here yet',
+                              subtitle: 'Run a scan on the server.',
+                            )
+                          : query.isEmpty
                           ? const _Shelves()
                           : const _Results(),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
     );
@@ -97,28 +104,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header();
+  const _Header({this.search});
+
+  /// Set in the wide layout: the field sits between the title and the sort
+  /// button instead of taking a row of its own.
+  final Widget? search;
 
   @override
-  Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.fromLTRB(20, 10, 16, 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Droplet',
-                style: TextStyle(
-                  color: kText,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.6,
-                ),
-              ),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(20, 10, 16, 8),
+    child: Row(
+      children: [
+        const Expanded(
+          child: Text(
+            'Droplet',
+            style: TextStyle(
+              color: kText,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.6,
             ),
-            SortMenu(),
-          ],
+          ),
         ),
-      );
+        if (search case final field?) ...[
+          SizedBox(width: kInlineSearchWidth, child: field),
+          const SizedBox(width: 12),
+        ],
+        const SortMenu(),
+      ],
+    ),
+  );
 }
 
 class _OfflinePill extends StatelessWidget {
@@ -126,26 +141,26 @@ class _OfflinePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: kGlass,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: kGlassBorder),
+    margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    decoration: BoxDecoration(
+      color: kGlass,
+      borderRadius: BorderRadius.circular(999),
+      border: Border.all(color: kGlassBorder),
+    ),
+    child: const Row(
+      children: [
+        Icon(Icons.cloud_off, size: 16, color: kTextDim),
+        SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'Offline — showing the last synced library',
+            style: TextStyle(color: kTextDim, fontSize: 12),
+          ),
         ),
-        child: const Row(
-          children: [
-            Icon(Icons.cloud_off, size: 16, color: kTextDim),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Offline — showing the last synced library',
-                style: TextStyle(color: kTextDim, fontSize: 12),
-              ),
-            ),
-          ],
-        ),
-      );
+      ],
+    ),
+  );
 }
 
 class _Shelves extends ConsumerWidget {
@@ -234,33 +249,33 @@ class _Message extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-        padding: const EdgeInsets.all(32),
-        children: [
-          const SizedBox(height: 80),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: kText, fontSize: 17),
+    padding: const EdgeInsets.all(32),
+    children: [
+      const SizedBox(height: 80),
+      Text(
+        title,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: kText, fontSize: 17),
+      ),
+      if (subtitle != null) ...[
+        const SizedBox(height: 8),
+        Text(
+          subtitle!,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: kTextDim),
+        ),
+      ],
+      if (action != null) ...[
+        const SizedBox(height: 20),
+        Center(
+          child: SizedBox(
+            width: 160,
+            child: PrimaryButton(label: action!, onPressed: onAction),
           ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              subtitle!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: kTextDim),
-            ),
-          ],
-          if (action != null) ...[
-            const SizedBox(height: 20),
-            Center(
-              child: SizedBox(
-                width: 160,
-                child: PrimaryButton(label: action!, onPressed: onAction),
-              ),
-            ),
-          ],
-        ],
-      );
+        ),
+      ],
+    ],
+  );
 }
 
 /// Three shelves of pulsing blocks — the layout stands before data lands.
@@ -269,28 +284,28 @@ class HomeSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-        padding: EdgeInsets.fromLTRB(16, 18, 0, listBottomPad(context)),
-        children: [
-          for (var s = 0; s < 3; s++) ...[
-            const PulseBox(height: 18, width: 140),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 154,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(right: 16),
-                children: [
-                  for (var i = 0; i < 4; i++)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 10),
-                      child: PulseBox(width: 96, height: 128),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-        ],
-      );
+    padding: EdgeInsets.fromLTRB(16, 18, 0, listBottomPad(context)),
+    children: [
+      for (var s = 0; s < 3; s++) ...[
+        const PulseBox(height: 18, width: 140),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 154,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(right: 16),
+            children: [
+              for (var i = 0; i < 4; i++)
+                const Padding(
+                  padding: EdgeInsets.only(right: 10),
+                  child: PulseBox(width: 96, height: 128),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+    ],
+  );
 }

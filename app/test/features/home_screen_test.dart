@@ -6,6 +6,7 @@ import 'package:droplet/features/home/home_screen.dart';
 import 'package:droplet/features/library/providers.dart';
 import 'package:droplet/features/library/widgets/games_grid.dart';
 import 'package:droplet/features/library/widgets/shelf.dart';
+import 'package:droplet/features/library/widgets/search_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
@@ -217,6 +218,33 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('New in library: 2 games'), findsOneWidget);
+  });
+
+  testWidgets('wide layout puts the search field into the header row', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 420));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+    final title = tester.getCenter(find.text('Droplet'));
+    final field = tester.getCenter(find.byType(SearchField));
+    // Same row as the title, to its right — not a row of its own below it.
+    expect((field.dy - title.dy).abs(), lessThan(24));
+    expect(field.dx, greaterThan(title.dx));
+    expect(find.byType(SearchField), findsOneWidget);
+  });
+
+  testWidgets('narrow layout keeps the search field under the header', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+    final title = tester.getCenter(find.text('Droplet'));
+    final field = tester.getCenter(find.byType(SearchField));
+    expect(field.dy, greaterThan(title.dy + 24));
   });
 
   testWidgets('shelves: recent + per system, header opens the system', (

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/layout.dart';
 import '../../app/tokens.dart';
 import '../../app/widgets/circle_icon_button.dart';
 import '../../app/widgets/primary_button.dart';
@@ -16,7 +17,10 @@ import '../library/widgets/sort_menu.dart';
 List<GameSummary> filterByQuery(List<GameSummary> games, String query) {
   final q = query.trim().toLowerCase();
   if (q.isEmpty) return games;
-  return [for (final g in games) if (g.title.toLowerCase().contains(q)) g];
+  return [
+    for (final g in games)
+      if (g.title.toLowerCase().contains(q)) g,
+  ];
 }
 
 class SystemScreen extends ConsumerStatefulWidget {
@@ -35,43 +39,62 @@ class _SystemScreenState extends ConsumerState<SystemScreen> {
   Widget build(BuildContext context) {
     final systems = ref.watch(systemsProvider);
     final games = ref.watch(systemGamesProvider(widget.code));
-    final system =
-        systems.value?.where((s) => s.code == widget.code).firstOrNull;
+    final system = systems.value
+        ?.where((s) => s.code == widget.code)
+        .firstOrNull;
+    final search = SearchField(
+      hint: 'Search in ${system?.name ?? widget.code}',
+      onChanged: (v) => setState(() => _query = v),
+    );
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _Header(system: system, code: widget.code),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: SearchField(
-                hint: 'Search in ${system?.name ?? widget.code}',
-                onChanged: (v) => setState(() => _query = v),
-              ),
-            ),
-            const _FilterChips(),
-            Expanded(
-              child: systems.when(
-                loading: () => const _Skeleton(),
-                error: (e, _) => _Message(
-                  humanizeError(e),
-                  action: 'Retry',
-                  onAction: () => ref.invalidate(librarySnapshotProvider),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = isWideWidth(constraints.maxWidth);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Header(
+                  system: system,
+                  code: widget.code,
+                  search: wide ? search : null,
                 ),
-                data: (_) {
-                  if (system == null) return const _Message('Unknown system');
-                  final list = filterByQuery(games.value ?? const [], _query);
-                  if (list.isEmpty) return const _Message('Nothing matches');
-                  return GamesGrid(
-                    games: list,
-                    routeFor: (id) => '/system/${widget.code}/game/$id',
-                  );
-                },
-              ),
-            ),
-          ],
+                if (!wide)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: search,
+                  ),
+                const _FilterChips(),
+                Expanded(
+                  child: systems.when(
+                    loading: () => const _Skeleton(),
+                    error: (e, _) => _Message(
+                      humanizeError(e),
+                      action: 'Retry',
+                      onAction: () => ref.invalidate(librarySnapshotProvider),
+                    ),
+                    data: (_) {
+                      if (system == null) {
+                        return const _Message('Unknown system');
+                      }
+                      final list = filterByQuery(
+                        games.value ?? const [],
+                        _query,
+                      );
+                      if (list.isEmpty) {
+                        return const _Message('Nothing matches');
+                      }
+                      return GamesGrid(
+                        games: list,
+                        routeFor: (id) => '/system/${widget.code}/game/$id',
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -79,7 +102,10 @@ class _SystemScreenState extends ConsumerState<SystemScreen> {
 }
 
 class _Header extends ConsumerWidget {
-  const _Header({required this.system, required this.code});
+  const _Header({required this.system, required this.code, this.search});
+
+  /// Wide layout: the search field lives in the header row.
+  final Widget? search;
 
   final SystemModel? system;
   final String code;
@@ -89,7 +115,10 @@ class _Header extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final all = ref.watch(librarySnapshotProvider).value?.games ?? const [];
-    final own = [for (final g in all) if (g.systemCode == code) g];
+    final own = [
+      for (final g in all)
+        if (g.systemCode == code) g,
+    ];
     final installed = ref.watch(installedIdsProvider);
     final onDevice = own.where((g) => installed.contains(g.id)).length;
     return Padding(
@@ -125,6 +154,10 @@ class _Header extends ConsumerWidget {
               ],
             ),
           ),
+          if (search case final field?) ...[
+            SizedBox(width: kInlineSearchWidth, child: field),
+            const SizedBox(width: 12),
+          ],
           const SortMenu(),
         ],
       ),
@@ -192,25 +225,25 @@ class _Message extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-        padding: const EdgeInsets.all(32),
-        children: [
-          const SizedBox(height: 60),
-          Text(
-            text,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: kTextDim, fontSize: 15),
+    padding: const EdgeInsets.all(32),
+    children: [
+      const SizedBox(height: 60),
+      Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: kTextDim, fontSize: 15),
+      ),
+      if (action != null) ...[
+        const SizedBox(height: 20),
+        Center(
+          child: SizedBox(
+            width: 160,
+            child: PrimaryButton(label: action!, onPressed: onAction),
           ),
-          if (action != null) ...[
-            const SizedBox(height: 20),
-            Center(
-              child: SizedBox(
-                width: 160,
-                child: PrimaryButton(label: action!, onPressed: onAction),
-              ),
-            ),
-          ],
-        ],
-      );
+        ),
+      ],
+    ],
+  );
 }
 
 class _Skeleton extends StatelessWidget {
@@ -218,9 +251,9 @@ class _Skeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GridView.builder(
-        padding: EdgeInsets.fromLTRB(16, 12, 16, listBottomPad(context)),
-        gridDelegate: GamesGrid.delegate,
-        itemCount: 6,
-        itemBuilder: (_, __) => const PulseBox(),
-      );
+    padding: EdgeInsets.fromLTRB(16, 12, 16, listBottomPad(context)),
+    gridDelegate: GamesGrid.delegate,
+    itemCount: 6,
+    itemBuilder: (_, __) => const PulseBox(),
+  );
 }

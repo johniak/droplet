@@ -5,6 +5,7 @@ import 'package:droplet/features/library/providers.dart';
 import 'package:droplet/features/library/widgets/game_tile.dart';
 import 'package:droplet/features/library/widgets/sort_menu.dart';
 import 'package:droplet/features/system/system_screen.dart';
+import 'package:droplet/features/library/widgets/search_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -201,5 +202,18 @@ void main() {
   test('filterByQuery is case-insensitive', () {
     expect(filterByQuery(games, 'MAR').single.title, 'Mario');
     expect(filterByQuery(games, '  '), hasLength(3));
+  });
+
+  testWidgets('wide layout puts the search field into the header row', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 420));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(_app(const []));
+    await tester.pumpAndSettle();
+    final back = tester.getCenter(find.byKey(const Key('back-button')));
+    final field = tester.getCenter(find.byType(SearchField));
+    expect((field.dy - back.dy).abs(), lessThan(24));
+    expect(field.dx, greaterThan(back.dx));
   });
 }
