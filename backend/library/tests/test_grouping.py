@@ -158,3 +158,100 @@ def test_nested_subdirectory_without_playlist(tmp_path):
     groups, _ = group_system_dir(root / "snes", root, is_switch=False)
     roles = {f.relative_path.split("/")[-1]: f.role for f in groups[0].files}
     assert roles == {"manual.pdf": "other", "rom.sfc": "base"}
+
+
+def test_files_directly_in_mods_get_mod_role_for_any_extension(tmp_path):
+    root = tmp_path
+    game = root / "switch" / "Pokemon Brilliant Diamond"
+    _write(game / "Pokemon Brilliant Diamond [0100000011D90000][v0].xci")
+    _write(game / "mods" / "Luminescent Platinum 2.2F.zip", b"zip")
+    _write(game / "mods" / "readme.txt", b"txt")
+    _write(game / "MODS" / "Other Case.7z", b"7z")
+    groups, loose = group_system_dir(root / "switch", root, is_switch=True)
+    (g,) = groups
+    roles = {e.relative_path.split("/", 2)[2]: e.role for e in g.files}
+    # Na filesystemach bez rozróżniania wielkości liter (domyślny APFS na macOS)
+    # "mods" i "MODS" to ten sam katalog, więc drugi zapis ląduje pod pierwszą
+    # napotkaną pisownią — sprawdzamy rolę niezależnie od dokładnej wielkości liter.
+    other_case_key = next(k for k in roles if k.endswith("Other Case.7z"))
+    assert other_case_key.lower() == "mods/other case.7z"
+    assert roles == {
+        "Pokemon Brilliant Diamond [0100000011D90000][v0].xci": "base",
+        "mods/Luminescent Platinum 2.2F.zip": "mod",
+        "mods/readme.txt": "mod",
+        other_case_key: "mod",
+    }
+    mod = next(e for e in g.files if e.relative_path.endswith(".zip"))
+    assert (mod.version, mod.disc_number) == ("", None)
+    assert loose == []
+    # tytuł i prefix Switcha nadal z base, nie z moda
+    assert g.switch_title_prefix == "0100000011D9"
+
+
+def test_unpacked_mod_directory_is_one_loose_entry_with_total_size(tmp_path):
+    root = tmp_path
+    game = root / "switch" / "Pokemon Brilliant Diamond"
+    _write(game / "bd.xci", b"x")
+    _write(game / "mods" / "Luminescent 2.2F BD" / "romfs" / "a.bin", b"aaaa")
+    _write(game / "mods" / "Luminescent 2.2F BD" / "exefs" / "b.ips", b"bb")
+    _write(game / "mods" / "Luminescent 2.2F BD" / ".DS_Store", b"hidden")
+    _write(game / "mods" / "ok.zip", b"z")
+    groups, loose = group_system_dir(root / "switch", root, is_switch=True)
+    (g,) = groups
+    assert sorted(e.relative_path for e in g.files) == [
+        "switch/Pokemon Brilliant Diamond/bd.xci",
+        "switch/Pokemon Brilliant Diamond/mods/ok.zip",
+    ]
+    assert [(l.relative_path, l.size) for l in loose] == [
+        ("switch/Pokemon Brilliant Diamond/mods/Luminescent 2.2F BD/", 6)
+    ]
+
+
+def test_mods_in_non_switch_system_and_next_to_playlists(tmp_path):
+    root = tmp_path
+    game = root / "psx" / "Final Fantasy VII (USA)"
+    _write(game / "Final Fantasy VII (USA).m3u", b"disc1/FF7 (Disc 1).cue\n")
+    _write(game / "disc1" / "FF7 (Disc 1).cue", b'FILE "FF7 (Disc 1).bin" BINARY\n')
+    _write(game / "disc1" / "FF7 (Disc 1).bin", b"bin")
+    _write(game / "mods" / "New Threat 2.0.xdelta", b"patch")
+    groups, loose = group_system_dir(root / "psx", root, is_switch=False)
+    (g,) = groups
+    by_path = {e.relative_path.rsplit("/", 1)[1]: e.role for e in g.files}
+    assert by_path == {
+        "Final Fantasy VII (USA).m3u": "support",
+        "FF7 (Disc 1).cue": "disc",
+        "FF7 (Disc 1).bin": "support",
+        "New Threat 2.0.xdelta": "mod",
+    }
+    assert loose == []
+
+
+def test_game_folder_named_mods_is_a_regular_game(tmp_path):
+    root = tmp_path
+    _write(root / "snes" / "mods" / "hack.sfc")
+    groups, loose = group_system_dir(root / "snes", root, is_switch=False)
+    assert [g.folder for g in groups] == ["snes/mods"]
+    assert groups[0].files[0].role == "base"
+
+
+def test_loose_from_many_games_are_concatenated_with_system_loose(tmp_path):
+    root = tmp_path
+    _write(root / "gba" / "A" / "a.gba")
+    _write(root / "gba" / "A" / "mods" / "unpacked" / "x", b"12")
+    _write(root / "gba" / "B" / "b.gba")
+    _write(root / "gba" / "B" / "mods" / "unpacked" / "y", b"123")
+    _write(root / "gba" / "loose.gba", b"1")
+    _, loose = group_system_dir(root / "gba", root, is_switch=False)
+    assert [(l.relative_path, l.size) for l in loose] == [
+        ("gba/A/mods/unpacked/", 2),
+        ("gba/B/mods/unpacked/", 3),
+        ("gba/loose.gba", 1),
+    ]
+
+
+def test_folder_with_only_unpacked_mod_is_not_a_game(tmp_path):
+    root = tmp_path
+    _write(root / "switch" / "Ghost" / "mods" / "unpacked" / "romfs" / "a", b"ab")
+    groups, loose = group_system_dir(root / "switch", root, is_switch=True)
+    assert groups == []
+    assert [(l.relative_path, l.size) for l in loose] == [("switch/Ghost/mods/unpacked/", 2)]

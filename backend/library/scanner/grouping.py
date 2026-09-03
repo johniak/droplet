@@ -27,18 +27,19 @@ class FileEntry:
 
 
 @dataclass
+class LooseEntry:
+    relative_path: str
+    size: int
+
+
+@dataclass
 class GameGroup:
     folder: str
     title: str
     normalized_title: str
     switch_title_prefix: str = ""
     files: list[FileEntry] = field(default_factory=list)
-
-
-@dataclass
-class LooseEntry:
-    relative_path: str
-    size: int
+    loose: list[LooseEntry] = field(default_factory=list)
 
 
 def _entry(path: Path, root: Path, role: str, disc=None, version="") -> FileEntry:
@@ -54,9 +55,28 @@ def _hidden(path: Path, root: Path) -> bool:
     return any(part.startswith(".") for part in path.relative_to(root).parts)
 
 
+MODS_DIR = "mods"
+
+
+def _mod_kind(path: Path, folder: Path) -> str | None:
+    """`"file"` dla pliku bezpośrednio w `<gra>/mods/`, `"nested"` dla pliku
+    głębiej w `mods/` (rozpakowany mod), `None` poza `mods/`."""
+    rel = path.relative_to(folder).parts
+    if len(rel) < 2 or rel[0].lower() != MODS_DIR:
+        return None
+    return "file" if len(rel) == 2 else "nested"
+
+
 def _group_folder(folder: Path, root: Path, *, is_switch: bool) -> GameGroup | None:
     files = sorted(p for p in folder.rglob("*") if p.is_file() and not _hidden(p, root))
-    if not files:
+    mods = [p for p in files if _mod_kind(p, folder) == "file"]
+    nested: dict[Path, int] = {}
+    for p in files:
+        if _mod_kind(p, folder) == "nested":
+            top = folder / p.relative_to(folder).parts[0] / p.relative_to(folder).parts[1]
+            nested[top] = nested.get(top, 0) + p.stat().st_size
+    files = [p for p in files if _mod_kind(p, folder) is None]
+    if not files and not mods and not nested:
         return None
     file_set = set(files)
     group = GameGroup(
@@ -112,6 +132,11 @@ def _group_folder(folder: Path, root: Path, *, is_switch: bool) -> GameGroup | N
             group.files.append(_entry(p, root, info.role, version=info.version))
         else:
             group.files.append(_entry(p, root, "base"))
+
+    for p in mods:
+        group.files.append(_entry(p, root, "mod"))
+    for top, size in sorted(nested.items()):
+        group.loose.append(LooseEntry(top.relative_to(root).as_posix() + "/", size))
     return group
 
 
@@ -126,7 +151,9 @@ def group_system_dir(
         if child.is_dir():
             group = _group_folder(child, library_root, is_switch=is_switch)
             if group is not None:
-                groups.append(group)
+                loose.extend(group.loose)
+                if group.files:
+                    groups.append(group)
         elif child.is_file():
             loose.append(
                 LooseEntry(child.relative_to(library_root).as_posix(), child.stat().st_size)
