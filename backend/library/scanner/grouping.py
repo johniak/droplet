@@ -57,6 +57,10 @@ def _hidden(path: Path, root: Path) -> bool:
 
 MODS_DIR = "mods"
 
+# Pliki metadanych frontendów (ES-DE, Cocoon) w katalogu systemu — nie są ani
+# grą, ani bałaganem do uporządkowania.
+FRONTEND_FILES = frozenset({"systeminfo.txt"})
+
 
 def _mod_kind(path: Path, folder: Path) -> str | None:
     """`"file"` dla pliku bezpośrednio w `<gra>/mods/`, `"nested"` dla pliku
@@ -161,7 +165,7 @@ def group_system_dir(
                 loose.extend(group.loose)
                 if group.files:
                     groups.append(group)
-        elif child.is_file():
+        elif child.is_file() and child.name.lower() not in FRONTEND_FILES:
             loose.append(
                 LooseEntry(child.relative_to(library_root).as_posix(), child.stat().st_size)
             )

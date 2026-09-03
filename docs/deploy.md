@@ -216,6 +216,11 @@ Zasady:
 - Sidecary (`.srm`, `.sav`, obrazki, `.txt`) w katalogu gry są zapisywane z rolą
   `other` — nie psują rozpoznania roli bazowej.
 
+- Pusty katalog systemu (albo zawierający tylko `systeminfo.txt` frontendu
+  ES-DE/Cocoon) nie tworzy systemu ani wpisu „luzem" — możesz trzymać na
+  udziale pełny szablon katalogów z handhelda. Aplikacja i tak pokazuje tylko
+  systemy z co najmniej jedną grą.
+
 ### Mody (od M8)
 
 Mod to plik w podkatalogu `mods/` katalogu gry:

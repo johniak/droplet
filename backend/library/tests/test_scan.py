@@ -235,3 +235,25 @@ def test_unpacked_mod_counts_as_one_loose_entry(library):
     assert entry.system.code == "switch"
     assert run.loose_files == 2  # + snes/Loose (USA).sfc z fixture
     assert GameFile.objects.filter(game__folder="switch/Hollow Knight").count() == 1
+
+
+@pytest.mark.django_db
+def test_empty_system_directory_and_frontend_files_create_nothing(library):
+    for code in ("gba", "psx", "Dziwny Pusty"):
+        _write(library / code / "systeminfo.txt", b"System name:\n" + code.encode())
+    (library / "atari2600").mkdir()
+    with override_settings(LIBRARY_ROOT=library):
+        run = run_scan()
+    assert run.status == ScanRun.Status.SUCCESS
+    assert set(System.objects.values_list("directory", flat=True)) == {"snes"}
+    assert not LooseFile.objects.filter(relative_path__endswith="systeminfo.txt").exists()
+    assert run.loose_files == 1
+
+
+@pytest.mark.django_db
+def test_systeminfo_next_to_games_is_ignored_but_games_count(library):
+    _write(library / "snes" / "systeminfo.txt", b"meta")
+    with override_settings(LIBRARY_ROOT=library):
+        run = run_scan()
+    assert Game.objects.count() == 2
+    assert run.loose_files == 1  # tylko Loose (USA).sfc

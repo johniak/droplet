@@ -93,6 +93,16 @@ def run_scan() -> ScanRun:
     try:
         for system_dir in sorted(p for p in root.iterdir() if p.is_dir()):
             spec = lookup_system(system_dir.name)
+            is_switch = bool(spec and spec.is_switch)
+            try:
+                groups, loose = group_system_dir(system_dir, root, is_switch=is_switch)
+            except OSError as exc:
+                run.errors.append(f"{system_dir.name}: {exc}")
+                continue
+            if not groups and not loose:
+                # Pusty katalog (np. 175 szablonów systemów z frontendu) nie jest
+                # systemem — nie zaśmieca admina ani listy do konfiguracji.
+                continue
             if spec:
                 system, _ = System.objects.update_or_create(
                     directory=system_dir.name,
@@ -102,7 +112,6 @@ def run_scan() -> ScanRun:
                         "thumbnail_repo": spec.thumbnail_repo,
                     },
                 )
-                is_switch = spec.is_switch
             else:
                 system, _ = System.objects.get_or_create(
                     directory=system_dir.name,
@@ -112,15 +121,10 @@ def run_scan() -> ScanRun:
                         "needs_config": True,
                     },
                 )
-                is_switch = False
-            try:
-                groups, loose = group_system_dir(system_dir, root, is_switch=is_switch)
-                for group in groups:
-                    _sync_group(system, group, run, seen)
-                for entry in loose:
-                    all_loose[entry.relative_path] = (system, entry.size)
-            except OSError as exc:
-                run.errors.append(f"{system_dir.name}: {exc}")
+            for group in groups:
+                _sync_group(system, group, run, seen)
+            for entry in loose:
+                all_loose[entry.relative_path] = (system, entry.size)
         _sync_loose(all_loose)
         run.loose_files = len(all_loose)
         # The difference is computed in Python — `exclude(relative_path__in=seen)`
