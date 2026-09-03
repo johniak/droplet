@@ -113,4 +113,4 @@ też jego tree URI, więc zwykle drugie klikanie nie jest potrzebne.
 - Dart: katalog (każdy wpis ma poprawny szablon, `%ROM%`/`%ROMSAF%`/`%ROMPROVIDER%` dokładnie jeden), `resolveTemplate` dla każdego rodzaju placeholdera i błędów, `bootFile` dla m3u/cue/disc/switch/mod-only, settings repo, providery (fake port), ekran Emulators (pusty, z wyborami, zmiana zapisuje), ekran gry (Play widoczny/ukryty, sukces, błąd, brak drzewa, link do ustawień), router. 100% linii, `flutter analyze` czysto.
 - Kotlin: nietestowany jednostkowo (jak inne porty); weryfikacja ręczna na Thorze: Eden (Switch), Azahar (3DS), melonDS (DS) uruchamiają grę z Dropletu.
 - E2E na emulatorze: brak emulatorów → ekran gry pokazuje `Set up emulator`, ekran Emulators pokazuje `Not installed`.
-- Wersja aplikacji `0.6.0+8`.
+- Wersja aplikacji `0.6.0+10`.
