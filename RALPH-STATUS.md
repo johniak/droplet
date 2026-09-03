@@ -4,6 +4,7 @@ Status pętli Ralph budującej Droplet wg planów M0–M8.
 
 ## Czeka na Jana
 
+- **M11 (2026-09-04)**: Play — katalog emulatorów zgodny z ES-DE (Eden/Citron/Sudachi/Yuzu, Azahar/Citra, melonDS, DuckStation, NetherSX2, PPSSPP, Dolphin, Cemu, M64Plus FZ, Flycast/Redream, rdzenie RetroArch), Settings → Emulators (dostęp SAF do folderu ROM-ów, wybór per system), przycisk Play na zainstalowanej grze; natywny kanał Kotlin (FileProvider + SAF). Zweryfikowane na AYN Thor: melonDS, Eden, Azahar. Poza zakresem: karty SD (drzewo SAF poza pamięcią wewnętrzną → `saf-tree-missing`).
 - **M9 (2026-09-03)**: pliki systemowe — `bios/<Paczka>/` to system `bios`, paczki w Settings → System files, na telefonie `<ROMs>/bios/<Paczka>/`; MainActivity.kt wreszcie w repo (globalny gitignore `johniak/`).
 - **M8 na NAS-ie**: mody z podkatalogu `mods/` gry są teraz osobną rolą
   (`mod`) — pobierane razem z grą, instalujesz je ręcznie w emulatorze;
