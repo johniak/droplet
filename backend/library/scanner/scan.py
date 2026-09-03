@@ -110,6 +110,8 @@ def run_scan() -> ScanRun:
                         "code": spec.code,
                         "name": spec.name,
                         "thumbnail_repo": spec.thumbnail_repo,
+                        # katalog mógł być „nieznany” w starszej wersji mapy
+                        "needs_config": False,
                     },
                 )
             else:

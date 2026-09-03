@@ -73,7 +73,7 @@ używamy `image:`, a nie `build:`.
    | `DJANGO_ALLOWED_HOSTS` | `*` albo lista hostów po przecinku |
    | `DROPLET_ADMIN_USER` | nazwa Twojego jedynego konta |
    | `DROPLET_ADMIN_PASSWORD` | hasło do tego konta |
-   | `DROPLET_AUTO_COVERS` | `1` (domyślnie) — po każdym skanie automatycznie dopasowuj okładki z libretro-thumbnails; `0` wyłącza (backend nie wychodzi wtedy do internetu) |
+   | `DROPLET_AUTO_COVERS` | `1` (domyślnie) — po każdym skanie automatycznie dopasowuj okładki: libretro-thumbnails po tytule, a dla Switcha ikona eShopu z [titledb](https://github.com/blawar/titledb) po title id z nazwy pliku (plik `US.en.json`, ~90 MB, cache w `/data/covers/index/`, odświeżany co 7 dni); `0` wyłącza (backend nie wychodzi wtedy do internetu) |
    | `DJANGO_CSRF_TRUSTED_ORIGINS` | lista origins po przecinku, gdy admin stoi za reverse proxy z HTTPS (np. `https://droplet.example.com`); puste = brak wpisów |
 
    Sekret wygenerujesz np. tak:

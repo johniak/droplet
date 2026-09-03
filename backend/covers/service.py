@@ -8,6 +8,7 @@ from .matching import best_match
 from .models import Cover
 from .paths import ensure_dirs, full_path, thumb_path
 from .thumbnails import download_boxart, fetch_index
+from .titledb import base_title_id, download_image, icon_urls
 
 THUMB_WIDTH = 256
 
@@ -44,9 +45,53 @@ def match_game(game: Game, index_names: list[str]) -> bool:
     return True
 
 
+def match_switch(system: System, stats: dict) -> None:
+    """Switch: okładka = ikona eShopu gry o tym samym title id co plik bazowy."""
+    games = [
+        g for g in system.games.filter(cover__isnull=True)
+    ]
+    by_tid = {}
+    for game in games:
+        tid = base_title_id(game)
+        if tid is None:
+            stats["skipped"] += 1
+        else:
+            by_tid.setdefault(tid, []).append(game)
+    if not by_tid:
+        return
+    try:
+        urls = icon_urls(set(by_tid))
+    except Exception as exc:
+        stats["errors"].append(f"{system.code}: titledb: {exc}")
+        return
+    for tid, tid_games in by_tid.items():
+        url = urls.get(tid)
+        for game in tid_games:
+            if url is None:
+                stats["skipped"] += 1
+                continue
+            try:
+                download_image(url, full_path(game.id))
+                _make_thumb(game.id)
+                Cover.objects.update_or_create(
+                    game=game,
+                    defaults={
+                        "source": Cover.Source.TITLEDB,
+                        "match_name": tid,
+                        "score": 100.0,
+                        "is_manual": False,
+                    },
+                )
+                stats["matched"] += 1
+            except Exception as exc:
+                stats["errors"].append(f"{game.title}: {exc}")
+
+
 def match_all() -> dict:
     ensure_dirs()
     stats = {"matched": 0, "skipped": 0, "errors": []}
+    for system in System.objects.filter(code="switch"):
+        match_switch(system, stats)
     for system in System.objects.exclude(thumbnail_repo=""):
         try:
             names = fetch_index(system.thumbnail_repo)

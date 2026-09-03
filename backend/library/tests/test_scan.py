@@ -257,3 +257,15 @@ def test_systeminfo_next_to_games_is_ignored_but_games_count(library):
         run = run_scan()
     assert Game.objects.count() == 2
     assert run.loose_files == 1  # tylko Loose (USA).sfc
+
+
+@pytest.mark.django_db
+def test_formerly_unknown_directory_becomes_known_after_map_update(library):
+    _write(library / "n3ds" / "Monster Hunter 4 Ultimate (EUR)" / "mh4u.3ds")
+    System.objects.create(code="n3ds", name="n3ds", directory="n3ds", needs_config=True)
+    with override_settings(LIBRARY_ROOT=library):
+        run_scan()
+    system = System.objects.get(directory="n3ds")
+    assert (system.name, system.thumbnail_repo, system.needs_config) == (
+        "Nintendo 3DS", "Nintendo_-_Nintendo_3DS", False,
+    )

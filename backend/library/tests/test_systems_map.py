@@ -32,3 +32,9 @@ def test_bios_pseudo_system():
         spec = lookup_system(name)
         assert spec.code == "bios" and spec.is_switch is False
     assert lookup_system("bios").thumbnail_repo == ""
+
+
+def test_3ds_maps_to_libretro_repo():
+    for name in ("n3ds", "3DS", "Nintendo - Nintendo 3DS"):
+        assert lookup_system(name).code == "n3ds"
+    assert lookup_system("n3ds").thumbnail_repo == "Nintendo_-_Nintendo_3DS"

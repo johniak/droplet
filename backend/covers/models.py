@@ -4,6 +4,7 @@ from django.db import models
 class Cover(models.Model):
     class Source(models.TextChoices):
         LIBRETRO = "libretro"
+        TITLEDB = "titledb"
         MANUAL = "manual"
 
     game = models.OneToOneField(
