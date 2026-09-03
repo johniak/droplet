@@ -216,6 +216,28 @@ Zasady:
 - Sidecary (`.srm`, `.sav`, obrazki, `.txt`) w katalogu gry są zapisywane z rolą
   `other` — nie psują rozpoznania roli bazowej.
 
+### Mody (od M8)
+
+Mod to plik w podkatalogu `mods/` katalogu gry:
+
+```
+switch/Pokemon Brilliant Diamond/
+├── Pokemon Brilliant Diamond [0100000011D90000][v0].xci
+├── Pokemon Brilliant Diamond [0100000011D90800][v393216].nsp
+└── mods/
+    └── Luminescent Platinum 2.2F.zip
+```
+
+- Każdy plik **bezpośrednio** w `mods/` dostaje rolę `mod` (zip, 7z, ips, bps,
+  xdelta — rozszerzenie nie ma znaczenia; działa dla każdego systemu).
+- Mod jest częścią gry: aplikacja pobiera go razem z grą do
+  `<ROMs>/<system>/<Gra>/mods/`, a Ty instalujesz go w emulatorze („Add mod”
+  → wskaż zip). Bez moda gra jest „częściowa”.
+- **Rozpakowany** mod (podkatalog w `mods/`) nie wchodzi do gry — pojawia się
+  w „Do uporządkowania” jako jeden wpis z sumą rozmiaru. Spakuj go do zipa.
+- Switch: DLC rozpoznaje się także po title id (końcówka inna niż `000`/`800`),
+  więc pakiety językowe i DLC bez tagu `[DLC]` nie są już drugim „base”.
+
 ## 6. Nocny skan biblioteki (od M1)
 
 Skan jest przyrostowy i uruchamiany ręcznie z admina/API, ale warto go odpalać

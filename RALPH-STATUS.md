@@ -1,8 +1,16 @@
 # RALPH-STATUS
 
-Status pętli Ralph budującej Droplet wg planów M0–M7.
+Status pętli Ralph budującej Droplet wg planów M0–M8.
 
 ## Czeka na Jana
+
+- **M8 na NAS-ie**: mody z podkatalogu `mods/` gry są teraz osobną rolą
+  (`mod`) — pobierane razem z grą, instalujesz je ręcznie w emulatorze;
+  rozpakowany mod (podkatalog w `mods/`) trafia do „Do uporządkowania" jako
+  jeden wpis. Switch: DLC rozpoznaje się też po końcówce title id, nie tylko
+  po tagu `[DLC]`. Po aktualizacji uruchom `manage.py scan` **raz** — skan
+  przepisze role/wersje/numery płyt dla plików zaklasyfikowanych wg starych
+  reguł (drugi przebieg musi dać `+0 ~0 -0`). Szczegóły: `docs/deploy.md` §5.
 
 - **M7 na NAS-ie**: uporządkuj bibliotekę (każda gra w folderze),
   `docker compose up -d --build` (migracja 0002), a potem `manage.py scan`

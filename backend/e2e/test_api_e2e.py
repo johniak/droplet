@@ -40,7 +40,7 @@ def test_full_flow(base_url, auth):
     detail = requests.get(
         f"{base_url}/api/games/{hollow['id']}/", headers=auth, timeout=10
     ).json()
-    assert [f["role"] for f in detail["files"]] == ["base", "update"]
+    assert [f["role"] for f in detail["files"]] == ["base", "update", "mod"]
 
     tekken = requests.get(
         f"{base_url}/api/games/",

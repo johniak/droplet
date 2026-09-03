@@ -27,5 +27,9 @@ def test_scan_result_contents(base_url, auth):
     manifest = requests.get(f"{base_url}/api/manifest/", headers=auth, timeout=10).json()
     by_folder = {e["folder"]: e for e in manifest}
     assert set(by_folder) == {"Super Mario World (USA)", "Tekken (USA)", "Hollow Knight"}
-    assert {f["role"] for f in by_folder["Hollow Knight"]["files"]} == {"base", "update"}
+    hk = by_folder["Hollow Knight"]["files"]
+    assert {f["role"] for f in hk} == {"base", "update", "mod"}
+    mod = next(f for f in hk if f["role"] == "mod")
+    assert mod["name"] == "mods/Example Mod.zip" and mod["size"] == 4
+    assert not any("Unpacked Mod" in f["name"] for f in hk)
     assert "Luzem" not in titles
