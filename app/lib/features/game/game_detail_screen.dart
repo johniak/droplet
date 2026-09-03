@@ -1,6 +1,7 @@
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -192,6 +193,7 @@ class _DetailState extends ConsumerState<_Detail> {
                       selected: _selected.contains(file.id),
                       onChanged: (on) => _toggle(file, on),
                     ),
+                  if (entry.key == roleLabels[FileRole.mod]) _ModsHint(game: game),
                 ],
               ],
             ),
@@ -327,6 +329,45 @@ class _Hero extends ConsumerWidget {
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Where the mods land on the device and how to get them into the emulator.
+/// Shown under the "Mod" group only — a game without mods has nothing to say.
+class _ModsHint extends ConsumerWidget {
+  const _ModsHint({required this.game});
+
+  final GameDetail game;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(storageSettingsProvider).value;
+    if (settings == null) return const SizedBox.shrink();
+    final dir = '${settings.dirFor(game.systemCode)}/${game.folder}/mods';
+    return GlassPanel(
+      margin: const EdgeInsets.only(top: 2, bottom: 10),
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Install in the emulator: Add mod → pick the zip from $dir',
+              style: const TextStyle(color: kTextDim, fontSize: 12, height: 1.35),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: dir));
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Path copied')),
+              );
+            },
+            child: const Text('Copy path'),
           ),
         ],
       ),

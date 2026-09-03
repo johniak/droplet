@@ -88,4 +88,45 @@ void main() {
     );
     expect(find.textContaining('Download ·'), findsOneWidget);
   });
+
+  testWidgets('a game with a mod downloads the mod into mods/', (tester) async {
+    await tester.pumpWidget(const ProviderScope(child: DropletApp()));
+    await tester.pumpAndSettle();
+    // Session and base directory survive from the first test (secure storage
+    // and settings are persisted), so we go straight to the library.
+    final baseDir = '${(await getApplicationDocumentsDirectory()).path}/roms';
+    await pumpUntil(tester, find.byKey(const Key('nav-library')));
+    await pumpUntil(tester, find.text('Hollow Knight'));
+    await tester.tap(find.text('Hollow Knight').first);
+    await tester.pumpAndSettle();
+    await pumpUntil(tester, find.text('Copy path'));
+    await pumpUntil(tester, find.textContaining('Download ·'));
+    await tester.tap(find.textContaining('Download ·'));
+    await tester.pumpAndSettle();
+
+    var installed = false;
+    for (var i = 0; i < 60 && !installed; i++) {
+      await tester.pump(const Duration(seconds: 1));
+      installed = tester.any(find.text('Installed'));
+    }
+    expect(installed, isTrue, reason: "download didn't finish within 60s");
+
+    final modFile = File('$baseDir/switch/Hollow Knight/mods/Example Mod.zip');
+    expect(modFile.existsSync(), isTrue, reason: 'mod missing at $modFile');
+    expect(modFile.lengthSync(), 4);
+    expect(
+      File('$baseDir/switch/Hollow Knight/Hollow Knight [0100633007D48000][v0].nsp')
+          .existsSync(),
+      isTrue,
+    );
+
+    await pumpUntil(tester, find.text('Delete from device'));
+    await tester.tap(find.text('Delete from device'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle(const Duration(seconds: 3));
+    expect(modFile.existsSync(), isFalse);
+    expect(Directory('$baseDir/switch/Hollow Knight').existsSync(), isFalse,
+        reason: 'game folder (with mods/) was left behind');
+  });
 }

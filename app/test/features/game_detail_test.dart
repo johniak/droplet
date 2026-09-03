@@ -14,6 +14,7 @@ import 'package:droplet/features/library/providers.dart';
 import 'package:droplet/features/library/widgets/cover_image.dart';
 import 'package:droplet/app/widgets/pulse_box.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -48,6 +49,36 @@ const _detail = GameDetail(
       discNumber: null,
       version: 'v196608',
       size: 2,
+    ),
+  ],
+);
+
+const _withMod = GameDetail(
+  id: 7,
+  title: 'Hollow Knight',
+  systemCode: 'switch',
+  systemName: 'Switch',
+  hasCover: false,
+  totalSize: 7,
+  folder: 'Hollow Knight',
+  files: [
+    GameFileModel(
+      id: 1,
+      name: 'hk.nsp',
+      relativePath: 'switch/Hollow Knight/hk.nsp',
+      role: FileRole.base,
+      discNumber: null,
+      version: '',
+      size: 1,
+    ),
+    GameFileModel(
+      id: 3,
+      name: 'mods/Skin Pack.zip',
+      relativePath: 'switch/Hollow Knight/mods/Skin Pack.zip',
+      role: FileRole.mod,
+      discNumber: null,
+      version: '',
+      size: 6,
     ),
   ],
 );
@@ -385,5 +416,49 @@ void main() {
     await tester.tap(find.byKey(const Key('back-button')));
     await tester.pumpAndSettle();
     expect(find.text('Home'), findsOneWidget);
+  });
+
+  testWidgets('mods get their own group with an install hint', (tester) async {
+    await _phoneSurface(tester);
+    await tester.pumpWidget(_screen(_withMod));
+    await tester.pumpAndSettle();
+    expect(find.text('Mod'), findsOneWidget);
+    expect(find.text('mods/Skin Pack.zip'), findsOneWidget);
+    expect(
+      find.textContaining('Install in the emulator: Add mod'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('/switch/Hollow Knight/mods'), findsOneWidget);
+    expect(find.text('Copy path'), findsOneWidget);
+  });
+
+  testWidgets('copy path puts the mods folder on the clipboard', (tester) async {
+    await _phoneSurface(tester);
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied = (call.arguments as Map)['text'] as String;
+        }
+        return null;
+      },
+    );
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, null));
+    await tester.pumpWidget(_screen(_withMod));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Copy path'));
+    await tester.pump();
+    expect(copied, endsWith('/switch/Hollow Knight/mods'));
+    expect(find.text('Path copied'), findsOneWidget);
+  });
+
+  testWidgets('no mods -> no hint', (tester) async {
+    await _phoneSurface(tester);
+    await tester.pumpWidget(_screen(_detail));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Install in the emulator'), findsNothing);
+    expect(find.text('Copy path'), findsNothing);
   });
 }
