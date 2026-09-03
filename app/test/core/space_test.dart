@@ -17,6 +17,6 @@ void main() {
     const e = InsufficientSpaceException(4200000000, 1100000000);
     expect(e.toString(), contains(formatBytes(4200000000)));
     expect(e.toString(), contains(formatBytes(1100000000)));
-    expect(e.toString(), startsWith('Za mało miejsca'));
+    expect(e.toString(), startsWith('Not enough space'));
   });
 }

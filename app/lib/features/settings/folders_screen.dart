@@ -7,7 +7,7 @@ import '../../app/widgets/circle_icon_button.dart';
 import '../../core/downloads/storage_settings.dart';
 import '../library/providers.dart';
 
-/// Podkatalog per system w katalogu ROMów (domyślnie kod systemu).
+/// One subfolder per system inside the ROM folder (system code by default).
 class FoldersScreen extends ConsumerWidget {
   const FoldersScreen({super.key});
 
@@ -26,12 +26,12 @@ class FoldersScreen extends ConsumerWidget {
                 CircleIconButton(
                   key: const Key('back-button'),
                   icon: Icons.arrow_back_rounded,
-                  tooltip: 'Wstecz',
+                  tooltip: 'Back',
                   onPressed: () => context.pop(),
                 ),
                 const SizedBox(width: 12),
                 const Text(
-                  'Foldery per system',
+                  'Folders per system',
                   style: TextStyle(
                     color: kText,
                     fontSize: 20,
@@ -42,7 +42,7 @@ class FoldersScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Puste pole = podkatalog o nazwie kodu systemu.',
+              'Empty field = a subfolder named after the system code.',
               style: TextStyle(color: kTextDim, fontSize: 12),
             ),
             const SizedBox(height: 12),

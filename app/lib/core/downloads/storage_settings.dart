@@ -8,17 +8,18 @@ const _kSystemDirs = 'storage.system_dirs';
 const _kWifiOnly = 'storage.wifi_only';
 const defaultBaseDir = '/storage/emulated/0/RetroArch/roms';
 
-/// Nadpisanie katalogu systemu to **jedna nazwa katalogu**. Separator albo
-/// segment „..” wyprowadziłby ścieżki gier poza katalog ROMów — a wtedy skan i
-/// „Usuń wszystko" pracowałyby na cudzym drzewie. Puste pole to nie wartość,
-/// tylko brak nadpisania, więc odsiewa je [normalizeSystemDir].
+/// A system directory override is **a single directory name**. A separator or
+/// a '..' segment would take game paths outside the ROM folder — and then the
+/// scan and "Delete all" would work on someone else's tree. An empty field is
+/// not a value but the absence of an override, so [normalizeSystemDir] drops
+/// it.
 bool isValidSystemDir(String dir) =>
     !dir.contains('/') &&
     !dir.contains(r'\') &&
     !RegExp(r'^\.+$').hasMatch(dir);
 
-/// Przycięta nazwa katalogu albo `null`, gdy nadpisania ma nie być (puste pole)
-/// lub gdy wartość jest niebezpieczna.
+/// The trimmed directory name, or `null` when there should be no override
+/// (empty field) or when the value is unsafe.
 String? normalizeSystemDir(String dir) {
   final value = dir.trim();
   return value.isEmpty || !isValidSystemDir(value) ? null : value;
@@ -36,21 +37,21 @@ class StorageSettings {
 
   final String baseDir;
 
-  /// system code -> subdirectory; no entry means the code itself. Puste i
-  /// niebezpieczne wartości nie mają tu wstępu (patrz konstruktor).
+  /// system code -> subdirectory; no entry means the code itself. Empty and
+  /// unsafe values never get in here (see the constructor).
   final Map<String, String> systemDirs;
 
-  /// Kolejkuj pobierania tylko na Wi‑Fi (flaga `requiresWiFi` taska).
+  /// Queue downloads on Wi‑Fi only (the task's `requiresWiFi` flag).
   final bool wifiOnly;
 
   String dirFor(String systemCode) =>
       '$baseDir/${systemDirs[systemCode] ?? systemCode}';
 
-  /// Katalog jednej gry — wszystkie jej pliki mieszkają w środku.
+  /// One game's folder — all of its files live inside.
   String gameDir(String systemCode, String folder) =>
       '${dirFor(systemCode)}/$folder';
 
-  /// [fileName] to nazwa względem katalogu gry, więc może zawierać podkatalog.
+  /// [fileName] is relative to the game folder, so it may hold a subfolder.
   String pathFor(String systemCode, String folder, String fileName) =>
       '${gameDir(systemCode, folder)}/$fileName';
 }
@@ -72,9 +73,9 @@ class StorageSettingsRepository {
 
   Future<void> saveBaseDir(String dir) => _prefs.setString(_kBaseDir, dir);
 
-  /// Puste pole kasuje nadpisanie, wartość niebezpieczna nie zapisuje się
-  /// wcale — poprzednia zostaje, bo pole edytuje się znak po znaku i „SNES/”
-  /// w połowie wpisywania nie ma wywalać ustawienia.
+  /// An empty field clears the override; an unsafe value is not saved at all
+  /// — the previous one stays, because the field is edited character by
+  /// character and a half-typed "SNES/" must not wipe the setting.
   Future<void> saveSystemDir(String code, String dir) async {
     final value = dir.trim();
     if (value.isNotEmpty && !isValidSystemDir(value)) return;

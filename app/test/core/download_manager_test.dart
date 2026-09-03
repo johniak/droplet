@@ -121,7 +121,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(port.deleted, ['/roms/snes/Mario/m.sfc']);
     expect(manager.progress[7]?.status, GameProgressStatus.failed);
-    // Skasowany plik zmienił dysk, więc indeks trzeba przeliczyć — ale raz.
+    // The deleted file changed the disk, so the index needs recomputing — but once.
     expect(changed, [7]);
   });
 
@@ -235,14 +235,14 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(manager.progress[8]?.status, GameProgressStatus.complete);
     expect(manager.progress[8]?.progress, 1);
-    // Skan dysku dopiero po ostatnim pliku — nie po każdym z osobna.
+    // The disk scan happens only after the last file — not after each one separately.
     expect(changed, [8]);
   });
 
   test('PermissionDeniedException explains itself', () {
     expect(
       PermissionDeniedException().toString(),
-      'Brak dostępu do katalogu ROMów',
+      'No access to the ROM folder',
     );
   });
 
@@ -296,9 +296,9 @@ void main() {
     );
     await Future<void>.delayed(Duration.zero);
     expect(provided.progress[7]?.status, GameProgressStatus.complete);
-    // Skan dysku leci timerem (sklejanie powiadomień), więc jeden tick więcej.
+    // The disk scan runs on a timer (coalescing notifications), so one more tick.
     await Future<void>.delayed(Duration.zero);
-    // Pobranie kończy się przeliczeniem indeksu urządzenia — bez sieci.
+    // The download finishes by recomputing the device index — no network.
     expect(index.refreshes, 1);
   });
 
@@ -344,7 +344,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(provided.progress[7]?.status, GameProgressStatus.complete);
     expect(provided.progress[8]?.status, GameProgressStatus.complete);
-    // Dwie gry, jeden skan drzewa ROMów.
+    // Two games, one scan of the ROM tree.
     expect(index.refreshes, 1);
   });
 

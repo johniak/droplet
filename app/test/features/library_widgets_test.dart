@@ -46,7 +46,7 @@ GoRouter _router(Widget home) => GoRouter(
             GoRoute(
               path: 'game/:id',
               builder: (_, s) =>
-                  Scaffold(body: Text('Gra ${s.pathParameters['id']}')),
+                  Scaffold(body: Text('Game ${s.pathParameters['id']}')),
             ),
             GoRoute(
               path: 'x/:id',
@@ -189,7 +189,7 @@ void main() {
     expect(find.text('1.0 KB'), findsOneWidget);
     await tester.tap(find.byType(GameTile));
     await tester.pumpAndSettle();
-    expect(find.text('Gra 7'), findsOneWidget);
+    expect(find.text('Game 7'), findsOneWidget);
   });
 
   testWidgets('GameTile honours a custom route', (tester) async {
@@ -292,7 +292,7 @@ void main() {
     },
   );
 
-  testWidgets('Shelf caps cards and offers "Wszystkie"', (tester) async {
+  testWidgets('Shelf caps cards and offers "All"', (tester) async {
     var seeAll = 0;
     final games = [for (var i = 1; i <= 14; i++) g(i, 'G$i')];
     await tester.pumpWidget(
@@ -317,13 +317,13 @@ void main() {
     expect(seeAll, 1);
     await tester.drag(find.byType(ListView), const Offset(-2000, 0));
     await tester.pumpAndSettle();
-    expect(find.text('Wszystkie (14)'), findsOneWidget);
-    await tester.tap(find.text('Wszystkie (14)'));
+    expect(find.text('All (14)'), findsOneWidget);
+    await tester.tap(find.text('All (14)'));
     expect(seeAll, 2);
     expect(find.text('G13'), findsNothing);
   });
 
-  testWidgets('Shelf without overflow has no "Wszystkie" tile', (tester) async {
+  testWidgets('Shelf without overflow has no "All" tile', (tester) async {
     await tester.pumpWidget(
       _app(
         Shelf(title: 'PSX', games: [g(1, 'Tekken')]),
@@ -335,10 +335,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('Wszystkie'), findsNothing);
-    // 'Tekken' bez okładki renderuje się dwa razy: raz jako tytuł na
-    // placeholderze okładki, raz jako podpis kafla (tak jak w teście
-    // GameTile powyżej).
+    expect(find.textContaining('All'), findsNothing);
+    // 'Tekken' without a cover renders twice: once as the title on the
+    // cover placeholder, once as the tile caption (same as in the GameTile
+    // test above).
     expect(find.text('Tekken'), findsNWidgets(2));
   });
 
@@ -405,7 +405,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byType(ShelfCard));
     await tester.pumpAndSettle();
-    expect(find.text('Gra 5'), findsOneWidget);
+    expect(find.text('Game 5'), findsOneWidget);
   });
 
   testWidgets('GamesGrid lays out tiles', (tester) async {
@@ -427,8 +427,9 @@ void main() {
   testWidgets('GamesGrid resolves its bottom padding from MediaQuery', (
     tester,
   ) async {
-    // Powłoka ma extendBody: true, więc padding.bottom w gałęzi to już
-    // wysokość paska plus wcięcie systemowe — siatka dokłada tylko 16.
+    // The shell has extendBody: true, so padding.bottom in this branch is
+    // already the bar's height plus the system inset — the grid only adds
+    // 16 on top.
     await tester.pumpWidget(
       _app(
         const MediaQuery(
@@ -511,11 +512,11 @@ void main() {
   testWidgets('SearchField forwards input', (tester) async {
     String? last;
     await tester.pumpWidget(
-      _app(SearchField(hint: 'Szukaj', onChanged: (v) => last = v)),
+      _app(SearchField(hint: 'Search', onChanged: (v) => last = v)),
     );
     await tester.enterText(find.byType(TextField), 'tek');
     expect(last, 'tek');
-    expect(find.text('Szukaj'), findsOneWidget);
+    expect(find.text('Search'), findsOneWidget);
   });
 
   testWidgets('SortMenu switches the sort provider', (tester) async {
@@ -532,7 +533,7 @@ void main() {
     );
     await tester.tap(find.byIcon(Icons.sort));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Ostatnio dodane'));
+    await tester.tap(find.text('Recently added'));
     await tester.pumpAndSettle();
     expect(container.read(sortProvider), LibrarySort.recentlyAdded);
   });

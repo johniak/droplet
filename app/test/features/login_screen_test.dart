@@ -32,15 +32,15 @@ void main() {
     await tester.pumpWidget(_wrap());
     await tester.pumpAndSettle();
     expect(find.byType(TextFormField), findsNWidgets(3));
-    expect(find.text('Zaloguj'), findsOneWidget);
+    expect(find.text('Sign in'), findsOneWidget);
   });
 
   testWidgets('empty submit shows validation', (tester) async {
     await tester.pumpWidget(_wrap());
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Zaloguj'));
+    await tester.tap(find.text('Sign in'));
     await tester.pump();
-    expect(find.text('Wymagane'), findsWidgets);
+    expect(find.text('Required'), findsWidgets);
   });
 
   testWidgets('bad credentials show a login error', (tester) async {
@@ -50,9 +50,9 @@ void main() {
     );
     await tester.pumpAndSettle();
     await _fillIn(tester);
-    await tester.tap(find.text('Zaloguj'));
+    await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
-    expect(find.text('Błędny login lub hasło'), findsOneWidget);
+    expect(find.text('Wrong username or password'), findsOneWidget);
   });
 
   testWidgets('a 400 response is also a credentials error', (tester) async {
@@ -70,9 +70,9 @@ void main() {
     );
     await tester.pumpAndSettle();
     await _fillIn(tester);
-    await tester.tap(find.text('Zaloguj'));
+    await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
-    expect(find.text('Błędny login lub hasło'), findsOneWidget);
+    expect(find.text('Wrong username or password'), findsOneWidget);
   });
 
   testWidgets('glass card and footer are present', (tester) async {
@@ -80,7 +80,7 @@ void main() {
     expect(find.byType(GlassPanel), findsOneWidget);
     expect(find.byType(TextFormField), findsNWidgets(3));
     expect(
-      find.text('Hasło zostaje na telefonie, appka trzyma tylko token.'),
+      find.text('Your password stays on the phone, the app keeps only a token.'),
       findsOneWidget,
     );
   });
@@ -97,9 +97,9 @@ void main() {
     );
     await tester.pumpAndSettle();
     await _fillIn(tester);
-    await tester.tap(find.text('Zaloguj'));
+    await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Nie mogę połączyć'), findsOneWidget);
+    expect(find.textContaining("Can't reach the server"), findsOneWidget);
   });
 }
 

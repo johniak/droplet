@@ -75,7 +75,7 @@ ThemeData buildTheme() {
   );
 }
 
-/// Gradientowe tło całej aplikacji — Scaffoldy są przezroczyste.
+/// Gradient background for the whole app — Scaffolds are transparent.
 class AppBackground extends StatelessWidget {
   const AppBackground({super.key, required this.child});
 

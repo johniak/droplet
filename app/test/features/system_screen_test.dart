@@ -47,7 +47,7 @@ GoRouter _router() => GoRouter(
                 GoRoute(
                   path: 'game/:id',
                   builder: (_, s) => Scaffold(
-                    body: Text('Gra ${s.pathParameters['id']} z systemu'),
+                    body: Text('Game ${s.pathParameters['id']} from system'),
                   ),
                 ),
               ],
@@ -55,7 +55,7 @@ GoRouter _router() => GoRouter(
             GoRoute(
               path: 'game/:id',
               builder: (_, s) =>
-                  Scaffold(body: Text('Gra ${s.pathParameters['id']}')),
+                  Scaffold(body: Text('Game ${s.pathParameters['id']}')),
             ),
           ],
         ),
@@ -81,7 +81,7 @@ Widget _app(List<GameSummary> games, {List<Override> overrides = const []}) =>
 
 void main() {
   final games = [g(1, 'Mario'), g(2, 'Zelda'), g(3, 'Metroid')];
-  // Jeden indeks urządzenia zasila i odznaki, i chipy filtrów.
+  // One device index feeds both the badges and the filter chips.
   final states = [
     deviceIndexProvider.overrideWith(
       () => FakeDeviceIndex({
@@ -98,8 +98,8 @@ void main() {
     await tester.pumpWidget(_app(games, overrides: states));
     await tester.pumpAndSettle();
     expect(find.text('Super Nintendo'), findsOneWidget);
-    expect(find.text('3 gry · 2 na urządzeniu'), findsOneWidget);
-    expect(find.text('Szukaj w Super Nintendo'), findsOneWidget);
+    expect(find.text('3 games · 2 on device'), findsOneWidget);
+    expect(find.text('Search in Super Nintendo'), findsOneWidget);
     expect(find.byType(SortMenu), findsOneWidget);
     expect(find.byType(GameTile), findsNWidgets(3));
     await tester.tap(find.byKey(const Key('back-button')));
@@ -112,20 +112,20 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(_app(games, overrides: states));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Na urządzeniu'));
+    await tester.tap(find.text('On device'));
     await tester.pumpAndSettle();
     expect(find.byType(GameTile), findsNWidgets(2));
     await tester.ensureVisible(
-      find.text('Do aktualizacji', skipOffstage: false),
+      find.text('Updates', skipOffstage: false),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Do aktualizacji'));
+    await tester.tap(find.text('Updates'));
     await tester.pumpAndSettle();
     expect(find.byType(GameTile), findsOneWidget);
     expect(find.text('Zelda'), findsWidgets);
-    await tester.ensureVisible(find.text('Wszystkie', skipOffstage: false));
+    await tester.ensureVisible(find.text('All', skipOffstage: false));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Wszystkie'));
+    await tester.tap(find.text('All'));
     await tester.pumpAndSettle();
     expect(find.byType(GameTile), findsNWidgets(3));
   });
@@ -140,7 +140,7 @@ void main() {
     expect(find.byType(GameTile), findsOneWidget);
     await tester.enterText(find.byType(TextField), 'nope');
     await tester.pumpAndSettle();
-    expect(find.text('Nic nie pasuje'), findsOneWidget);
+    expect(find.text('Nothing matches'), findsOneWidget);
   });
 
   testWidgets('unknown system code shows a message', (tester) async {
@@ -161,7 +161,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Nieznany system'), findsOneWidget);
+    expect(find.text('Unknown system'), findsOneWidget);
   });
 
   testWidgets('loading skeleton and error, retry re-invokes the snapshot',
@@ -180,9 +180,9 @@ void main() {
     );
     expect(find.byType(PulseBox), findsWidgets);
     await tester.pumpAndSettle();
-    expect(find.text('Ponów'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
     expect(attempts, 1);
-    await tester.tap(find.text('Ponów'));
+    await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
     expect(attempts, 2);
   });
@@ -195,7 +195,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Mario').first);
     await tester.pumpAndSettle();
-    expect(find.text('Gra 1 z systemu'), findsOneWidget);
+    expect(find.text('Game 1 from system'), findsOneWidget);
   });
 
   test('filterByQuery is case-insensitive', () {

@@ -16,7 +16,7 @@ import 'task_builder.dart';
 
 class PermissionDeniedException implements Exception {
   @override
-  String toString() => 'Brak dostępu do katalogu ROMów';
+  String toString() => 'No access to the ROM folder';
 }
 
 enum GameProgressStatus { running, paused, failed, complete }
@@ -39,8 +39,8 @@ class GameProgress {
   final String title;
   final String systemCode;
 
-  /// Folder gry w drzewie ROMów — kafelek pobierania buduje z niego pełny
-  /// [GameSummary], zamiast podstawiać pusty ciąg.
+  /// The game's folder in the ROM tree — the download tile builds a full
+  /// [GameSummary] from it instead of substituting an empty string.
   final String folder;
 
   final bool hasCover;
@@ -49,7 +49,7 @@ class GameProgress {
   final int bytesDone;
   final int bytesTotal;
 
-  /// null, gdy plugin nie zna prędkości (networkSpeed == -1).
+  /// null when the plugin does not know the speed (networkSpeed == -1).
   final int? speedBytesPerSec;
 
   int get bytesLeft => bytesTotal - bytesDone;
@@ -293,13 +293,13 @@ class DownloadManager {
           allDone ? GameProgressStatus.complete : GameProgressStatus.running,
       bytesDone: allDone ? current.bytesTotal : current.bytesDone,
     );
-    // Skan dysku kosztuje przejście po całym drzewie ROMów, więc leci raz na
-    // grę — po ostatnim pliku (albo po skasowaniu pliku o złym rozmiarze),
-    // nie po każdym pobranym pliku z osobna.
+    // A disk scan costs a walk over the whole ROM tree, so it runs once per
+    // game — after the last file (or after deleting a file of the wrong size),
+    // not after every single downloaded file.
     if (allDone) onGameChanged(gameId);
   }
 
-  /// Usuwa wpisy zakończone sukcesem; błędy zostają do ponowienia/anulowania.
+  /// Drops entries that finished successfully; failures stay for retry/cancel.
   void clearFinished() {
     _progress.removeWhere((_, p) => p.status == GameProgressStatus.complete);
     _emit();
@@ -307,8 +307,8 @@ class DownloadManager {
 }
 
 final downloadManagerProvider = Provider<DownloadManager>((ref) {
-  // Kilka gier kończących się w tym samym ticku ma dać jeden skan dysku, a nie
-  // jeden na każde powiadomienie — stąd sklejanie do jednego mikrozadania.
+  // Several games finishing in the same tick must trigger one disk scan, not
+  // one per notification — hence the coalescing into a single task.
   var scheduled = false;
   var disposed = false;
   final manager = DownloadManager(
@@ -317,8 +317,8 @@ final downloadManagerProvider = Provider<DownloadManager>((ref) {
     onGameChanged: (_) {
       if (scheduled) return;
       scheduled = true;
-      // Timer, nie mikrozadanie: powiadomienia o kolejnych grach przychodzą
-      // zza `await`ów portu, więc mikrozadanie zdążyłoby się już wykonać.
+      // A Timer, not a microtask: notifications for further games arrive from
+      // behind the port's `await`s, so a microtask would already have run.
       Timer.run(() {
         scheduled = false;
         if (disposed) return;

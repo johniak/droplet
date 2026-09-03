@@ -83,7 +83,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Pobierz · 1.0 KB'), findsOneWidget);
+    expect(find.text('Download · 1.0 KB'), findsOneWidget);
     expect(find.textContaining('1.0 KB'), findsWidgets);
   });
 
@@ -99,8 +99,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Usuń z urządzenia'), findsOneWidget);
-    expect(find.text('Zainstalowana'), findsOneWidget);
+    expect(find.text('Delete from device'), findsOneWidget);
+    expect(find.text('Installed'), findsOneWidget);
   });
 
   testWidgets('update available shows update button', (tester) async {
@@ -115,7 +115,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('Pobierz aktualizację'), findsOneWidget);
+    expect(find.textContaining('Download update'), findsOneWidget);
   });
 
   testWidgets('delete keeps a game folder that still holds a save', (
@@ -139,10 +139,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Usuń z urządzenia'));
+    await tester.tap(find.text('Delete from device'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('nie zostaną usunięte'), findsOneWidget);
-    await tester.tap(find.text('Usuń'));
+    expect(find.textContaining('will be kept'), findsOneWidget);
+    await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();
     expect(rom.existsSync(), false);
     expect(save.existsSync(), true);
@@ -167,12 +167,12 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Usuń z urządzenia'));
+    await tester.tap(find.text('Delete from device'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Usuń'));
+    await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();
     expect(gameDir.existsSync(), false);
-    // Po usunięciu indeks urządzenia przelicza się bez pytania serwera.
+    // After deletion the device index recomputes without asking the server.
     expect(index.refreshes, 1);
   });
 
@@ -191,9 +191,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Usuń z urządzenia'));
+    await tester.tap(find.text('Delete from device'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Anuluj'));
+    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(rom.existsSync(), true);
   });
@@ -214,7 +214,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byType(Checkbox).first);
     await tester.pumpAndSettle();
-    expect(find.text('Pobierz · 0 B'), findsOneWidget);
+    expect(find.text('Download · 0 B'), findsOneWidget);
     // Nothing left to fetch: the button is disabled, not just relabeled.
     expect(
       tester.widget<PrimaryButton>(find.byType(PrimaryButton)).onPressed,
@@ -223,7 +223,7 @@ void main() {
     // ...and selecting it again brings the size back and re-enables it.
     await tester.tap(find.byType(Checkbox).first);
     await tester.pumpAndSettle();
-    expect(find.text('Pobierz · 1.0 KB'), findsOneWidget);
+    expect(find.text('Download · 1.0 KB'), findsOneWidget);
     expect(
       tester.widget<PrimaryButton>(find.byType(PrimaryButton)).onPressed,
       isNotNull,
@@ -267,8 +267,8 @@ void main() {
     final dir = Directory.systemTemp.createTempSync();
     addTearDown(() => dir.deleteSync(recursive: true));
     await deleteLocalFiles(
-      ['${dir.path}/nie-ma.sfc'],
-      gameDir: '${dir.path}/tez-nie-ma',
+      ['${dir.path}/missing.sfc'],
+      gameDir: '${dir.path}/also-missing',
     );
   });
 }

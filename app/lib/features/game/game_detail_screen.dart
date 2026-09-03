@@ -26,19 +26,19 @@ import 'delete_dialog.dart';
 import 'providers.dart';
 
 const roleLabels = {
-  FileRole.base: 'Gra',
-  FileRole.update: 'Aktualizacja',
+  FileRole.base: 'Game',
+  FileRole.update: 'Update',
   FileRole.dlc: 'DLC',
-  FileRole.disc: 'Płyta',
-  FileRole.support: 'Pozostałe',
-  FileRole.other: 'Pozostałe',
+  FileRole.disc: 'Disc',
+  FileRole.support: 'Other',
+  FileRole.other: 'Other',
 };
 
 String labelFor(GameFileModel file) => file.role == FileRole.disc
     ? '${roleLabels[FileRole.disc]} ${file.discNumber ?? ''}'.trim()
     : roleLabels[file.role]!;
 
-/// Ile realnie zejdzie z sieci: zaznaczone pliki, których nie ma na dysku.
+/// What really comes off the network: selected files not already on disk.
 int bytesToFetch(GameDetail game, Set<int> selected, LocalGameState local) {
   final present = {for (final p in local.presentPaths) p.split('/').last};
   return game.files
@@ -56,9 +56,9 @@ class GameDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(gameDetailProvider(gameId));
-    // Wstecz stoi nad wszystkimi trzema gałęziami — ekran nie ma AppBara, a
-    // szkielet i błąd nie miały wcześniej żadnego wyjścia poza gestem
-    // systemowym (na nawigacji trójprzyciskowej: żadnego).
+    // Back sits above all three branches — the screen has no AppBar, and the
+    // skeleton and error states used to offer no way out but the system
+    // gesture (with three-button navigation: none at all).
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -78,7 +78,7 @@ class GameDetailScreen extends ConsumerWidget {
           child: CircleIconButton(
             key: const Key('back-button'),
             icon: Icons.arrow_back_rounded,
-            tooltip: 'Wstecz',
+            tooltip: 'Back',
             onPressed: () => context.pop(),
           ),
         ),
@@ -126,8 +126,8 @@ class _DetailState extends ConsumerState<_Detail> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Bez dostępu do plików nie pobiorę ROM-ów — '
-            'przyznaj uprawnienie w ustawieniach',
+            'Downloads need file access — '
+            'grant the permission in settings',
           ),
         ),
       );
@@ -182,7 +182,7 @@ class _DetailState extends ConsumerState<_Detail> {
                   SectionLabel(
                     entry.key,
                     trailing: entry.key == roleLabels[FileRole.update]
-                        ? 'najnowsza domyślnie'
+                        ? 'newest by default'
                         : null,
                   ),
                   for (final file in entry.value)
@@ -199,7 +199,7 @@ class _DetailState extends ConsumerState<_Detail> {
       ),
       bottomNavigationBar: local.when(
         loading: () => const _BottomBar(
-          child: PrimaryButton(label: 'Sprawdzam pliki...', onPressed: null),
+          child: PrimaryButton(label: 'Checking files...', onPressed: null),
         ),
         error: (e, _) => _BottomBar(
           child: Text(
@@ -223,17 +223,17 @@ class _DetailState extends ConsumerState<_Detail> {
   }
 
   static String? _statePill(LocalGameState state) {
-    if (state.updateAvailable) return 'Jest aktualizacja';
+    if (state.updateAvailable) return 'Update available';
     return switch (state.status) {
-      InstallStatus.installed => 'Zainstalowana',
-      InstallStatus.partial => 'Częściowo',
+      InstallStatus.installed => 'Installed',
+      InstallStatus.partial => 'Partial',
       InstallStatus.none => null,
     };
   }
 }
 
-/// Nasycenie 1.4 dla rozmytego tła — standardowa macierz saturacji na
-/// luminancji Rec. 709, żeby wyblakła po rozmyciu okładka znów miała kolor.
+/// Saturation 1.4 for the blurred backdrop — the standard saturation matrix
+/// on Rec. 709 luminance, so a cover washed out by the blur regains its color.
 const _saturation = <double>[
   1.31496, -0.28608, -0.02888, 0, 0, //
   -0.08504, 1.11392, -0.02888, 0, 0, //
@@ -241,8 +241,8 @@ const _saturation = <double>[
   0, 0, 0, 1, 0, //
 ];
 
-/// Rozmyta okładka jako tło, ostra na wierzchu; wstecz to osobny,
-/// przyklejony widget nad scrollem (zob. `GameDetailScreen.build`).
+/// Blurred cover as the backdrop, the sharp one on top; back is a separate,
+/// pinned widget above the scroll (see `GameDetailScreen.build`).
 class _Hero extends ConsumerWidget {
   const _Hero({required this.game});
 
@@ -259,9 +259,9 @@ class _Hero extends ConsumerWidget {
         fit: StackFit.expand,
         children: [
           if (game.hasCover)
-            // Skala 1.15 pod ClipRect: rozmycie przy krawędziach ściąga
-            // przezroczystość zza obrazka i zostawia jasną obwódkę —
-            // powiększony obrazek wypycha ją poza kadr.
+            // Scale 1.15 under ClipRect: near the edges the blur pulls in
+            // transparency from beyond the image and leaves a bright rim —
+            // the enlarged image pushes it out of frame.
             ClipRect(
               child: Transform.scale(
                 scale: 1.15,
@@ -383,7 +383,7 @@ class _FileRow extends StatelessWidget {
       );
 }
 
-/// Dolny pasek: gradient do tła, żeby lista „wchodziła" pod przycisk.
+/// Bottom bar: a gradient into the background, so the list runs under it.
 class _BottomBar extends StatelessWidget {
   const _BottomBar({required this.child});
 
@@ -436,19 +436,19 @@ class _Actions extends ConsumerWidget {
     final installed =
         state.status == InstallStatus.installed && !state.updateAvailable;
     final label = state.updateAvailable
-        ? 'Pobierz aktualizację · ${formatBytes(toFetch)}'
-        : 'Pobierz · ${formatBytes(toFetch)}';
+        ? 'Download update · ${formatBytes(toFetch)}'
+        : 'Download · ${formatBytes(toFetch)}';
     final footer = offline
-        ? 'Offline — pobieranie niedostępne'
+        ? 'Offline — downloads unavailable'
         : [
-            if (free != null) 'Wolne ${formatBytes(free)}',
-            if (dir != null) 'zapis: $dir',
+            if (free != null) '${formatBytes(free)} free',
+            if (dir != null) 'saving to: $dir',
           ].join(' · ');
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (installed)
-          PrimaryButton(label: 'Usuń z urządzenia', onPressed: onDelete, ghost: true)
+          PrimaryButton(label: 'Delete from device', onPressed: onDelete, ghost: true)
         else ...[
           PrimaryButton(
             label: label,
@@ -458,7 +458,7 @@ class _Actions extends ConsumerWidget {
             TextButton(
               onPressed: onDelete,
               child: const Text(
-                'Usuń z urządzenia',
+                'Delete from device',
                 style: TextStyle(color: kTextDim),
               ),
             ),
@@ -499,7 +499,7 @@ class _Error extends StatelessWidget {
               const SizedBox(height: 16),
               SizedBox(
                 width: 160,
-                child: PrimaryButton(label: 'Ponów', onPressed: onRetry),
+                child: PrimaryButton(label: 'Retry', onPressed: onRetry),
               ),
             ],
           ),

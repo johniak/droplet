@@ -4,7 +4,7 @@ import '../api/models.dart';
 import 'local_state.dart';
 import 'storage_settings.dart';
 
-/// Plik lub katalog w drzewie ROMów, którego nie zna żadna gra z manifestu.
+/// A file or folder in the ROM tree that no game in the manifest knows about.
 class UnknownEntry {
   const UnknownEntry({
     required this.systemCode,
@@ -22,14 +22,14 @@ class UnknownEntry {
 class DeviceIndex {
   const DeviceIndex({required this.games, required this.unknown});
 
-  /// systemCode -> folder -> (ścieżka względem katalogu gry -> rozmiar)
+  /// systemCode -> folder -> (path relative to the game folder -> size)
   final Map<String, Map<String, Map<String, int>>> games;
 
   final List<UnknownEntry> unknown;
 }
 
-/// Ścieżka bazowa bez końcowych separatorów: `Directory('/roms/snes/')` i
-/// `Directory('/roms/snes')` mają dawać te same ścieżki względne.
+/// Base path without trailing separators: `Directory('/roms/snes/')` and
+/// `Directory('/roms/snes')` must yield the same relative paths.
 String _basePath(Directory base) {
   var path = base.path;
   while (path.length > 1 &&
@@ -43,15 +43,15 @@ String _rel(FileSystemEntity e, String base) => e.path
     .substring(base.length + 1)
     .replaceAll(Platform.pathSeparator, '/');
 
-/// Kropka na początku dowolnego segmentu = wpis ukryty (ta sama zasada co w
-/// skanerze backendu), więc `.nomedia`, `.thumbnails/` czy `.DS_Store` nie
-/// trafiają ani do rozmiarów gry, ani na listę nieznanych.
+/// A dot at the start of any segment means a hidden entry (the same rule as in
+/// the backend scanner), so `.nomedia`, `.thumbnails/` or `.DS_Store` end up
+/// neither in the game sizes nor on the unknown list.
 bool _hidden(String relativePath) =>
     relativePath.split('/').any((segment) => segment.startsWith('.'));
 
-/// Katalog bez prawa odczytu (albo zniknięty w trakcie skanu) pomijamy — reszta
-/// drzewa ma się policzyć mimo to. `followLinks: false`: symlink nie ma
-/// wciągać skanu w cudze drzewo ani w pętlę.
+/// An unreadable directory (or one that vanished mid-scan) is skipped — the
+/// rest of the tree must still be counted. `followLinks: false`: a symlink must
+/// not drag the scan into someone else's tree or into a loop.
 List<FileSystemEntity> _entriesOf(Directory dir) {
   try {
     return dir.listSync(followLinks: false);
@@ -60,8 +60,9 @@ List<FileSystemEntity> _entriesOf(Directory dir) {
   }
 }
 
-/// Ręczna rekurencja zamiast `listSync(recursive: true)`: ta buduje listę na
-/// raz, więc jeden nieczytelny podkatalog gubi wszystkie pliki gry.
+/// Manual recursion instead of `listSync(recursive: true)`: that one builds the
+/// list in one go, so a single unreadable subdirectory loses every file of the
+/// game.
 Map<String, int> sizesUnder(Directory dir) {
   final base = _basePath(dir);
   final sizes = <String, int>{};
@@ -80,20 +81,20 @@ Map<String, int> sizesUnder(Directory dir) {
   return sizes;
 }
 
-/// Klucz znanego folderu gry: **rozwiązany** katalog, a nie kod systemu. Dwa
-/// systemy mogą wskazywać ten sam podkatalog (gb i gbc → `gameboy`) i wtedy
-/// gra jednego z nich nie może uchodzić za nieznany folder drugiego.
+/// Key of a known game folder: the **resolved** directory, not the system code.
+/// Two systems can point at the same subdirectory (gb and gbc → `gameboy`) and
+/// then a game of one must not pass for an unknown folder of the other.
 String knownFolderKey(StorageSettings settings, String code, String folder) =>
     '${settings.dirFor(code)}/$folder';
 
-/// Ścieżka naprawdę leżąca w drzewie ROMów: pod [baseDir] i bez segmentu „..”,
-/// który wyprowadziłby ją z powrotem na zewnątrz mimo pasującego prefiksu.
+/// A path that really sits inside the ROM tree: under [baseDir] and without a
+/// '..' segment that would lead back out despite the matching prefix.
 bool insideBaseDir(String path, String baseDir) =>
     path.startsWith('$baseDir/') && !path.split('/').contains('..');
 
-/// Kody systemów zgrupowane po rozwiązanym katalogu, z zachowaniem kolejności.
-/// Katalog spoza drzewa ROMów w ogóle nie wchodzi do skanu — inaczej złe
-/// nadpisanie kazałoby skanować (i kasować) cudze pliki.
+/// System codes grouped by resolved directory, keeping the original order.
+/// A directory outside the ROM tree never enters the scan — otherwise a bad
+/// override would make us scan (and delete) someone else's files.
 Map<String, List<String>> _dirsToScan(
   StorageSettings settings,
   Iterable<String> systemCodes,
@@ -107,9 +108,9 @@ Map<String, List<String>> _dirsToScan(
   return byDir;
 }
 
-/// Jeden synchroniczny przebieg po katalogach systemów (patrz zasada o dart:io
-/// w testach widgetowych). Foldery spoza [knownFolderKeys] (klucze z
-/// [knownFolderKey]) i pliki luzem lądują w [DeviceIndex.unknown].
+/// One synchronous pass over the system directories (see the dart:io rule for
+/// widget tests). Folders outside [knownFolderKeys] (keys from
+/// [knownFolderKey]) and loose files land in [DeviceIndex.unknown].
 DeviceIndex scanDevice(
   StorageSettings settings,
   Iterable<String> systemCodes,
@@ -119,8 +120,8 @@ DeviceIndex scanDevice(
   final unknown = <UnknownEntry>[];
   for (final entry in _dirsToScan(settings, systemCodes).entries) {
     final dir = Directory(entry.key);
-    // Wspólny katalog skanujemy raz; nieznane wpisy przypisujemy pierwszemu
-    // kodowi, a rozmiary gier — każdemu, bo manifest szuka po swoim kodzie.
+    // A shared directory is scanned once; unknown entries go to the first
+    // code, game sizes to every code, as the manifest looks up by its own.
     final codes = entry.value;
     if (!dir.existsSync()) continue;
     for (final e in _entriesOf(dir)) {
@@ -157,8 +158,8 @@ DeviceIndex scanDevice(
   return DeviceIndex(games: games, unknown: unknown);
 }
 
-/// Stan każdej gry z manifestu policzony z jednego skanu — bez zapytania
-/// do serwera i bez wchodzenia na dysk per kafelek.
+/// State of every game in the manifest computed from a single scan — without
+/// a server request and without touching the disk per tile.
 Map<int, LocalGameState> buildLocalStates(
   List<ManifestEntry> manifest,
   DeviceIndex index,

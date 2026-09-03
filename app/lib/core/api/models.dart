@@ -50,7 +50,7 @@ class GameSummary {
   final bool hasCover;
   final int totalSize;
 
-  /// Nazwa katalogu gry (bez systemu) — wszystkie pliki gry leżą w środku.
+  /// The game's folder name (without the system) — all its files live inside.
   final String folder;
 
   factory GameSummary.fromJson(Map<String, dynamic> j) => GameSummary(
@@ -112,8 +112,8 @@ class GameFileModel {
       };
 }
 
-/// Jedna gra w manifeście biblioteki (`/api/manifest/`): tyle, ile trzeba, by
-/// porównać serwer z dyskiem bez zapytania per gra.
+/// One game in the library manifest (`/api/manifest/`): just enough to compare
+/// the server with the disk without a request per game.
 class ManifestEntry {
   const ManifestEntry({
     required this.gameId,

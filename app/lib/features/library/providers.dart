@@ -29,7 +29,7 @@ class LibrarySnapshot {
   final List<SystemModel> systems;
   final List<GameSummary> games;
 
-  /// Pliki każdej gry — źródło prawdy dla porównania z dyskiem.
+  /// Files of every game — the source of truth for comparing with disk.
   final List<ManifestEntry> manifest;
 
   final bool fromCache;
@@ -105,16 +105,16 @@ class SortOrder extends Notifier<LibrarySort> {
 
 final sortProvider = NotifierProvider<SortOrder, LibrarySort>(SortOrder.new);
 
-/// Skan dysku wstrzykiwany do kontrolera — testy liczą dzięki temu, ile razy
-/// indeks naprawdę dotknął dysku.
+/// The disk scan injected into the controller — this lets tests count how
+/// many times the index really touched the disk.
 typedef DeviceScanner = DeviceIndex Function(
   StorageSettings settings,
   Iterable<String> systemCodes,
   Set<String> knownFolderKeys,
 );
 
-/// Jeden skan dysku dla całej biblioteki: stan każdej gry z manifestu, a przy
-/// okazji lista plików i katalogów, których manifest nie zna.
+/// One disk scan for the whole library: the state of every game in the
+/// manifest, and along the way a list of files and folders it does not know.
 class DeviceIndexController extends AsyncNotifier<Map<int, LocalGameState>> {
   DeviceIndexController({DeviceScanner? scan}) : _scan = scan ?? scanDevice;
 
@@ -124,19 +124,19 @@ class DeviceIndexController extends AsyncNotifier<Map<int, LocalGameState>> {
 
   DeviceIndex get lastIndex => _last;
 
-  /// Pierwszy `build` się domknął (udanie albo nie) — dopiero wtedy zmiany
-  /// zależności mają wołać [refresh]; w trakcie `build` stanu jeszcze nie ma.
+  /// The first `build` has finished (successfully or not) — only then may
+  /// dependency changes call [refresh]; during `build` there is no state yet.
   bool _scanned = false;
 
   bool _disposed = false;
 
-  /// `listen` zamiast `watch`: zmiana biblioteki albo ustawień ma **przeliczyć**
-  /// indeks, a nie unieważnić provider. Unieważniony indeks przebudowuje się
-  /// leniwie — przy pierwszym odczycie, a ten potrafi wypaść w fazie layoutu
-  /// (wznowienie subskrypcji zakładki po `TickerMode`). Wtedy pochodne
-  /// providery (`installedIdsProvider` i spółka) unieważniają się w środku
-  /// budowania i Riverpod wywraca się na
-  /// „setState() or markNeedsBuild() called during build".
+  /// `listen` instead of `watch`: a library or settings change must
+  /// **recompute** the index, not invalidate the provider. An invalidated
+  /// index rebuilds lazily — on the first read, and that read can land in the
+  /// layout phase (a tab resubscribing after `TickerMode`). Derived providers
+  /// (`installedIdsProvider` and friends) then invalidate mid-build and
+  /// Riverpod blows up with
+  /// "setState() or markNeedsBuild() called during build".
   @override
   Future<Map<int, LocalGameState>> build() async {
     _scanned = false;
@@ -153,18 +153,18 @@ class DeviceIndexController extends AsyncNotifier<Map<int, LocalGameState>> {
       usedSettings = settings;
       return _compute(snapshot, settings);
     } finally {
-      // `finally`, więc także po błędzie: inaczej nieudany pierwszy skan
-      // (offline, pusty cache) zamykałby drogę do przeliczenia po każdym
-      // późniejszym, udanym snapshocie.
+      // `finally`, so also after an error: otherwise a failed first scan
+      // (offline, empty cache) would block any recompute after every later,
+      // successful snapshot.
       _scanned = true;
-      // Zmiana, która przyszła *w trakcie* pierwszego skanu, nie miała komu
-      // zlecić przeliczenia — stan jeszcze nie istniał. Porównanie z tym, na
-      // czym skan faktycznie policzył, odróżnia taką zmianę od zwykłego
-      // rozwiązania się zależności (to drugie zdarza się przy każdym starcie).
+      // A change that arrived *during* the first scan had nobody to ask for
+      // a recompute — the state did not exist yet. Comparing with what the
+      // scan actually ran on tells such a change apart from a dependency
+      // simply resolving (which happens on every start).
       if (!identical(ref.read(librarySnapshotProvider).value, usedSnapshot) ||
           !identical(ref.read(storageSettingsProvider).value, usedSettings)) {
-        // Timer, nie mikrozadanie: mikrozadanie z `finally` wyprzedziłoby
-        // przypisanie stanu przez Riverpoda i `state` byłoby jeszcze puste.
+        // A timer, not a microtask: a microtask from `finally` would run
+        // before Riverpod assigns the state, and `state` would still be empty.
         Timer.run(() {
           if (!_disposed) refresh();
         });
@@ -172,9 +172,9 @@ class DeviceIndexController extends AsyncNotifier<Map<int, LocalGameState>> {
     }
   }
 
-  /// Jedno unieważnienie zależności to dwa powiadomienia (najpierw „ładuję",
-  /// potem dane albo błąd) — skan ma się policzyć raz, przy tym drugim, czyli
-  /// już na aktualnych danych.
+  /// One dependency invalidation means two notifications (first "loading",
+  /// then data or error) — the scan must run once, on the second one, that is
+  /// on current data.
   void _rescan(AsyncValue<Object?> next) {
     if (next.isLoading || !_scanned) return;
     refresh();
@@ -184,8 +184,8 @@ class DeviceIndexController extends AsyncNotifier<Map<int, LocalGameState>> {
     LibrarySnapshot snapshot,
     StorageSettings settings,
   ) {
-    // Klucze po rozwiązanym katalogu, nie po kodzie systemu — patrz
-    // [knownFolderKey]: dwa systemy mogą dzielić jeden podkatalog.
+    // Keyed by the resolved folder, not by the system code — see
+    // [knownFolderKey]: two systems can share one subfolder.
     final known = {
       for (final e in snapshot.manifest)
         knownFolderKey(settings, e.systemCode, e.folder),
@@ -198,7 +198,7 @@ class DeviceIndexController extends AsyncNotifier<Map<int, LocalGameState>> {
     return buildLocalStates(snapshot.manifest, _last, settings);
   }
 
-  /// Ponowny skan dysku po pobraniu/usunięciu — bez sieci.
+  /// Rescan the disk after a download or a delete — no network.
   Future<void> refresh() async {
     final snapshot = ref.read(librarySnapshotProvider).value;
     final settings = ref.read(storageSettingsProvider).value;
@@ -212,9 +212,9 @@ final deviceIndexProvider =
   DeviceIndexController.new,
 );
 
-/// Pliki i katalogi w drzewie ROMów, których nie zna żadna gra z manifestu.
+/// Files and folders in the ROM tree that no game in the manifest knows.
 final unknownOnDeviceProvider = Provider<List<UnknownEntry>>((ref) {
-  ref.watch(deviceIndexProvider); // przelicz po każdym skanie
+  ref.watch(deviceIndexProvider); // recompute after every scan
   return ref.read(deviceIndexProvider.notifier).lastIndex.unknown;
 });
 
@@ -228,10 +228,10 @@ Set<int> updatableFrom(Map<int, LocalGameState> states) => {
         if (e.value.updateAvailable) e.key,
     };
 
-/// Zbiory czytane przez widgety. Providery **pochodne od providerów** celowo
-/// nie stoją w łańcuchach innych providerów (patrz `homeShelvesProvider`):
-/// unieważnienie ogniwa w środku łańcucha potrafi wypaść w fazie budowania i
-/// wywrócić `UncontrolledProviderScope`.
+/// The sets widgets read. Providers **derived from providers** deliberately
+/// stay out of other providers' chains (see `homeShelvesProvider`):
+/// invalidating a link mid-chain can land in the build phase and topple
+/// `UncontrolledProviderScope`.
 final installedIdsProvider = Provider<Set<int>>(
   (ref) => installedFrom(ref.watch(deviceIndexProvider).value ?? const {}),
 );
@@ -337,7 +337,7 @@ final homeShelvesProvider = FutureProvider<HomeShelves>((ref) async {
   );
 });
 
-/// Gry jednego systemu po chipie filtra i sortowaniu.
+/// Games of one system after the filter chip and sorting.
 final systemGamesProvider =
     FutureProvider.family<List<GameSummary>, String>((ref, code) async {
   final snapshot = await ref.watch(librarySnapshotProvider.future);
@@ -353,7 +353,7 @@ final systemGamesProvider =
   );
 });
 
-/// Wyniki szukajki po całej bibliotece (ekran główny).
+/// Search results across the whole library (home screen).
 final gamesProvider = FutureProvider<List<GameSummary>>((ref) async {
   final snapshot = await ref.watch(librarySnapshotProvider.future);
   final search = ref.watch(searchQueryProvider).trim().toLowerCase();

@@ -62,7 +62,7 @@ void main() {
     // Riverpod 3 wraps a provider's exception, so match on the message.
     expect(
       () => container.read(apiClientProvider),
-      throwsA(predicate((e) => e.toString().contains('Brak sesji'))),
+      throwsA(predicate((e) => e.toString().contains('No session'))),
     );
 
     await container

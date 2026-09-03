@@ -32,15 +32,15 @@ void main() {
     await tester.enterText(fields.at(0), server);
     await tester.enterText(fields.at(1), 'e2e');
     await tester.enterText(fields.at(2), 'e2e-pass-123');
-    await tester.tap(find.text('Zaloguj'));
+    await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle(const Duration(seconds: 10));
 
     await pumpUntil(tester, find.text('Super Mario World'));
 
-    // Nagłówek półki systemu prowadzi do widoku systemu. Ekran główny ma
-    // wiele Scrollable (pionowa lista + pozioma lista w każdej półce) —
-    // trzeba wskazać zewnętrzną listę, bo domyślny find.byType(Scrollable)
-    // jest niejednoznaczny.
+    // The system shelf header leads to the system view. The home screen has
+    // many Scrollables (a vertical list + a horizontal list in each shelf) —
+    // the outer list needs to be targeted explicitly, because the default
+    // find.byType(Scrollable) is ambiguous.
     await tester.scrollUntilVisible(
       find.text('Nintendo Switch'),
       200,
@@ -53,8 +53,8 @@ void main() {
 
     await tester.tap(find.text('Hollow Knight').first);
     await tester.pumpAndSettle();
-    await pumpUntil(tester, find.text('Aktualizacja'));
-    expect(find.text('Aktualizacja'), findsOneWidget);
+    await pumpUntil(tester, find.text('Update'));
+    expect(find.text('Update'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('back-button')));
     await tester.pumpAndSettle();
@@ -63,8 +63,8 @@ void main() {
     await pumpUntil(tester, find.byKey(const Key('nav-settings')));
     await tester.tap(find.byKey(const Key('nav-settings')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Wyloguj'));
+    await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
-    expect(find.text('Zaloguj'), findsOneWidget);
+    expect(find.text('Sign in'), findsOneWidget);
   });
 }

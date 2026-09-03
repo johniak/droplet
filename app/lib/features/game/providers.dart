@@ -10,14 +10,14 @@ final gameDetailProvider = FutureProvider.family<GameDetail, int>(
   (ref, id) => ref.watch(apiClientProvider).fetchGame(id),
 );
 
-/// Widok na jedną grę z indeksu urządzenia — sam indeks liczy się raz dla
-/// całej biblioteki, tu zostaje tylko odczyt (i punkt zaczepienia dla testów).
+/// A view of one game from the device index — the index itself is computed
+/// once for the whole library, here only the read is left (and a test hook).
 final localStateProvider = FutureProvider.family<LocalGameState, int>(
   (ref, id) async =>
       (await ref.watch(deviceIndexProvider.future))[id] ?? kNotInstalled,
 );
 
-/// Wolne bajty na wolumenie katalogu ROMów; null = nieznane (pomijamy).
+/// Free bytes on the ROM folder's volume; null = unknown (we skip it).
 final freeBytesProvider = FutureProvider.family<int?, String>(
   (ref, path) => ref.watch(downloaderPortProvider).freeBytes(path),
 );

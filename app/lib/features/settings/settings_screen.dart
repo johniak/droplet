@@ -30,7 +30,7 @@ class SettingsScreen extends ConsumerWidget {
             padding: EdgeInsets.fromLTRB(16, 10, 16, listBottomPad(context)),
             children: const [
               Text(
-                'Ustawienia',
+                'Settings',
                 style: TextStyle(
                   color: kText,
                   fontSize: 24,
@@ -40,11 +40,11 @@ class SettingsScreen extends ConsumerWidget {
               ),
               SizedBox(height: 12),
               _ServerCard(),
-              SectionLabel('Pobieranie'),
+              SectionLabel('Downloads'),
               _DownloadCard(),
-              SectionLabel('Urządzenie'),
+              SectionLabel('Device'),
               _DeviceCard(),
-              SectionLabel('O aplikacji'),
+              SectionLabel('About'),
               GlassPanel(
                 padding: EdgeInsets.zero,
                 child: SettingsRow(
@@ -58,7 +58,7 @@ class SettingsScreen extends ConsumerWidget {
       );
 }
 
-/// Jeden wiersz karty ustawień.
+/// One row of a settings card.
 class SettingsRow extends StatelessWidget {
   const SettingsRow({
     super.key,
@@ -118,6 +118,8 @@ class _Divider extends StatelessWidget {
       const Divider(height: 1, indent: 14, endIndent: 14);
 }
 
+String _count(int n, String noun) => n == 1 ? '1 $noun' : '$n ${noun}s';
+
 class _ServerCard extends ConsumerWidget {
   const _ServerCard();
 
@@ -128,7 +130,8 @@ class _ServerCard extends ConsumerWidget {
     final snapshot = ref.watch(librarySnapshotProvider).value;
     final counts = snapshot == null
         ? ''
-        : ' · ${snapshot.games.length} gier · ${snapshot.systems.length} systemów';
+        : ' · ${_count(snapshot.games.length, 'game')}'
+            ' · ${_count(snapshot.systems.length, 'system')}';
     return GlassPanel(
       padding: EdgeInsets.zero,
       child: Column(
@@ -150,14 +153,14 @@ class _ServerCard extends ConsumerWidget {
                       ],
               ),
             ),
-            title: offline ? 'Offline' : 'Połączono',
+            title: offline ? 'Offline' : 'Connected',
             subtitle: session == null
-                ? 'Nie zalogowano'
+                ? 'Not signed in'
                 : '${session.serverUrl}$counts',
           ),
           const _Divider(),
           SettingsRow(
-            title: 'Wyloguj',
+            title: 'Sign out',
             trailing: const Icon(Icons.logout, size: 18, color: kTextDim),
             onTap: () => ref.read(sessionProvider.notifier).signOut(),
           ),
@@ -181,27 +184,27 @@ class _DownloadCard extends ConsumerWidget {
         data: (data) => Column(
           children: [
             SettingsRow(
-              title: 'Katalog ROMów',
+              title: 'ROM folder',
               subtitle: data.baseDir,
               trailing: TextButton(
                 onPressed: () => _editBaseDir(context, ref, data.baseDir),
-                child: const Text('Zmień'),
+                child: const Text('Change'),
               ),
             ),
             const _Divider(),
             _PermissionRow(baseDir: data.baseDir),
             const _Divider(),
             SettingsRow(
-              title: 'Foldery per system',
+              title: 'Folders per system',
               subtitle: data.systemDirs.isEmpty
-                  ? 'domyślne'
+                  ? 'default'
                   : data.systemDirs.keys.join(', '),
               trailing: const Icon(Icons.chevron_right, color: kTextDim),
               onTap: () => context.go('/settings/folders'),
             ),
             const _Divider(),
             SettingsRow(
-              title: 'Pobieraj tylko po Wi‑Fi',
+              title: 'Download over Wi‑Fi only',
               trailing: Switch(
                 key: const Key('wifi-only'),
                 value: data.wifiOnly,
@@ -234,9 +237,9 @@ class _DownloadCard extends ConsumerWidget {
   }
 }
 
-/// Osobny widget na dialog: kontroler żyje w jego własnym `State`, więc jest
-/// zwalniany dopiero po pełnym zdjęciu route'a — nie w trakcie animacji
-/// zamykania, co powodowałoby użycie już zdysponowanego kontrolera.
+/// A separate widget for the dialog: the controller lives in its own `State`,
+/// so it is disposed only once the route is fully popped — not during the
+/// closing animation, which would mean using an already disposed controller.
 class _BaseDirDialog extends StatefulWidget {
   const _BaseDirDialog({required this.current});
 
@@ -257,24 +260,24 @@ class _BaseDirDialogState extends State<_BaseDirDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: const Text('Katalog ROMów'),
+        title: const Text('ROM folder'),
         content: TextField(
           key: const Key('base-dir-field'),
           controller: _controller,
           autofocus: true,
           decoration: const InputDecoration(
-            helperText: 'Katalog RetroArch na telefonie',
+            helperText: 'RetroArch folder on the phone',
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Anuluj'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () =>
                 Navigator.of(context).pop(_controller.text.trim()),
-            child: const Text('Zapisz'),
+            child: const Text('Save'),
           ),
         ],
       );
@@ -322,14 +325,14 @@ class _PermissionRowState extends ConsumerState<_PermissionRow> {
 
   @override
   Widget build(BuildContext context) => SettingsRow(
-        title: 'Dostęp do plików',
-        subtitle: _granted == true ? 'Przyznany' : 'Brak',
+        title: 'File access',
+        subtitle: _granted == true ? 'Granted' : 'None',
         trailing: _granted == true
             ? const Icon(Icons.check_rounded, color: kAccent, size: 18)
             : TextButton(
                 key: const Key('grant-permission'),
                 onPressed: _grant,
-                child: const Text('Przyznaj'),
+                child: const Text('Grant'),
               ),
       );
 }
@@ -348,7 +351,7 @@ class _DeviceCard extends ConsumerWidget {
       child: Column(
         children: [
           SettingsRow(
-            title: 'Wolne miejsce',
+            title: 'Free space',
             trailing: Text(
               free == null ? '—' : formatBytes(free),
               style: const TextStyle(color: kTextDim),
@@ -362,16 +365,13 @@ class _DeviceCard extends ConsumerWidget {
   }
 }
 
-String pluralPositions(int n) => switch (n % 10) {
-      1 when n % 100 != 11 => '$n pozycja',
-      2 || 3 || 4 when n % 100 < 10 || n % 100 > 20 => '$n pozycje',
-      _ => '$n pozycji',
-    };
+String pluralPositions(int n) => n == 1 ? '1 item' : '$n items';
 
-/// Usuwa tylko wpisy leżące pod katalogiem ROMów — i to nie byle jakie:
-/// `..` w ścieżce wyprowadziłoby kasowanie poza drzewo mimo pasującego
-/// prefiksu, a sam katalog systemu nigdy nie jest „nieznanym wpisem" (byłby
-/// nim tylko wskutek błędnego nadpisania i zabrałby ze sobą całą kolekcję).
+/// Deletes only entries under the ROM folder — and not just any of them:
+/// a `..` in the path would take the delete outside the tree despite a
+/// matching prefix, and a system folder itself is never an "unknown entry"
+/// (it would be one only after a bad overwrite, and would take the whole
+/// collection with it).
 void deleteUnknown(
   List<UnknownEntry> entries,
   StorageSettings settings,
@@ -392,8 +392,8 @@ void deleteUnknown(
   }
 }
 
-/// Ścieżka pokazywana użytkownikowi: względem katalogu ROMów, a gdy wpis leży
-/// poza nim (i tak nie zostanie usunięty) — w całości.
+/// The path shown to the user: relative to the ROM folder, or in full when
+/// the entry lies outside it (and will not be deleted anyway).
 String displayPath(String path, String baseDir) =>
     path.startsWith('$baseDir/') ? path.substring(baseDir.length + 1) : path;
 
@@ -401,8 +401,8 @@ String _summary(List<UnknownEntry> entries) =>
     '${pluralPositions(entries.length)} · '
     '${formatBytes(entries.fold(0, (a, e) => a + e.bytes))}';
 
-/// Pliki i katalogi w drzewie ROMów, których nie zna żadna gra z biblioteki —
-/// zwykle pozostałości po układzie sprzed katalogów per gra.
+/// Files and folders in the ROM tree that no game in the library knows —
+/// usually leftovers from the layout before per-game folders.
 class _UnknownRow extends ConsumerWidget {
   const _UnknownRow({required this.settings});
 
@@ -411,15 +411,15 @@ class _UnknownRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unknown = ref.watch(unknownOnDeviceProvider);
-    // Bez ustawień (jeszcze się ładują) nie ma czego usuwać, więc wiersz nie
-    // jest klikalny — i nie udaje klikalnego szewronem.
+    // Without settings (still loading) there is nothing to delete, so the row
+    // is not tappable — and does not fake it with a chevron.
     final open = unknown.isEmpty || settings == null
         ? null
         : () => _showUnknown(context, ref, unknown, settings!);
     return SettingsRow(
       key: const Key('unknown-on-device'),
-      title: 'Nieznane na urządzeniu',
-      subtitle: unknown.isEmpty ? 'Brak' : _summary(unknown),
+      title: 'Unknown on device',
+      subtitle: unknown.isEmpty ? 'None' : _summary(unknown),
       trailing: open == null
           ? null
           : const Icon(Icons.chevron_right, color: kTextDim),
@@ -435,15 +435,15 @@ class _UnknownRow extends ConsumerWidget {
   ) async {
     final baseDir = settings.baseDir;
     final shown = unknown.take(50).toList();
-    // „Nieznane" znaczy „nie ma tego w manifeście" — a przy pustym manifeście
-    // (biblioteka jeszcze nie pobrana) nieznane jest *wszystko*. Kasowanie
-    // hurtem skasowałoby wtedy całą kolekcję, więc przycisk jest wyłączony.
+    // "Unknown" means "not in the manifest" — and with an empty manifest
+    // (library not synced yet) *everything* is unknown. A bulk delete would
+    // then wipe the whole collection, so the button is disabled.
     final snapshot = ref.read(librarySnapshotProvider).value;
     final manifest = snapshot?.manifest ?? const [];
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Nieznane na urządzeniu'),
+        title: const Text('Unknown on device'),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView(
@@ -455,7 +455,7 @@ class _UnknownRow extends ConsumerWidget {
               ),
               if (manifest.isEmpty)
                 const Text(
-                  'Najpierw pobierz bibliotekę z serwera',
+                  'Sync the library from the server first',
                   style: TextStyle(color: kDanger, fontSize: 13),
                 ),
               const SizedBox(height: 8),
@@ -466,7 +466,7 @@ class _UnknownRow extends ConsumerWidget {
                 ),
               if (unknown.length > shown.length)
                 Text(
-                  '… i ${unknown.length - shown.length} więcej',
+                  '… and ${unknown.length - shown.length} more',
                   style: const TextStyle(color: kTextDim, fontSize: 13),
                 ),
             ],
@@ -475,14 +475,14 @@ class _UnknownRow extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Zamknij'),
+            child: const Text('Close'),
           ),
           TextButton(
             key: const Key('unknown-delete-all'),
             onPressed: manifest.isEmpty
                 ? null
                 : () => Navigator.of(context).pop(true),
-            child: const Text('Usuń wszystko'),
+            child: const Text('Delete all'),
           ),
         ],
       ),

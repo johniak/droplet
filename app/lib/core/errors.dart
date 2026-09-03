@@ -6,7 +6,7 @@ import 'downloads/space.dart';
 /// One place that turns exceptions into something a person can act on.
 String humanizeError(Object error) {
   if (error is UnauthorizedException) {
-    return 'Sesja wygasła — zaloguj się ponownie';
+    return 'Session expired, sign in again';
   }
   if (error is InsufficientSpaceException) return error.toString();
   if (error is DioException &&
@@ -16,9 +16,9 @@ String humanizeError(Object error) {
         DioExceptionType.receiveTimeout,
         DioExceptionType.sendTimeout,
       }.contains(error.type)) {
-    return 'Nie mogę połączyć z serwerem — sprawdź adres i sieć';
+    return "Can't reach the server, check the address and network";
   }
-  return 'Coś poszło nie tak';
+  return 'Something went wrong';
 }
 
 /// How many ids are new compared to the previous refresh. An empty [previous]

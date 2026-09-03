@@ -26,7 +26,7 @@ class LocalGameState {
   final List<String> presentPaths;
 }
 
-/// Stan gry, o której skan nic nie wie — nic na dysku, nic do aktualizacji.
+/// State of a game the scan knows nothing about — nothing on disk, no update.
 const kNotInstalled = LocalGameState(
   status: InstallStatus.none,
   updateAvailable: false,

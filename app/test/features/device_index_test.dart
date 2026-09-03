@@ -24,9 +24,9 @@ const _systems = [
   SystemModel(id: 1, code: 'snes', name: 'SNES', gameCount: 2),
 ];
 
-/// Kilka obrotów pętli zdarzeń, z odczytem indeksu w każdym: Riverpod
-/// przelicza unieważniony provider dopiero, gdy ktoś go czyta — w aplikacji
-/// robią to widgety, w teście musi to zrobić pętla.
+/// A few turns of the event loop, reading the index on each one: Riverpod
+/// only recomputes an invalidated provider once something reads it — in the
+/// app that's the widgets, in the test the loop has to do it.
 Future<void> settle(ProviderContainer c, [int turns = 5]) async {
   for (var i = 0; i < turns; i++) {
     await Future<void>.delayed(Duration.zero);
@@ -187,7 +187,7 @@ void main() {
     c.invalidate(storageSettingsProvider);
     await settle(c);
 
-    // Ten sam notifier: indeks się nie unieważnił, tylko przeliczył.
+    // Same notifier: the index wasn't invalidated, only recomputed.
     expect(identical(c.read(deviceIndexProvider.notifier), notifier), isTrue);
     expect(
       c.read(deviceIndexProvider).value![2]!.status,
@@ -208,7 +208,7 @@ void main() {
     await c.read(deviceIndexProvider.future);
     expect(scans, 1);
 
-    // Unieważnienie daje dwa powiadomienia (loading + dane) — skan ma być jeden.
+    // Invalidation fires two notifications (loading + data) — but the scan should be one.
     c.invalidate(storageSettingsProvider);
     await settle(c);
     expect(scans, 2);
@@ -247,19 +247,19 @@ void main() {
     addTearDown(c.dispose);
 
     final built = c.read(deviceIndexProvider.future);
-    // Snapshot już wczytany, `build` wisi na ustawieniach — teraz zmieniamy
-    // bibliotekę, czyli zależność, o której pierwszy skan się nie dowie.
+    // Snapshot already loaded, `build` is waiting on the settings — now we
+    // change the library, a dependency the first scan won't find out about.
     await settle(c);
     c.invalidate(librarySnapshotProvider);
     await settle(c);
-    expect(scans, 0, reason: 'pierwszy skan jeszcze nie ruszył');
+    expect(scans, 0, reason: 'the first scan has not started yet');
 
     settings.complete(StorageSettings(root.path, const {}));
     await built;
     await settle(c);
-    // Skan z `build` plus doskan zlecony przez zmianę z czasu budowania —
-    // bez niej indeks stałby na nieaktualnej bibliotece (patrz test wyżej:
-    // zwykły `build` liczy dokładnie jeden skan).
+    // The scan from `build` plus a rescan triggered by the change during
+    // build — without it the index would sit on a stale library (see the
+    // test above: a plain `build` counts exactly one scan).
     expect(scans, 2);
   });
 
@@ -267,15 +267,15 @@ void main() {
     put('snes/Zelda (USA)/a.sfc');
     var offline = true;
     final c = ProviderContainer(
-      // Riverpod 3 sam ponawia nieudany build providera (i trzyma go wtedy w
-      // `AsyncLoading`); w teście chcemy zobaczyć błąd od razu.
+      // Riverpod 3 retries a failed provider build on its own (keeping it in
+      // `AsyncLoading` meanwhile); in the test we want to see the error right away.
       retry: (_, __) => null,
       overrides: [
         storageSettingsProvider.overrideWith(
           (ref) async => StorageSettings(root.path, const {}),
         ),
         librarySnapshotProvider.overrideWith((ref) async {
-          if (offline) throw Exception('brak sieci i cache');
+          if (offline) throw Exception('no network and no cache');
           return LibrarySnapshot(
             systems: _systems,
             games: const [],

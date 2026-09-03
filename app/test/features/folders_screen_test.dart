@@ -19,7 +19,7 @@ GoRouter _router() => GoRouter(
       routes: [
         GoRoute(
           path: '/settings',
-          builder: (_, __) => const Scaffold(body: Text('Ustawienia')),
+          builder: (_, __) => const Scaffold(body: Text('Settings')),
           routes: [
             GoRoute(
               path: 'folders',
@@ -48,13 +48,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Foldery per system'), findsOneWidget);
+    expect(find.text('Folders per system'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('system-dir-snes')), 'SNES');
     await tester.pumpAndSettle();
     expect((await repo.load()).systemDirs['snes'], 'SNES');
     await tester.tap(find.byKey(const Key('back-button')));
     await tester.pumpAndSettle();
-    expect(find.text('Ustawienia'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
   });
 
   testWidgets('a separator or .. in the field never reaches the settings', (
@@ -74,15 +74,15 @@ void main() {
     final field = find.byKey(const Key('system-dir-snes'));
     await tester.enterText(field, 'SNES');
     await tester.pumpAndSettle();
-    // Pole zapisuje się znak po znaku, więc „..” i separator muszą po prostu
-    // odpaść — inaczej katalog systemu wyszedłby poza drzewo ROMów.
+    // The field saves character by character, so ".." and a separator must
+    // simply be dropped — otherwise the system folder could escape the ROM tree.
     await tester.enterText(field, '..');
     await tester.pumpAndSettle();
     expect((await repo.load()).systemDirs['snes'], 'SNES');
     await tester.enterText(field, 'a/b');
     await tester.pumpAndSettle();
     expect((await repo.load()).systemDirs['snes'], 'SNES');
-    // Puste pole to brak nadpisania, a nie katalog o pustej nazwie.
+    // An empty field means no override, not a folder with an empty name.
     await tester.enterText(field, '');
     await tester.pumpAndSettle();
     expect((await repo.load()).systemDirs.containsKey('snes'), isFalse);

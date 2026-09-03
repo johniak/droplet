@@ -114,8 +114,8 @@ void main() {
   });
 
   test('gameDetailProvider reads the detail through the API client', () async {
-    // Jedyny test dotykający prawdziwego ciała providera — ekrany i odznaki
-    // zawsze go nadpisują.
+    // The only test touching the real provider body — screens and badges
+    // always override it.
     final dio = Dio(BaseOptions(baseUrl: 'http://nas:8000'));
     DioAdapter(dio: dio).onGet(
       '/api/games/7/',
@@ -160,10 +160,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Hollow Knight'), findsWidgets);
     expect(find.text('Switch'), findsOneWidget);
-    expect(find.text('Aktualizacja'), findsOneWidget);
-    expect(find.text('najnowsza domyślnie'), findsOneWidget);
-    expect(find.text('Pobierz · 3 B'), findsOneWidget);
-    expect(find.text('Wolne 5.0 GB · zapis: /roms/switch'), findsOneWidget);
+    expect(find.text('Update'), findsOneWidget);
+    expect(find.text('newest by default'), findsOneWidget);
+    expect(find.text('Download · 3 B'), findsOneWidget);
+    expect(find.text('5.0 GB free · saving to: /roms/switch'), findsOneWidget);
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
     await tester.pumpAndSettle();
     expect(find.textContaining('v196608'), findsOneWidget);
@@ -178,7 +178,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byType(Checkbox).last);
     await tester.pumpAndSettle();
-    expect(find.text('Pobierz · 1 B'), findsOneWidget);
+    expect(find.text('Download · 1 B'), findsOneWidget);
   });
 
   testWidgets('tapping the row itself also toggles the file', (tester) async {
@@ -187,14 +187,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('upd.nsp'));
     await tester.pumpAndSettle();
-    expect(find.text('Pobierz · 1 B'), findsOneWidget);
+    expect(find.text('Download · 1 B'), findsOneWidget);
   });
 
   testWidgets('unknown free space shows only the directory', (tester) async {
     await _phoneSurface(tester);
     await tester.pumpWidget(_screen(_detail));
     await tester.pumpAndSettle();
-    expect(find.text('zapis: /roms/switch'), findsOneWidget);
+    expect(find.text('saving to: /roms/switch'), findsOneWidget);
   });
 
   testWidgets('discs and support files get their own labels', (tester) async {
@@ -230,8 +230,8 @@ void main() {
     );
     await tester.pumpWidget(_screen(multiDisc));
     await tester.pumpAndSettle();
-    expect(find.text('Płyta 1'), findsOneWidget);
-    expect(find.text('Pozostałe'), findsOneWidget);
+    expect(find.text('Disc 1'), findsOneWidget);
+    expect(find.text('Other'), findsOneWidget);
   });
 
   testWidgets('installed: pill and ghost delete only', (tester) async {
@@ -248,9 +248,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Zainstalowana'), findsOneWidget);
-    expect(find.text('Usuń z urządzenia'), findsOneWidget);
-    expect(find.textContaining('Pobierz'), findsNothing);
+    expect(find.text('Installed'), findsOneWidget);
+    expect(find.text('Delete from device'), findsOneWidget);
+    expect(find.textContaining('Download'), findsNothing);
   });
 
   testWidgets('update available: update button and secondary delete', (
@@ -269,9 +269,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Jest aktualizacja'), findsOneWidget);
-    expect(find.text('Pobierz aktualizację · 2 B'), findsOneWidget);
-    expect(find.text('Usuń z urządzenia'), findsOneWidget);
+    expect(find.text('Update available'), findsOneWidget);
+    expect(find.text('Download update · 2 B'), findsOneWidget);
+    expect(find.text('Delete from device'), findsOneWidget);
   });
 
   testWidgets('partial without update shows the partial pill', (tester) async {
@@ -288,7 +288,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Częściowo'), findsOneWidget);
+    expect(find.text('Partial'), findsOneWidget);
   });
 
   testWidgets('offline disables download', (tester) async {
@@ -297,7 +297,7 @@ void main() {
       _screen(_detail, overrides: [isOfflineProvider.overrideWithValue(true)]),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Offline — pobieranie niedostępne'), findsOneWidget);
+    expect(find.text('Offline — downloads unavailable'), findsOneWidget);
   });
 
   testWidgets('with a cover the hero renders two images', (tester) async {
@@ -335,10 +335,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Ponów'), findsOneWidget);
-    await tester.tap(find.text('Ponów'));
+    expect(find.text('Retry'), findsOneWidget);
+    await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
-    expect(find.text('Ponów'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
   });
 
   testWidgets('local state error is humanized', (tester) async {
@@ -351,7 +351,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Coś poszło nie tak'), findsOneWidget);
+    expect(find.text('Something went wrong'), findsOneWidget);
   });
 
   testWidgets('loading skeleton', (tester) async {
@@ -366,8 +366,8 @@ void main() {
     );
     await tester.pump();
     expect(find.byType(PulseBox), findsWidgets);
-    // Ekran nie ma AppBara — bez tego przycisku szkielet byłby ślepym
-    // zaułkiem na nawigacji trójprzyciskowej.
+    // The screen has no AppBar — without this button the skeleton would be a
+    // dead end for three-button navigation.
     expect(find.byKey(const Key('back-button')), findsOneWidget);
   });
 
@@ -381,7 +381,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Coś poszło nie tak'), findsOneWidget);
+    expect(find.text('Something went wrong'), findsOneWidget);
     await tester.tap(find.byKey(const Key('back-button')));
     await tester.pumpAndSettle();
     expect(find.text('Home'), findsOneWidget);

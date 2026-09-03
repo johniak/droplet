@@ -27,7 +27,7 @@ GoRouter _router() => GoRouter(
             GoRoute(
               path: 'game/:id',
               builder: (_, s) =>
-                  Scaffold(body: Text('Gra ${s.pathParameters['id']}')),
+                  Scaffold(body: Text('Game ${s.pathParameters['id']}')),
             ),
           ],
         ),
@@ -137,17 +137,17 @@ void main() {
         '500 B / 1000 B · 2.0 KB/s');
     expect(progressSubtitle(at(GameProgressStatus.running)), '500 B / 1000 B');
     expect(progressSubtitle(at(GameProgressStatus.paused)),
-        'Wstrzymane · 500 B / 1000 B');
+        'Paused · 500 B / 1000 B');
     expect(progressSubtitle(at(GameProgressStatus.failed)),
-        'Błąd pobierania — ponów');
-    expect(progressSubtitle(at(GameProgressStatus.complete)), 'Gotowe · 1000 B');
+        'Download failed — retry');
+    expect(progressSubtitle(at(GameProgressStatus.complete)), 'Done · 1000 B');
   });
 
   testWidgets('empty state', (tester) async {
     await tester.pumpWidget(_screen(const [], manager));
     await tester.pumpAndSettle();
-    expect(find.text('Brak pobierań'), findsOneWidget);
-    expect(find.text('Brak aktywnych'), findsOneWidget);
+    expect(find.text('No downloads'), findsOneWidget);
+    expect(find.text('Nothing active'), findsOneWidget);
   });
 
   testWidgets('header sums what is left; card opens the game', (tester) async {
@@ -155,11 +155,11 @@ void main() {
       _screen([at(GameProgressStatus.running), at(GameProgressStatus.paused, id: 8)], manager),
     );
     await tester.pumpAndSettle();
-    expect(find.text('2 aktywnych · pozostało 1000 B'), findsOneWidget);
+    expect(find.text('2 active · 1000 B left'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsNWidgets(2));
     await tester.tap(find.text('Mario').first);
     await tester.pumpAndSettle();
-    expect(find.text('Gra 7'), findsOneWidget);
+    expect(find.text('Game 7'), findsOneWidget);
   });
 
   testWidgets('pause reaches the manager', (tester) async {
@@ -237,7 +237,7 @@ void main() {
     expect(manager.progress.containsKey(7), isFalse);
   });
 
-  testWidgets('Wyczyść drops only the complete entry', (tester) async {
+  testWidgets('Clear drops only the complete entry', (tester) async {
     await startDownload(7);
     await startDownload(9);
     final completedTask = port.enqueued[0];
@@ -255,8 +255,8 @@ void main() {
     expect(manager.progress[7]?.status, GameProgressStatus.complete);
     expect(manager.progress[9]?.status, GameProgressStatus.failed);
 
-    expect(find.text('Zakończone'), findsOneWidget);
-    await tester.tap(find.text('Wyczyść'));
+    expect(find.text('Finished'), findsOneWidget);
+    await tester.tap(find.text('Clear'));
     await tester.pumpAndSettle();
     expect(manager.progress.containsKey(7), isFalse);
     expect(manager.progress.containsKey(9), isTrue);

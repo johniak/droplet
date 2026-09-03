@@ -45,10 +45,10 @@ class LibraryCache {
     );
   }
 
-  /// Zwraca `null` także wtedy, gdy plik jest, ale nie daje się przeczytać w
-  /// dzisiejszym kształcie — np. zapisany przez starszą wersję aplikacji, gdzie
-  /// gry nie miały jeszcze `folder`. Wtedy lepiej odbudować bibliotekę z
-  /// serwera niż pokazać błąd, którego użytkownik nie ma jak naprawić.
+  /// Also returns `null` when the file exists but cannot be read in today's
+  /// shape — e.g. written by an older app version where games had no `folder`
+  /// yet. Rebuilding the library from the server then beats showing an error
+  /// the user has no way to fix.
   Future<CachedLibrary?> load() async {
     if (!_file.existsSync()) return null;
     try {

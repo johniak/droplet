@@ -20,12 +20,12 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  /// Zatrzask po tożsamości snapshotu, nie po fladze bool: każde kolejne
-  /// odświeżenie biblioteki to nowy obiekt, więc nowe gry ogłaszamy znowu,
-  /// a wielokrotne przebudowy tego samego snapshotu — tylko raz.
+  /// Latched on snapshot identity, not on a bool flag: every library refresh
+  /// is a new object, so new games get announced again, while repeated
+  /// rebuilds of the same snapshot announce only once.
   LibrarySnapshot? _lastAnnounced;
 
-  /// Raz na snapshot: co przyniosło odświeżenie.
+  /// Once per snapshot: what the refresh brought in.
   void _announceNewGames(LibrarySnapshot snapshot) {
     if (identical(snapshot, _lastAnnounced)) return;
     _lastAnnounced = snapshot;
@@ -37,7 +37,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nowe w bibliotece: $count gier')),
+        SnackBar(
+          content: Text(
+            count == 1
+                ? 'New in library: 1 game'
+                : 'New in library: $count games',
+          ),
+        ),
       );
     });
   }
@@ -56,7 +62,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
               child: SearchField(
-                hint: 'Szukaj w bibliotece',
+                hint: 'Search the library',
                 onChanged: (v) =>
                     ref.read(searchQueryProvider.notifier).update(v),
               ),
@@ -69,13 +75,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   loading: () => const HomeSkeleton(),
                   error: (e, _) => _Message(
                     title: humanizeError(e),
-                    action: 'Ponów',
+                    action: 'Retry',
                     onAction: () => ref.invalidate(librarySnapshotProvider),
                   ),
                   data: (s) => s.games.isEmpty
                       ? const _Message(
-                          title: 'Nic tu nie ma',
-                          subtitle: 'Uruchom skan na serwerze.',
+                          title: 'Nothing here yet',
+                          subtitle: 'Run a scan on the server.',
                         )
                       : query.isEmpty
                           ? const _Shelves()
@@ -133,7 +139,7 @@ class _OfflinePill extends StatelessWidget {
             SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Tryb offline — pokazuję ostatnio pobraną bibliotekę',
+                'Offline — showing the last synced library',
                 style: TextStyle(color: kTextDim, fontSize: 12),
               ),
             ),
@@ -151,20 +157,20 @@ class _Shelves extends ConsumerWidget {
     if (shelves == null) return const HomeSkeleton();
     return ListView(
       padding: EdgeInsets.only(bottom: listBottomPad(context)),
-      // Stałe klucze: półka „Na urządzeniu" pojawia się dopiero, gdy odznaki
-      // rozwiążą stan lokalny, więc bez nich wstawienie jej w środek listy
-      // przesuwałoby stan (pozycję scrolla) półek systemowych o jedno miejsce.
+      // Stable keys: the "On device" shelf appears only once the badges
+      // resolve local state, so without them inserting it mid-list would shift
+      // the state (scroll position) of the system shelves by one slot.
       children: [
         Shelf(
           key: const ValueKey('shelf-recent'),
-          title: 'Ostatnio dodane',
+          title: 'Recently added',
           games: shelves.recent,
           cardWidth: 120,
         ),
         if (shelves.installed.isNotEmpty)
           Shelf(
             key: const ValueKey('shelf-installed'),
-            title: 'Na urządzeniu',
+            title: 'On device',
             games: shelves.installed,
           ),
         for (final shelf in shelves.systems)
@@ -189,8 +195,8 @@ class _Results extends ConsumerWidget {
     final games = ref.watch(gamesProvider).value ?? const [];
     if (games.isEmpty) {
       return const _Message(
-        title: 'Brak wyników',
-        subtitle: 'Spróbuj innego tytułu.',
+        title: 'No results',
+        subtitle: 'Try a different title.',
       );
     }
     return Column(
@@ -199,7 +205,7 @@ class _Results extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
           child: Text(
-            'Wyniki · ${games.length}',
+            'Results · ${games.length}',
             style: const TextStyle(
               color: kText,
               fontSize: 16,
@@ -257,7 +263,7 @@ class _Message extends StatelessWidget {
       );
 }
 
-/// Trzy półki z pulsujących bloków — układ stoi, zanim przyjdą dane.
+/// Three shelves of pulsing blocks — the layout stands before data lands.
 class HomeSkeleton extends StatelessWidget {
   const HomeSkeleton({super.key});
 

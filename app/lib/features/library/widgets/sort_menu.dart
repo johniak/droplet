@@ -4,20 +4,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/tokens.dart';
 import '../providers.dart';
 
-/// Sortowanie za jedną ikoną — bibliotekę przegląda się częściej, niż sortuje.
+/// Sorting behind one icon — the library gets browsed more than sorted.
 class SortMenu extends ConsumerWidget {
   const SortMenu({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => PopupMenuButton<LibrarySort>(
-        tooltip: 'Sortowanie',
+        tooltip: 'Sort',
         initialValue: ref.watch(sortProvider),
         onSelected: (v) => ref.read(sortProvider.notifier).select(v),
         itemBuilder: (_) => const [
-          PopupMenuItem(value: LibrarySort.title, child: Text('Alfabetycznie')),
+          PopupMenuItem(value: LibrarySort.title, child: Text('Alphabetical')),
           PopupMenuItem(
             value: LibrarySort.recentlyAdded,
-            child: Text('Ostatnio dodane'),
+            child: Text('Recently added'),
           ),
         ],
         child: Container(

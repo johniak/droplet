@@ -3,10 +3,10 @@ import 'package:droplet/core/downloads/local_state.dart';
 import 'package:droplet/features/library/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Indeks urządzenia bez dotykania dysku: testy podają gotową mapę stanów.
+/// A device index that never touches disk: tests supply a ready-made state map.
 ///
-/// `states` jest zwykłą mapą, więc test może ją zmienić i wywołać [refresh],
-/// żeby udać ponowny skan po pobraniu albo usunięciu plików.
+/// `states` is a plain map, so a test can mutate it and call [refresh]
+/// to simulate a rescan after a download or a delete.
 class FakeDeviceIndex extends DeviceIndexController {
   FakeDeviceIndex(this.states, {this.unknown = const []});
 
@@ -21,8 +21,8 @@ class FakeDeviceIndex extends DeviceIndexController {
   @override
   Future<Map<int, LocalGameState>> build() async => states;
 
-  /// Kopia mapy, bo `AsyncData` porównuje się po wartości — ta sama instancja
-  /// mapy nie obudziłaby obserwatorów.
+  /// A copy of the map, because `AsyncData` compares by value — the same map
+  /// instance wouldn't wake up the listeners.
   @override
   Future<void> refresh() async {
     refreshes++;

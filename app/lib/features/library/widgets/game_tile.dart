@@ -9,7 +9,7 @@ import '../../../core/session/providers.dart';
 import 'cover_image.dart';
 import 'install_badge.dart';
 
-/// Okładka 3:4 z odznaką — wspólny kawałek kafla gridu i kafla półki.
+/// A 3:4 cover with a badge — shared by the grid tile and the shelf card.
 class CoverThumb extends ConsumerWidget {
   const CoverThumb({
     super.key,
@@ -21,14 +21,14 @@ class CoverThumb extends ConsumerWidget {
   final GameSummary game;
   final bool hero;
 
-  /// Kafelek pobierania ma własny stan i 40 px szerokości — odznaka „na
-  /// urządzeniu" byłaby tam nieczytelna i myląca, więc da się ją wyłączyć.
+  /// The download card has its own state and is 40 px wide — an "on device"
+  /// badge would be unreadable and confusing there, so it can be turned off.
   final bool showBadge;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Tylko gra z okładką potrzebuje klienta — grid bez okładek nie strzela
-    // po HTTP i nie wymaga sesji w testach.
+    // Only a game with a cover needs the client — a grid without covers
+    // makes no HTTP calls and needs no session in tests.
     final client = game.hasCover ? ref.watch(apiClientProvider) : null;
     Widget image = CoverImage(
       title: game.title,
@@ -71,9 +71,9 @@ class GameTile extends StatelessWidget {
   final GameSummary game;
   final bool hero;
 
-  /// Trasa docelowa po dotknięciu — domyślnie `/game/{id}`, ale ekran
-  /// systemu (kolejny task) podaje `/system/<code>/game/<id>`, żeby stos
-  /// nawigacji wracał do listy systemu.
+  /// Target route on tap — `/game/{id}` by default, but the system screen
+  /// passes `/system/<code>/game/<id>` so the navigation stack goes back to
+  /// the system list.
   final String? route;
 
   @override

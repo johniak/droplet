@@ -41,7 +41,7 @@ final sessionProvider =
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   final session = ref.watch(sessionProvider).value;
-  if (session == null) throw StateError('Brak sesji');
+  if (session == null) throw StateError('No session');
   return ref.watch(apiClientFactoryProvider)(
     session.serverUrl,
     token: session.token,

@@ -8,7 +8,7 @@ void main() {
   test('unauthorized message', () {
     expect(
       humanizeError(UnauthorizedException()),
-      'Sesja wygasła — zaloguj się ponownie',
+      'Session expired, sign in again',
     );
   });
 
@@ -17,7 +17,7 @@ void main() {
       requestOptions: RequestOptions(path: '/'),
       type: DioExceptionType.connectionError,
     );
-    expect(humanizeError(err), contains('Nie mogę połączyć'));
+    expect(humanizeError(err), contains("Can't reach the server"));
   });
 
   test('a server error is not mistaken for a connection problem', () {
@@ -25,7 +25,7 @@ void main() {
       requestOptions: RequestOptions(path: '/'),
       response: Response(requestOptions: RequestOptions(path: '/'), statusCode: 500),
     );
-    expect(humanizeError(err), 'Coś poszło nie tak');
+    expect(humanizeError(err), 'Something went wrong');
   });
 
   test('insufficient space keeps its own message', () {
@@ -34,7 +34,7 @@ void main() {
   });
 
   test('fallback message', () {
-    expect(humanizeError(StateError('x')), 'Coś poszło nie tak');
+    expect(humanizeError(StateError('x')), 'Something went wrong');
   });
 
   test('newGameCount ignores the very first run', () {

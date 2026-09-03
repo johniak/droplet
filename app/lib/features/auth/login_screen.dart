@@ -33,7 +33,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   String? _required(String? value) =>
-      (value == null || value.trim().isEmpty) ? 'Wymagane' : null;
+      (value == null || value.trim().isEmpty) ? 'Required' : null;
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -53,9 +53,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   String _messageFor(Object e) {
-    if (e is UnauthorizedException) return 'Błędny login lub hasło';
+    if (e is UnauthorizedException) return 'Wrong username or password';
     if (e is DioException && e.response?.statusCode == 400) {
-      return 'Błędny login lub hasło';
+      return 'Wrong username or password';
     }
     return humanizeError(e);
   }
@@ -103,7 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Twoja biblioteka ROMów',
+                    'Your ROM library',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: kTextDim),
                   ),
@@ -118,7 +118,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           TextFormField(
                             controller: _server,
                             decoration: const InputDecoration(
-                              labelText: 'Adres serwera',
+                              labelText: 'Server address',
                               hintText: 'http://192.168.1.10:8000',
                             ),
                             keyboardType: TextInputType.url,
@@ -128,20 +128,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           TextFormField(
                             controller: _username,
                             decoration:
-                                const InputDecoration(labelText: 'Login'),
+                                const InputDecoration(labelText: 'Username'),
                             validator: _required,
                           ),
                           const SizedBox(height: 12),
                           TextFormField(
                             controller: _password,
                             decoration:
-                                const InputDecoration(labelText: 'Hasło'),
+                                const InputDecoration(labelText: 'Password'),
                             obscureText: true,
                             validator: _required,
                           ),
                           const SizedBox(height: 18),
                           PrimaryButton(
-                            label: 'Zaloguj',
+                            label: 'Sign in',
                             busy: _busy,
                             onPressed: _busy ? null : _submit,
                           ),
@@ -159,7 +159,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Hasło zostaje na telefonie, appka trzyma tylko token.',
+                    'Your password stays on the phone, the app keeps only a token.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: kTextDim, fontSize: 12),
                   ),

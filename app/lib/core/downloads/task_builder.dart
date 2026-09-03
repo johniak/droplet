@@ -14,8 +14,8 @@ DownloadTask buildTask({
   required String systemCode,
   required String folder,
 }) {
-  // `file.name` jest względne wobec katalogu gry, więc może nieść podkatalog
-  // (np. `disc1/FF7 (Disc 1).bin`) — plugin chce go w `directory`.
+  // `file.name` is relative to the game folder, so it can carry a subfolder
+  // (e.g. `disc1/FF7 (Disc 1).bin`) — the plugin wants it in `directory`.
   final slash = file.name.lastIndexOf('/');
   final sub = slash < 0 ? '' : '/${file.name.substring(0, slash)}';
   final base = slash < 0 ? file.name : file.name.substring(slash + 1);

@@ -51,14 +51,14 @@ void main() {
       _wrap(
         CircleIconButton(
           icon: Icons.arrow_back,
-          tooltip: 'Wstecz',
+          tooltip: 'Back',
           onPressed: () => taps++,
         ),
       ),
     );
     await tester.tap(find.byIcon(Icons.arrow_back));
     expect(taps, 1);
-    expect(find.byTooltip('Wstecz'), findsOneWidget);
+    expect(find.byTooltip('Back'), findsOneWidget);
   });
 
   testWidgets('Pill plain and accent', (tester) async {
@@ -73,12 +73,12 @@ void main() {
     var taps = 0;
     await tester.pumpWidget(
       _wrap(
-        SectionLabel('Pliki', trailing: 'Wyczyść', onTrailingTap: () => taps++),
+        SectionLabel('Files', trailing: 'Clear', onTrailingTap: () => taps++),
       ),
     );
-    await tester.tap(find.text('Wyczyść'));
+    await tester.tap(find.text('Clear'));
     expect(taps, 1);
-    await tester.pumpWidget(_wrap(const SectionLabel('Pliki')));
-    expect(find.text('Wyczyść'), findsNothing);
+    await tester.pumpWidget(_wrap(const SectionLabel('Files')));
+    expect(find.text('Clear'), findsNothing);
   });
 }

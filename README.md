@@ -1,29 +1,26 @@
 # Droplet
 
-Prywatny „Steam dla ROM-ów": serwer na TrueNAS indeksuje Twoją kolekcję gier,
-a aplikacja na Androida pokazuje ją jako bibliotekę z okładkami i pobiera gry na
-telefon. Jedno konto, jedna sieć domowa, zero chmury.
+A self-hosted, single-user "Steam for ROMs". The server runs on your NAS and
+indexes your game collection; the Android app shows it as a library with cover
+art and downloads games to the phone. One account, one home network, no cloud.
 
-> **English:** a self-hosted, single-user ROM library. The Django backend runs
-> on a NAS and scans a read-only ROM folder; the Flutter Android app browses the
-> library, downloads games and tracks what is installed on the device. Docs are
-> in Polish; the code and API are English. Bring your own legally owned dumps —
-> the repo ships no game data.
+Droplet ships no game data. Bring your own legally owned dumps.
 
-## Co robi
+## What it does
 
-- **Serwer (Django 6 + DRF)**: skanuje `<biblioteka>/<system>/<Nazwa gry>/`,
-  rozpoznaje role plików (baza, aktualizacja, DLC, płyty, playlisty), dopasowuje
-  okładki z [libretro-thumbnails](https://github.com/libretro-thumbnails) i
-  wystawia REST API z tokenem. Panel admina do ręcznych poprawek.
-- **Aplikacja (Flutter, Android)**: półki per system, wyszukiwanie, szczegóły gry,
-  pobieranie w tle z wznawianiem, skan urządzenia („co już mam"), ustawienia
-  katalogów per system.
+- **Server (Django 6 + DRF)**: scans `<library>/<system>/<Game name>/`,
+  recognises file roles (base, update, DLC, discs, playlists), matches cover art
+  from [libretro-thumbnails](https://github.com/libretro-thumbnails) and exposes
+  a token-authenticated REST API. The Django admin is there for manual fixes.
+- **App (Flutter, Android)**: shelves per system, search, game details,
+  resumable background downloads, a device scan ("what do I already have"),
+  per-system folder overrides.
 
-## Szybki start
+## Quick start
 
-Obraz backendu jest na Docker Hubie jako
-[`johniak/droplet-backend`](https://hub.docker.com/r/johniak/droplet-backend).
+The backend image is on Docker Hub as
+[`johniak/droplet-backend`](https://hub.docker.com/r/johniak/droplet-backend)
+(`linux/amd64` and `linux/arm64`).
 
 ```bash
 git clone https://github.com/johniak/droplet.git
@@ -31,50 +28,75 @@ cd droplet
 cat > .env <<ENV
 DJANGO_SECRET_KEY=$(python3 -c 'import secrets;print(secrets.token_urlsafe(50))')
 DROPLET_ADMIN_USER=jan
-DROPLET_ADMIN_PASSWORD=zmien-mnie
-LIBRARY_PATH=/sciezka/do/romow
+DROPLET_ADMIN_PASSWORD=change-me
+LIBRARY_PATH=/path/to/your/roms
 ENV
 docker compose up -d
 curl http://localhost:8000/api/health/
 ```
 
-Aplikację budujesz z `app/` przez `flutter build apk --release` i w niej wpisujesz
-adres serwera. Wdrożenie na TrueNAS SCALE, układ biblioteki, aktualizacje i backup:
-[`docs/deploy.md`](docs/deploy.md).
+Build the app from `app/` with `flutter build apk --release` and enter the
+server address on first launch. TrueNAS SCALE deployment, library layout,
+updates and backups are covered in [`docs/deploy.md`](docs/deploy.md)
+(currently in Polish).
 
-## Struktura repo
+## Library layout
 
-| Katalog | Zawartość |
+A folder is a game. Under each system folder, every sub-folder is one library
+entry and everything inside it belongs to that game. Files lying directly in a
+system folder are reported in the admin as "loose" and do not create games.
+
+```
+roms/
+├── snes/
+│   └── Super Mario World (USA)/
+│       └── Super Mario World (USA).sfc
+├── switch/
+│   └── Hollow Knight/                      # base, update and DLC together
+│       ├── Hollow Knight [0100633007D48000][v0].nsp
+│       └── Hollow Knight [UPD][0100633007D48800][v196608].nsp
+└── psx/
+    └── Final Fantasy VII (USA)/            # sub-folders are allowed
+        ├── Final Fantasy VII (USA).m3u
+        ├── disc1/ …
+        └── disc2/ …
+```
+
+The app mirrors the same layout on the phone:
+`<ROM folder>/<system>/<Game name>/<files>`.
+
+## Repository layout
+
+| Directory | Contents |
 |---|---|
-| `backend/` | Django: `library` (skaner, modele, API), `covers` (okładki), `core` (auth, health), `e2e` (testy na żywym stacku) |
-| `app/` | Flutter: `lib/core` (API, sesja, pobieranie, skan urządzenia), `lib/features` (ekrany), `integration_test` |
-| `docs/` | Wdrożenie, specyfikacje i plany milestone'ów (`docs/superpowers/`) |
-| `scripts/` | Bramki jakości: pokrycie aplikacji, e2e backendu i aplikacji, smoke |
+| `backend/` | Django: `library` (scanner, models, API), `covers` (cover art), `core` (auth, health), `e2e` (tests against a live stack) |
+| `app/` | Flutter: `lib/core` (API, session, downloads, device scan), `lib/features` (screens), `integration_test` |
+| `docs/` | Deployment guide, design specs and milestone plans (`docs/superpowers/`) |
+| `scripts/` | Quality gates: app coverage, backend and app e2e, smoke |
 
-## Rozwój
+## Development
 
-Twarde bramki: **100% pokrycia** testami po obu stronach i automatyczne e2e.
+Hard gates: **100% test coverage** on both sides plus automated e2e suites.
 
 ```bash
 # backend
 cd backend && python -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python -m pytest              # --cov-fail-under=100 w pytest.ini
+.venv/bin/python -m pytest              # --cov-fail-under=100 lives in pytest.ini
 
-# aplikacja
+# app
 cd app && flutter pub get
-./scripts/check_coverage_app.sh         # z katalogu głównego repo
+./scripts/check_coverage_app.sh         # run from the repo root
 
-# e2e (Docker + emulator Androida)
+# e2e (Docker + Android emulator)
 ./scripts/e2e_backend.sh
 E2E_SERVER=http://10.0.2.2:8800 ./scripts/e2e_app.sh
 ```
 
-Wersje obrazu na Docker Hubie buduje GitHub Actions
-(`.github/workflows/docker.yml`): `edge` z gałęzi `main`, `X.Y.Z`, `X.Y` i
-`latest` z tagów `vX.Y.Z`.
+Docker Hub images are built by GitHub Actions (`.github/workflows/docker.yml`):
+`edge` from `main`; `X.Y.Z`, `X.Y` and `latest` from `vX.Y.Z` tags.
 
-## Licencja
+## License
 
-[MIT](LICENSE). Droplet nie zawiera ani nie rozpowszechnia żadnych gier, BIOS-ów
-ani okładek; okładki pobiera w czasie działania z publicznego repozytorium
-libretro-thumbnails na Twoje własne urządzenie.
+[MIT](LICENSE). Droplet does not contain or distribute any games, BIOS files or
+cover art; covers are fetched at runtime from the public libretro-thumbnails
+repository onto your own device.

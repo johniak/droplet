@@ -23,10 +23,10 @@ Future<void> deleteLocalFiles(
     final file = File(path);
     if (file.existsSync()) file.deleteSync();
   }
-  // Katalog gry znika tylko wtedy, gdy nic w nim nie zostało — save'y i stany
-  // zapisu obok ROM-u trzymają go przy życiu. Puste podkatalogi (disc1/,
-  // disc2/ po usunięciu ROM-ów) same by go trzymały przy życiu, więc lecą
-  // pierwsze — od najgłębszego, żeby rodzic zdążył zrobić się pusty.
+  // The game folder goes only when nothing is left inside it — saves and save
+  // states sitting next to the ROM keep it alive. Empty subfolders (disc1/,
+  // disc2/ once their ROMs are gone) would keep it alive on their own, so they
+  // go first — deepest first, so the parent gets a chance to become empty.
   if (gameDir == null) return;
   final dir = Directory(gameDir);
   if (!dir.existsSync()) return;
@@ -49,7 +49,7 @@ Future<bool> confirmAndDelete(
     context: context,
     builder: (context) => AlertDialog(
       backgroundColor: kDialogBg,
-      title: const Text('Usunąć z urządzenia?', style: TextStyle(color: kText)),
+      title: const Text('Delete from device?', style: TextStyle(color: kText)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,7 +61,7 @@ Future<bool> confirmAndDelete(
             ),
           const SizedBox(height: 12),
           const Text(
-            'Save\'y i stany zapisu nie zostaną usunięte.',
+            'Saves and save states will be kept.',
             style: TextStyle(color: kAccent, fontSize: 13),
           ),
         ],
@@ -69,11 +69,11 @@ Future<bool> confirmAndDelete(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Anuluj'),
+          child: const Text('Cancel'),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Usuń'),
+          child: const Text('Delete'),
         ),
       ],
     ),

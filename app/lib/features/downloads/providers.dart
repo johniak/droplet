@@ -7,7 +7,7 @@ final _progressStreamProvider = StreamProvider<Map<int, GameProgress>>(
   (ref) => ref.watch(downloadManagerProvider).progressStream,
 );
 
-/// Wszystkie wpisy managera (aktywne i zakończone), w kolejności dodania.
+/// All manager entries (active and finished), in the order they were added.
 final activeDownloadsProvider = Provider<List<GameProgress>>((ref) {
   final live = ref.watch(_progressStreamProvider).value;
   final current = live ?? ref.watch(downloadManagerProvider).progress;
@@ -28,8 +28,8 @@ String progressSubtitle(GameProgress p) {
     GameProgressStatus.running => p.speedBytesPerSec == null
         ? bytes
         : '$bytes · ${formatBytes(p.speedBytesPerSec!)}/s',
-    GameProgressStatus.paused => 'Wstrzymane · $bytes',
-    GameProgressStatus.failed => 'Błąd pobierania — ponów',
-    GameProgressStatus.complete => 'Gotowe · ${formatBytes(p.bytesTotal)}',
+    GameProgressStatus.paused => 'Paused · $bytes',
+    GameProgressStatus.failed => 'Download failed — retry',
+    GameProgressStatus.complete => 'Done · ${formatBytes(p.bytesTotal)}',
   };
 }

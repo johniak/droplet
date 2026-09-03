@@ -52,11 +52,11 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text(defaultBaseDir), findsOneWidget);
-    expect(find.text('Przyznany'), findsOneWidget);
-    await tester.tap(find.text('Zmień'));
+    expect(find.text('Granted'), findsOneWidget);
+    await tester.tap(find.text('Change'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('base-dir-field')), '/tmp/roms');
-    await tester.tap(find.text('Zapisz'));
+    await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect((await repo.load()).baseDir, '/tmp/roms');
     expect(find.text('/tmp/roms'), findsOneWidget);
@@ -68,10 +68,10 @@ void main() {
       _screen(repo: repo, port: FakePermissionsPort(granted: true)),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Zmień'));
+    await tester.tap(find.text('Change'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('base-dir-field')), '/nope');
-    await tester.tap(find.text('Anuluj'));
+    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect((await repo.load()).baseDir, defaultBaseDir);
   });
@@ -82,22 +82,22 @@ void main() {
       _screen(repo: StorageSettingsRepository(SharedPreferencesAsync()), port: port),
     );
     await tester.pumpAndSettle();
-    // „Brak" mowi teraz i wiersz uprawnien, i „Nieznane na urzadzeniu",
-    // wiec finder celuje w konkretny wiersz.
+    // "None" is now said by both the permission row and "Unknown on
+    // device", so the finder targets a specific row.
     expect(
       find.descendant(
         of: find.ancestor(
-          of: find.text('Dostęp do plików'),
+          of: find.text('File access'),
           matching: find.byType(SettingsRow),
         ),
-        matching: find.text('Brak'),
+        matching: find.text('None'),
       ),
       findsOneWidget,
     );
     await tester.tap(find.byKey(const Key('grant-permission')));
     await tester.pumpAndSettle();
     expect(port.requests, 1);
-    expect(find.text('Przyznany'), findsOneWidget);
+    expect(find.text('Granted'), findsOneWidget);
   });
 
   testWidgets('wifi-only switch persists', (tester) async {
@@ -137,6 +137,6 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Coś poszło nie tak'), findsOneWidget);
+    expect(find.text('Something went wrong'), findsOneWidget);
   });
 }

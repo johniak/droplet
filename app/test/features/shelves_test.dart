@@ -70,8 +70,8 @@ void main() {
       ],
     );
     addTearDown(container.dispose);
-    // Zbiory id czyta się synchronicznie z indeksu, więc najpierw czekamy na
-    // jego pierwszy „skan".
+    // Id sets are read synchronously from the index, so we first wait for
+    // its first "scan".
     await container.read(deviceIndexProvider.future);
     container.read(systemFilterProvider.notifier).select(SystemFilter.installed);
     expect(

@@ -14,6 +14,6 @@ class InsufficientSpaceException implements Exception {
 
   @override
   String toString() =>
-      'Za mało miejsca: potrzeba ${formatBytes(needed)}, '
-      'wolne ${formatBytes(free)}';
+      'Not enough space: need ${formatBytes(needed)}, '
+      '${formatBytes(free)} free';
 }

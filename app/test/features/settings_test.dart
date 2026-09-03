@@ -27,8 +27,8 @@ const systems = [
   SystemModel(id: 2, code: 'psx', name: 'PSX', gameCount: 1),
 ];
 
-/// Manifest niepusty = biblioteka znana, więc „nieznane" naprawdę znaczy
-/// „zbędne" i wolno je kasować.
+/// A non-empty manifest means the library is known, so "unknown" really
+/// means "redundant" and it's fine to delete it.
 final knownLibrary = [
   ManifestEntry(
     gameId: 1,
@@ -51,7 +51,7 @@ GoRouter _router() => GoRouter(
               routes: [
                 GoRoute(
                   path: 'folders',
-                  builder: (_, __) => const Scaffold(body: Text('Foldery')),
+                  builder: (_, __) => const Scaffold(body: Text('Folders')),
                 ),
               ],
             ),
@@ -126,14 +126,14 @@ void main() {
     final repo = await _signedIn();
     await tester.pumpWidget(_screen(repo: repo));
     await tester.pumpAndSettle();
-    expect(find.text('Ustawienia'), findsOneWidget);
-    expect(find.text('Połączono'), findsOneWidget);
-    expect(find.text('http://nas:8000 · 3 gier · 2 systemów'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Connected'), findsOneWidget);
+    expect(find.text('http://nas:8000 · 3 games · 2 systems'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Droplet $appVersion'), 200);
     expect(find.text('Droplet $appVersion'), findsOneWidget);
     expect(find.text('API v1'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Wyloguj'), -200);
-    await tester.tap(find.text('Wyloguj'));
+    await tester.scrollUntilVisible(find.text('Sign out'), -200);
+    await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
     expect(await repo.load(), isNull);
   });
@@ -159,16 +159,16 @@ void main() {
       _screen(repo: SessionRepository(MemoryKeyValueStore())),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('Nie zalogowano'), findsOneWidget);
+    expect(find.textContaining('Not signed in'), findsOneWidget);
   });
 
   testWidgets('folders row opens the sub-screen', (tester) async {
     await tester.pumpWidget(_screen(repo: await _signedIn()));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Foldery per system'), 200);
-    await tester.tap(find.text('Foldery per system'));
+    await tester.scrollUntilVisible(find.text('Folders per system'), 200);
+    await tester.tap(find.text('Folders per system'));
     await tester.pumpAndSettle();
-    expect(find.text('Foldery'), findsOneWidget);
+    expect(find.text('Folders'), findsOneWidget);
   });
 
   testWidgets('folders subtitle lists configured system codes', (
@@ -223,15 +223,15 @@ void main() {
       find.byKey(const Key('unknown-on-device')),
       200,
     );
-    expect(find.text('2 pozycje · 5 B'), findsOneWidget);
+    expect(find.text('2 items · 5 B'), findsOneWidget);
     await tester.tap(find.byKey(const Key('unknown-on-device')));
     await tester.pumpAndSettle();
-    // Podsumowanie także w oknie — użytkownik widzi skalę kasowania tam, gdzie
-    // klika, a nie tylko w wierszu za oknem.
+    // The summary also shows in the dialog — the user sees the scale of the
+    // deletion where they click, not just in the row behind the dialog.
     expect(
       find.descendant(
         of: find.byType(AlertDialog),
-        matching: find.text('2 pozycje · 5 B'),
+        matching: find.text('2 items · 5 B'),
       ),
       findsOneWidget,
     );
@@ -241,7 +241,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(stray.existsSync(), isFalse);
     expect(strayDir.existsSync(), isFalse);
-    expect(index.refreshes, 1, reason: 'po usunięciu indeks ma się przeliczyć');
+    expect(index.refreshes, 1, reason: 'the index should refresh after deleting');
   });
 
   testWidgets('an empty manifest disables deleting everything', (tester) async {
@@ -276,7 +276,7 @@ void main() {
     );
     await tester.tap(find.byKey(const Key('unknown-on-device')));
     await tester.pumpAndSettle();
-    expect(find.text('Najpierw pobierz bibliotekę z serwera'), findsOneWidget);
+    expect(find.text('Sync the library from the server first'), findsOneWidget);
     final button = tester.widget<TextButton>(
       find.byKey(const Key('unknown-delete-all')),
     );
@@ -380,21 +380,21 @@ void main() {
       find.byKey(const Key('unknown-on-device')),
       200,
     );
-    expect(find.text('60 pozycji · 60 B'), findsOneWidget);
+    expect(find.text('60 items · 60 B'), findsOneWidget);
     await tester.tap(find.byKey(const Key('unknown-on-device')));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('… i 10 więcej'),
+      find.text('… and 10 more'),
       100,
       scrollable: find.byType(Scrollable).last,
     );
-    expect(find.text('… i 10 więcej'), findsOneWidget);
-    await tester.tap(find.text('Zamknij'));
+    expect(find.text('… and 10 more'), findsOneWidget);
+    await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
     expect(stray.existsSync(), isTrue);
   });
 
-  testWidgets('no unknown entries shows Brak and opens nothing', (
+  testWidgets('no unknown entries shows None and opens nothing', (
     tester,
   ) async {
     await tester.pumpWidget(_screen(repo: await _signedIn()));
@@ -403,7 +403,7 @@ void main() {
       find.byKey(const Key('unknown-on-device')),
       200,
     );
-    expect(find.text('Brak'), findsOneWidget);
+    expect(find.text('None'), findsOneWidget);
     await tester.tap(find.byKey(const Key('unknown-on-device')));
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsNothing);
@@ -491,12 +491,12 @@ void main() {
     expect(displayPath('/roms', '/roms/deeper'), '/roms');
   });
 
-  test('Polish plural of "pozycja"', () {
-    expect(pluralPositions(1), '1 pozycja');
-    expect(pluralPositions(2), '2 pozycje');
-    expect(pluralPositions(5), '5 pozycji');
-    expect(pluralPositions(11), '11 pozycji');
-    expect(pluralPositions(22), '22 pozycje');
-    expect(pluralPositions(25), '25 pozycji');
+  test('pluralPositions is singular-aware', () {
+    expect(pluralPositions(1), '1 item');
+    expect(pluralPositions(2), '2 items');
+    expect(pluralPositions(5), '5 items');
+    expect(pluralPositions(11), '11 items');
+    expect(pluralPositions(22), '22 items');
+    expect(pluralPositions(25), '25 items');
   });
 }

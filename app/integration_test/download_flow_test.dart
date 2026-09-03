@@ -32,7 +32,7 @@ void main() {
     await tester.enterText(fields.at(0), server);
     await tester.enterText(fields.at(1), 'e2e');
     await tester.enterText(fields.at(2), 'e2e-pass-123');
-    await tester.tap(find.text('Zaloguj'));
+    await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle(const Duration(seconds: 10));
 
     // In e2e the base directory is the app's own documents directory:
@@ -43,11 +43,11 @@ void main() {
     await pumpUntil(tester, find.byKey(const Key('nav-settings')));
     await tester.tap(find.byKey(const Key('nav-settings')));
     await tester.pumpAndSettle();
-    await pumpUntil(tester, find.text('Zmień'));
-    await tester.tap(find.text('Zmień'));
+    await pumpUntil(tester, find.text('Change'));
+    await tester.tap(find.text('Change'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('base-dir-field')), baseDir);
-    await tester.tap(find.text('Zapisz'));
+    await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('nav-library')));
     await tester.pumpAndSettle();
@@ -55,37 +55,37 @@ void main() {
     await pumpUntil(tester, find.text('Super Mario World'));
     await tester.tap(find.text('Super Mario World').first);
     await tester.pumpAndSettle();
-    await pumpUntil(tester, find.textContaining('Pobierz ·'));
-    await tester.tap(find.textContaining('Pobierz ·'));
+    await pumpUntil(tester, find.textContaining('Download ·'));
+    await tester.tap(find.textContaining('Download ·'));
     await tester.pumpAndSettle();
 
     var installed = false;
     for (var i = 0; i < 60 && !installed; i++) {
       await tester.pump(const Duration(seconds: 1));
-      installed = tester.any(find.text('Zainstalowana'));
+      installed = tester.any(find.text('Installed'));
     }
-    expect(installed, isTrue, reason: 'pobieranie nie zakończyło się w 60 s');
+    expect(installed, isTrue, reason: "download didn't finish within 60s");
 
-    // Pigułka „Zainstalowana" czyta stan lokalny, ale to plik na dysku jest
-    // dowodem — bez tej asercji test przeszedłby też, gdyby manager tylko
-    // zameldował sukces. Podkatalog to kod systemu (dirFor), a w nim katalog
-    // gry (M7: folder = gra).
+    // The 'Installed' pill reads local state, but the file on disk is the
+    // proof — without this assertion the test would also pass if the manager
+    // merely reported success. The subdirectory is the system code (dirFor),
+    // and inside it the game folder (M7: folder = game).
     final gameDir = Directory('$baseDir/snes/Super Mario World (USA)');
     final romFile = File('${gameDir.path}/Super Mario World (USA).sfc');
-    expect(romFile.existsSync(), isTrue, reason: 'brak ROM-u pod $romFile');
-    expect(romFile.lengthSync(), 4); // rozmiar z fixture-library
+    expect(romFile.existsSync(), isTrue, reason: 'missing ROM at $romFile');
+    expect(romFile.lengthSync(), 4); // size from the fixture library
 
-    await pumpUntil(tester, find.text('Usuń z urządzenia'));
-    await tester.tap(find.text('Usuń z urządzenia'));
+    await pumpUntil(tester, find.text('Delete from device'));
+    await tester.tap(find.text('Delete from device'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Usuń'));
+    await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle(const Duration(seconds: 3));
-    expect(romFile.existsSync(), isFalse, reason: 'ROM został po usunięciu');
+    expect(romFile.existsSync(), isFalse, reason: 'ROM was left behind after deletion');
     expect(
       gameDir.existsSync(),
       isFalse,
-      reason: 'pusty katalog gry został po usunięciu',
+      reason: 'empty game folder was left behind after deletion',
     );
-    expect(find.textContaining('Pobierz ·'), findsOneWidget);
+    expect(find.textContaining('Download ·'), findsOneWidget);
   });
 }

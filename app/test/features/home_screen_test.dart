@@ -59,7 +59,7 @@ GoRouter _router() => GoRouter(
             GoRoute(
               path: 'game/:id',
               builder: (_, s) =>
-                  Scaffold(body: Text('Gra ${s.pathParameters['id']}')),
+                  Scaffold(body: Text('Game ${s.pathParameters['id']}')),
             ),
           ],
         ),
@@ -84,8 +84,9 @@ Widget _app({
       child: MaterialApp.router(routerConfig: _router()),
     );
 
-/// Ten sam ekran co `_app`, ale z uchwytem na kontener — testy, które muszą
-/// dotknąć notifiera albo unieważnić provider, potrzebują go z zewnątrz.
+/// The same screen as `_app`, but with a handle on the container — tests
+/// that need to touch the notifier or invalidate a provider need it from
+/// the outside.
 Widget _appWithContainer(
   void Function(ProviderContainer) onContainer, {
   Override? snapshotOverride,
@@ -112,8 +113,8 @@ void main() {
     tester,
   ) async {
     late ProviderContainer container;
-    // Pusty indeks: żadna gra nie jest na urządzeniu, więc półka „Na
-    // urządzeniu" jeszcze nie istnieje.
+    // Empty index: no game is on the device yet, so the "On device" shelf
+    // doesn't exist yet.
     await tester.pumpWidget(
       _appWithContainer(
         (c) => container = c,
@@ -126,8 +127,8 @@ void main() {
     expect(find.byKey(snesKey), findsOneWidget);
     final before = tester.element(find.byKey(snesKey));
 
-    // Ponowny skan znajduje grę 1 na dysku — półka wskakuje wtedy w środek
-    // listy.
+    // A rescan finds game 1 on disk — the shelf then jumps into the middle
+    // of the list.
     final index = container.read(deviceIndexProvider.notifier) as FakeDeviceIndex;
     index.states[1] = const LocalGameState(
       status: InstallStatus.installed,
@@ -139,7 +140,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('shelf-installed')), findsOneWidget);
     expect(find.byKey(snesKey), findsOneWidget);
-    // Ten sam element, mimo wstawki przed nim: klucz utrzymał stan półki.
+    // Same element, despite the insertion before it: the key preserved the
+    // shelf's state.
     expect(identical(tester.element(find.byKey(snesKey)), before), isTrue);
     expect(find.byKey(const ValueKey('shelf-recent')), findsOneWidget);
   });
@@ -149,24 +151,37 @@ void main() {
     await tester.pumpWidget(
       _appWithContainer(
         (c) => container = c,
-        // Każde wywołanie buduje nowy snapshot — zatrzask po tożsamości
-        // obiektu, nie po fladze bool, musi to zauważyć.
+        // Each call builds a new snapshot — the latch keyed on object
+        // identity, not a bool flag, has to notice this.
         snapshotOverride: librarySnapshotProvider.overrideWith(
           (ref) async => snap(previous: {1}),
         ),
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Nowe w bibliotece: 1 gier'), findsOneWidget);
-    // Poczekaj, aż pasek sam zniknie (domyślne 4 s), żeby drugie wystąpienie
-    // było nowym paskiem, a nie resztką pierwszego.
+    expect(find.text('New in library: 1 game'), findsOneWidget);
+    // Wait for the banner to disappear on its own (default 4s) so the second
+    // occurrence is a new banner, not a leftover from the first.
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
-    expect(find.text('Nowe w bibliotece: 1 gier'), findsNothing);
+    expect(find.text('New in library: 1 game'), findsNothing);
 
     container.invalidate(librarySnapshotProvider);
     await tester.pumpAndSettle();
-    expect(find.text('Nowe w bibliotece: 1 gier'), findsOneWidget);
+    expect(find.text('New in library: 1 game'), findsOneWidget);
+  });
+
+  testWidgets('several new games use the plural form', (tester) async {
+    await tester.pumpWidget(
+      _appWithContainer(
+        (_) {},
+        snapshotOverride: librarySnapshotProvider.overrideWith(
+          (ref) async => snap(previous: {99}),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('New in library: 2 games'), findsOneWidget);
   });
 
   testWidgets('shelves: recent + per system, header opens the system', (
@@ -175,8 +190,8 @@ void main() {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
     expect(find.text('Droplet'), findsOneWidget);
-    expect(find.text('Ostatnio dodane'), findsOneWidget);
-    expect(find.text('Na urządzeniu'), findsNothing);
+    expect(find.text('Recently added'), findsOneWidget);
+    expect(find.text('On device'), findsNothing);
     expect(find.text('SNES'), findsOneWidget);
     expect(find.text('Super Mario World'), findsWidgets);
     // The whole shelf header — title and trailing "N ›" alike — is one tap
@@ -213,7 +228,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Na urządzeniu'), findsOneWidget);
+    expect(find.text('On device'), findsOneWidget);
   });
 
   testWidgets('typing swaps shelves for a results grid', (tester) async {
@@ -223,13 +238,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(Shelf), findsNothing);
     expect(find.byType(GamesGrid), findsOneWidget);
-    expect(find.text('Wyniki · 1'), findsOneWidget);
+    expect(find.text('Results · 1'), findsOneWidget);
     // 'Tekken' has no cover, so it renders twice: once as the placeholder
     // title, once as the tile caption (see library_widgets_test.dart).
     expect(find.text('Tekken'), findsNWidgets(2));
     await tester.enterText(find.byType(TextField), 'zzz');
     await tester.pumpAndSettle();
-    expect(find.text('Brak wyników'), findsOneWidget);
+    expect(find.text('No results'), findsOneWidget);
   });
 
   testWidgets('offline pill', (tester) async {
@@ -242,7 +257,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(
-      find.text('Tryb offline — pokazuję ostatnio pobraną bibliotekę'),
+      find.text('Offline — showing the last synced library'),
       findsOneWidget,
     );
   });
@@ -256,10 +271,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Ponów'), findsOneWidget);
-    await tester.tap(find.text('Ponów'));
+    expect(find.text('Retry'), findsOneWidget);
+    await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
-    expect(find.text('Ponów'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
   });
 
   testWidgets('empty library', (tester) async {
@@ -277,7 +292,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Nic tu nie ma'), findsOneWidget);
+    expect(find.text('Nothing here yet'), findsOneWidget);
   });
 
   testWidgets('new games are announced once', (tester) async {
@@ -289,7 +304,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Nowe w bibliotece: 1 gier'), findsOneWidget);
+    expect(find.text('New in library: 1 game'), findsOneWidget);
   });
 
   testWidgets('pull to refresh reloads the library', (tester) async {

@@ -5,7 +5,7 @@ import '../../../app/tokens.dart';
 import '../../../core/downloads/local_state.dart';
 import '../../game/providers.dart';
 
-/// Odznaka w rogu okładki — czysty odczyt z indeksu urządzenia.
+/// Badge in the corner of a cover — a pure read from the device index.
 class InstallBadge extends ConsumerWidget {
   const InstallBadge({super.key, required this.gameId});
 

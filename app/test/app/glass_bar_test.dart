@@ -18,9 +18,9 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Biblioteka'), findsOneWidget);
-    expect(find.text('Pobierania'), findsOneWidget);
-    expect(find.text('Ustawienia'), findsOneWidget);
+    expect(find.text('Library'), findsOneWidget);
+    expect(find.text('Downloads'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
     expect(find.text('2'), findsOneWidget);
     await tester.tap(find.byKey(const Key('nav-downloads')));
     await tester.tap(find.byKey(const Key('nav-settings')));

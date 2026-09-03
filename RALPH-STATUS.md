@@ -9,8 +9,8 @@ Status pętli Ralph budującej Droplet wg planów M0–M7.
   **dwa razy** — drugi przebieg musi dać `+0 ~0 -0` (pierwszy przepina pliki
   starych gier do katalogów). Przejrzyj `/admin/library/loosefile/`: gry sprzed
   M7 leżące luzem znikają z biblioteki, dopóki nie przeniesiesz ich do katalogu
-  gry. W aplikacji 0.3.0 stary, płaski układ pokaże się w Ustawienia → Nieznane
-  na urządzeniu, a w Ustawienia → Foldery per system puste pole znaczy
+  gry. W aplikacji 0.3.0 stary, płaski układ pokaże się w Settings → Unknown
+  on device, a w Settings → Folders per system puste pole znaczy
   „podkatalog o nazwie kodu systemu". Szczegóły: `docs/deploy.md` §4.
 
 - **M1 Task 11 kroki 2–4 — skan prawdziwej biblioteki na TrueNAS.** Wymaga realnego

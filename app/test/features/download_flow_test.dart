@@ -71,7 +71,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.textContaining('Pobierz ·'));
+    await tester.tap(find.textContaining('Download ·'));
     await tester.pumpAndSettle();
     expect(port.enqueued.single.url, 'http://nas:8000/api/files/1/download');
   });
@@ -98,10 +98,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.textContaining('Pobierz ·'));
+    await tester.tap(find.textContaining('Download ·'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.textContaining('przyznaj uprawnienie'), findsOneWidget);
+    expect(find.textContaining('grant the permission'), findsOneWidget);
     expect(port.enqueued, isEmpty);
   });
 
@@ -118,7 +118,7 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
-    expect(find.text('Sprawdzam pliki...'), findsOneWidget);
+    expect(find.text('Checking files...'), findsOneWidget);
     completer.complete(_none);
     await tester.pumpAndSettle();
   });
@@ -131,14 +131,14 @@ void main() {
         overrides: [
           gameDetailProvider(7).overrideWith((ref) async => _game),
           localStateProvider(7)
-              .overrideWith((ref) async => throw StateError('dysk')),
+              .overrideWith((ref) async => throw StateError('disk')),
         ],
         child: const MaterialApp(home: GameDetailScreen(gameId: 7)),
       ),
     );
     await tester.pumpAndSettle();
     // Since M6 the raw exception is replaced by a human message.
-    expect(find.text('Coś poszło nie tak'), findsOneWidget);
+    expect(find.text('Something went wrong'), findsOneWidget);
   });
 
   test('localStateProvider diffs the manifest against the disk', () async {
@@ -196,10 +196,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.textContaining('Pobierz ·'));
+    await tester.tap(find.textContaining('Download ·'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.textContaining('Za mało miejsca'), findsOneWidget);
+    expect(find.textContaining('Not enough space'), findsOneWidget);
     expect(port.enqueued, isEmpty);
   });
 }

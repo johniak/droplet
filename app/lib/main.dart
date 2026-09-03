@@ -11,9 +11,9 @@ import 'core/session/providers.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   FileDownloader().configureNotification(
-    running: const TaskNotification('Pobieram {filename}', '{progress}'),
-    complete: const TaskNotification('Gotowe', '{filename}'),
-    error: const TaskNotification('Błąd pobierania', '{filename}'),
+    running: const TaskNotification('Downloading {filename}', '{progress}'),
+    complete: const TaskNotification('Done', '{filename}'),
+    error: const TaskNotification('Download failed', '{filename}'),
     progressBar: true,
   );
   runApp(const ProviderScope(child: DropletApp()));
@@ -41,9 +41,9 @@ class DropletApp extends ConsumerWidget {
     );
   }
 
-  /// Jasne ikony paska statusu dla całej aplikacji — nie tylko dla powłoki z
-  /// dolną nawigacją: logowanie i karta gry stoją poza nią, a tło wszędzie
-  /// jest ciemne.
+  /// Light status bar icons for the whole app — not just for the shell with
+  /// the bottom navigation: login and the game detail sit outside it, and the
+  /// background is dark everywhere.
   static Widget _lightStatusBar(BuildContext context, Widget? child) =>
       AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,

@@ -88,7 +88,7 @@ void main() {
   test('a cache file that is not JSON at all loads as null', () async {
     final dir = Directory.systemTemp.createTempSync();
     addTearDown(() => dir.deleteSync(recursive: true));
-    File('${dir.path}/library.json').writeAsStringSync('nie-json');
+    File('${dir.path}/library.json').writeAsStringSync('not-json');
     expect(await LibraryCache(dir.path).load(), isNull);
   });
 

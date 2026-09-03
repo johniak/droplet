@@ -54,8 +54,8 @@ class Shelf extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Cały nagłówek — tytuł i "N ›" — to jeden cel dotyku, żeby trafienie
-        // w "Nintendo Switch" działało tak samo jak trafienie w licznik.
+        // The whole header — title and "N ›" — is one tap target, so hitting
+        // "Nintendo Switch" works just like hitting the counter.
         onSeeAll != null
             ? GestureDetector(
                 onTap: onSeeAll,
@@ -80,7 +80,7 @@ class Shelf extends StatelessWidget {
                         padding: EdgeInsets.zero,
                         child: Center(
                           child: Text(
-                            'Wszystkie (${games.length})',
+                            'All (${games.length})',
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               color: kAccent,

@@ -8,8 +8,8 @@ import 'widgets/glass_bar.dart';
 
 bool hidesNavBar(String path) => path.contains('/game/');
 
-/// Tło i dolna nawigacja dla trzech gałęzi (pasek statusu ustawia
-/// `DropletApp` globalnie).
+/// Background and bottom navigation for the three branches (the status bar is
+/// set globally by `DropletApp`).
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.shell, required this.hideBar});
 

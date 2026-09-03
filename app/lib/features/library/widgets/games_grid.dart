@@ -14,13 +14,13 @@ class GamesGrid extends StatelessWidget {
 
   final List<GameSummary> games;
 
-  /// Domyślnie 16/12/16 z dolnym marginesem spod pływającego paska —
-  /// liczonym z `MediaQuery`, więc rozwiązywanym dopiero w `build`.
+  /// 16/12/16 by default, with bottom padding for the floating bar —
+  /// computed from `MediaQuery`, so it resolves only in `build`.
   final EdgeInsets? padding;
 
-  /// Trasa dla danego id — domyślnie `/game/<id>`. Ekran systemu (kolejny
-  /// task) podaje `(id) => '/system/<code>/game/<id>'`, żeby stos nawigacji
-  /// wracał do listy systemu zamiast do biblioteki.
+  /// Route for a given id — `/game/<id>` by default. The system screen
+  /// passes `(id) => '/system/<code>/game/<id>'` so the navigation stack goes
+  /// back to the system list instead of the library.
   final String Function(int id)? routeFor;
 
   static const delegate = SliverGridDelegateWithFixedCrossAxisCount(

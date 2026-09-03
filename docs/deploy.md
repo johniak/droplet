@@ -159,8 +159,8 @@ Czego się spodziewać:
   gry) scalają się w jedną pozycję — folder jest unikalny, więc bierze go
   pierwsza, a pliki drugiej skan przepina do niej.
 - W aplikacji 0.3.0 stary, płaski układ na telefonie pokaże się w
-  **Ustawienia → Nieznane na urządzeniu**.
-- W **Ustawienia → Foldery per system** puste pole znaczy „podkatalog o nazwie
+  **Settings → Unknown on device**.
+- W **Settings → Folders per system** puste pole znaczy „podkatalog o nazwie
   kodu systemu" — nie kasuje nadpisania na coś pustego. Wartość z separatorem
   (`/`, `\`) albo `..` jest ignorowana: katalog systemu musi zostać wewnątrz
   katalogu ROMów.
@@ -204,7 +204,7 @@ Zasady:
   nowa gra (stara zniknie z biblioteki przy kolejnym skanie).
 - Aplikacja odtwarza ten sam układ na telefonie:
   `<katalog ROMów>/<system>/<Nazwa gry>/<pliki>`. Środkowy segment bierze się z
-  kodu systemu, ale **Ustawienia → Foldery per system** potrafią go nadpisać
+  kodu systemu, ale **Settings → Folders per system** potrafią go nadpisać
   (np. `snes` → `SNES`) — wtedy na telefonie jest
   `<katalog ROMów>/SNES/<Nazwa gry>/<pliki>`, a reszta układu bez zmian.
 - Pliki leżące **luzem** w katalogu systemu (poza katalogiem gry) nie tworzą gry —

@@ -78,7 +78,7 @@ class ApiClient {
     }
   }
 
-  /// Cała biblioteka w jednym zapytaniu: id, system, katalog i pliki gry.
+  /// The whole library in one request: game id, system, folder and files.
   Future<List<ManifestEntry>> fetchManifest() async {
     try {
       final resp = await _dio.get('/api/manifest/');

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../tokens.dart';
 
-/// Pływająca dolna nawigacja — jedyne miejsce z BackdropFilter poza hero.
+/// The floating bottom navigation — the only BackdropFilter outside the hero.
 class GlassBar extends StatelessWidget {
   const GlassBar({
     super.key,
@@ -18,9 +18,9 @@ class GlassBar extends StatelessWidget {
   final int badge;
 
   static const items = [
-    (key: 'nav-library', icon: Icons.grid_view_rounded, label: 'Biblioteka'),
-    (key: 'nav-downloads', icon: Icons.download_rounded, label: 'Pobierania'),
-    (key: 'nav-settings', icon: Icons.settings_rounded, label: 'Ustawienia'),
+    (key: 'nav-library', icon: Icons.grid_view_rounded, label: 'Library'),
+    (key: 'nav-downloads', icon: Icons.download_rounded, label: 'Downloads'),
+    (key: 'nav-settings', icon: Icons.settings_rounded, label: 'Settings'),
   ];
 
   @override

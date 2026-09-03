@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../tokens.dart';
 
-/// Okrągły przycisk na ciemnej pastylce — czytelny także na jasnej okładce.
+/// A round button on a dark pill — readable even over a light cover.
 class CircleIconButton extends StatelessWidget {
   const CircleIconButton({
     super.key,

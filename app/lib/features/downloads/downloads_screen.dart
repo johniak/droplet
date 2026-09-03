@@ -28,7 +28,7 @@ class DownloadsScreen extends ConsumerWidget {
           padding: EdgeInsets.fromLTRB(16, 10, 16, listBottomPad(context)),
           children: [
             const Text(
-              'Pobierania',
+              'Downloads',
               style: TextStyle(
                 color: kText,
                 fontSize: 24,
@@ -38,8 +38,8 @@ class DownloadsScreen extends ConsumerWidget {
             ),
             Text(
               active.isEmpty
-                  ? 'Brak aktywnych'
-                  : '${active.length} aktywnych · pozostało ${formatBytes(left)}',
+                  ? 'Nothing active'
+                  : '${active.length} active · ${formatBytes(left)} left',
               style: const TextStyle(color: kTextDim, fontSize: 13),
             ),
             const SizedBox(height: 12),
@@ -47,8 +47,8 @@ class DownloadsScreen extends ConsumerWidget {
             for (final p in active) _DownloadCard(progress: p),
             if (finished.isNotEmpty) ...[
               SectionLabel(
-                'Zakończone',
-                trailing: 'Wyczyść',
+                'Finished',
+                trailing: 'Clear',
                 onTrailingTap: () =>
                     ref.read(downloadManagerProvider).clearFinished(),
               ),
@@ -71,10 +71,10 @@ class _Empty extends StatelessWidget {
           children: [
             Icon(Icons.download_rounded, size: 40, color: kTextDim),
             SizedBox(height: 12),
-            Text('Brak pobierań', style: TextStyle(color: kText, fontSize: 17)),
+            Text('No downloads', style: TextStyle(color: kText, fontSize: 17)),
             SizedBox(height: 6),
             Text(
-              'Wybierz grę i naciśnij Pobierz.',
+              'Pick a game and tap Download.',
               style: TextStyle(color: kTextDim),
             ),
           ],
@@ -158,7 +158,7 @@ class _DownloadCard extends ConsumerWidget {
         GameProgressStatus.running => [
             CircleIconButton(
               icon: Icons.pause_rounded,
-              tooltip: 'Wstrzymaj',
+              tooltip: 'Pause',
               onPressed: () => manager.pauseGame(progress.gameId),
             ),
             const SizedBox(width: 6),
@@ -167,7 +167,7 @@ class _DownloadCard extends ConsumerWidget {
         GameProgressStatus.paused => [
             CircleIconButton(
               icon: Icons.play_arrow_rounded,
-              tooltip: 'Wznów',
+              tooltip: 'Resume',
               onPressed: () => manager.resumeGame(progress.gameId),
             ),
             const SizedBox(width: 6),
@@ -177,7 +177,7 @@ class _DownloadCard extends ConsumerWidget {
         GameProgressStatus.failed => [
             CircleIconButton(
               icon: Icons.refresh_rounded,
-              tooltip: 'Ponów',
+              tooltip: 'Retry',
               onPressed: () => manager.retryGame(progress.gameId),
             ),
             const SizedBox(width: 6),
@@ -190,7 +190,7 @@ class _DownloadCard extends ConsumerWidget {
 
   CircleIconButton _cancelButton(DownloadManager manager) => CircleIconButton(
         icon: Icons.close_rounded,
-        tooltip: 'Anuluj',
+        tooltip: 'Cancel',
         onPressed: () => manager.cancelGame(progress.gameId),
       );
 }

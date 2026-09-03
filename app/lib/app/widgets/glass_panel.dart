@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../tokens.dart';
 
-/// Półprzezroczysta karta bez rozmycia — bezpieczna w listach.
+/// A translucent card without blur — safe to use in lists.
 class GlassPanel extends StatelessWidget {
   const GlassPanel({
     super.key,

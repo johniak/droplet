@@ -47,7 +47,7 @@ class _SystemScreenState extends ConsumerState<SystemScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: SearchField(
-                hint: 'Szukaj w ${system?.name ?? widget.code}',
+                hint: 'Search in ${system?.name ?? widget.code}',
                 onChanged: (v) => setState(() => _query = v),
               ),
             ),
@@ -57,13 +57,13 @@ class _SystemScreenState extends ConsumerState<SystemScreen> {
                 loading: () => const _Skeleton(),
                 error: (e, _) => _Message(
                   humanizeError(e),
-                  action: 'Ponów',
+                  action: 'Retry',
                   onAction: () => ref.invalidate(librarySnapshotProvider),
                 ),
                 data: (_) {
-                  if (system == null) return const _Message('Nieznany system');
+                  if (system == null) return const _Message('Unknown system');
                   final list = filterByQuery(games.value ?? const [], _query);
-                  if (list.isEmpty) return const _Message('Nic nie pasuje');
+                  if (list.isEmpty) return const _Message('Nothing matches');
                   return GamesGrid(
                     games: list,
                     routeFor: (id) => '/system/${widget.code}/game/$id',
@@ -84,11 +84,7 @@ class _Header extends ConsumerWidget {
   final SystemModel? system;
   final String code;
 
-  static String _plural(int n) => switch (n % 10) {
-        1 when n % 100 != 11 => '$n gra',
-        2 || 3 || 4 when n % 100 < 10 || n % 100 > 20 => '$n gry',
-        _ => '$n gier',
-      };
+  static String _plural(int n) => n == 1 ? '1 game' : '$n games';
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -103,7 +99,7 @@ class _Header extends ConsumerWidget {
           CircleIconButton(
             key: const Key('back-button'),
             icon: Icons.arrow_back_rounded,
-            tooltip: 'Wstecz',
+            tooltip: 'Back',
             onPressed: () => context.pop(),
           ),
           const SizedBox(width: 12),
@@ -123,7 +119,7 @@ class _Header extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  '${_plural(own.length)} · $onDevice na urządzeniu',
+                  '${_plural(own.length)} · $onDevice on device',
                   style: const TextStyle(color: kTextDim, fontSize: 12),
                 ),
               ],
@@ -140,9 +136,9 @@ class _FilterChips extends ConsumerWidget {
   const _FilterChips();
 
   static const _labels = {
-    SystemFilter.all: 'Wszystkie',
-    SystemFilter.installed: 'Na urządzeniu',
-    SystemFilter.updatable: 'Do aktualizacji',
+    SystemFilter.all: 'All',
+    SystemFilter.installed: 'On device',
+    SystemFilter.updatable: 'Updates',
   };
 
   @override
