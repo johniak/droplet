@@ -21,3 +21,6 @@ app/build/
 # artefakty Gradle
 app/android/build/
 app/android/.gradle/
+
+# globalny ~/.gitignore_global ignoruje katalogi "johniak/", a pakiet Androida to dev/johniak/droplet
+!**/dev/johniak/
