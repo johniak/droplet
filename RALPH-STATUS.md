@@ -4,6 +4,7 @@ Status pętli Ralph budującej Droplet wg planów M0–M8.
 
 ## Czeka na Jana
 
+- **M9 (2026-09-03)**: pliki systemowe — `bios/<Paczka>/` to system `bios`, paczki w Settings → System files, na telefonie `<ROMs>/bios/<Paczka>/`; MainActivity.kt wreszcie w repo (globalny gitignore `johniak/`).
 - **M8 na NAS-ie**: mody z podkatalogu `mods/` gry są teraz osobną rolą
   (`mod`) — pobierane razem z grą, instalujesz je ręcznie w emulatorze;
   rozpakowany mod (podkatalog w `mods/`) trafia do „Do uporządkowania" jako
