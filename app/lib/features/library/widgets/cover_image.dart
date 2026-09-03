@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -24,7 +26,7 @@ class CoverImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!hasCover) return _Placeholder(title: title);
-    return CachedNetworkImage(
+    final sharp = CachedNetworkImage(
       imageUrl: url,
       httpHeaders: headers,
       // Boxart aspect ratios differ per system; `contain` keeps the whole box
@@ -32,6 +34,27 @@ class CoverImage extends StatelessWidget {
       fit: fit,
       placeholder: (_, __) => _Placeholder(title: title),
       errorWidget: (_, __, ___) => _Placeholder(title: title),
+    );
+    if (fit != BoxFit.contain) return sharp;
+    // Behind the contained box: the same art blown up and blurred, like the
+    // hero on the detail screen — a square Switch icon in a portrait tile no
+    // longer leaves empty bands above and below.
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: CachedNetworkImage(
+            imageUrl: url,
+            httpHeaders: headers,
+            fit: BoxFit.cover,
+            placeholder: (_, __) => const SizedBox.shrink(),
+            errorWidget: (_, __, ___) => const SizedBox.shrink(),
+          ),
+        ),
+        const ColoredBox(color: Color(0x59090B14)),
+        sharp,
+      ],
     );
   }
 }

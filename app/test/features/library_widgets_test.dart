@@ -102,13 +102,41 @@ void main() {
       ),
     );
     expect(find.text('Mario'), findsOneWidget);
-    expect(find.byType(CachedNetworkImage), findsOneWidget);
-    final image = tester.widget<CachedNetworkImage>(
-      find.byType(CachedNetworkImage),
+    // Blurred backdrop + the sharp, contained box on top.
+    expect(find.byType(CachedNetworkImage), findsNWidgets(2));
+    expect(find.byType(ImageFiltered), findsOneWidget);
+    for (final element in find.byType(CachedNetworkImage).evaluate()) {
+      final image = element.widget as CachedNetworkImage;
+      expect(image.placeholder!(element, image.imageUrl), isA<Widget>());
+      expect(image.errorWidget!(element, image.imageUrl, 'boom'), isA<Widget>());
+    }
+    final fits = [
+      for (final e in find.byType(CachedNetworkImage).evaluate())
+        (e.widget as CachedNetworkImage).fit,
+    ];
+    expect(fits, [BoxFit.cover, BoxFit.contain]);
+  });
+
+  testWidgets('CoverImage with a cropping fit needs no backdrop', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        const SizedBox(
+          width: 100,
+          height: 130,
+          child: CoverImage(
+            title: 'Zelda',
+            url: 'http://nas:8000/c.png',
+            headers: {},
+            hasCover: true,
+            fit: BoxFit.cover,
+          ),
+        ),
+      ),
     );
-    final context = tester.element(find.byType(CachedNetworkImage));
-    expect(image.placeholder!(context, image.imageUrl), isA<Widget>());
-    expect(image.errorWidget!(context, image.imageUrl, 'boom'), isA<Widget>());
+    expect(find.byType(CachedNetworkImage), findsOneWidget);
+    expect(find.byType(ImageFiltered), findsNothing);
   });
 
   testWidgets('GameTile with a cover requests the network image', (
@@ -129,9 +157,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.byType(CachedNetworkImage), findsOneWidget);
+    // backdrop + sharp image, both pointing at the same cover URL
+    expect(find.byType(CachedNetworkImage), findsNWidgets(2));
     final image = tester.widget<CachedNetworkImage>(
-      find.byType(CachedNetworkImage),
+      find.byType(CachedNetworkImage).last,
     );
     expect(image.imageUrl, contains('/api/games/9/cover'));
     expect(image.httpHeaders, containsPair('Authorization', 'Token t'));
