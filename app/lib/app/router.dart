@@ -7,6 +7,7 @@ import '../features/auth/login_screen.dart';
 import '../features/downloads/downloads_screen.dart';
 import '../features/game/game_detail_screen.dart';
 import '../features/home/home_screen.dart';
+import '../features/settings/emulators_screen.dart';
 import '../features/settings/folders_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/system/system_screen.dart';
@@ -78,6 +79,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'folders',
                     builder: (_, __) => const FoldersScreen(),
+                  ),
+                  GoRoute(
+                    path: 'emulators',
+                    builder: (_, __) => const EmulatorsScreen(),
                   ),
                   // The System files card links here so a tap stays on the
                   // Settings tab instead of jumping to the library branch.

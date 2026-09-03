@@ -12,6 +12,8 @@ import 'package:droplet/features/game/game_detail_screen.dart';
 import 'package:droplet/features/game/providers.dart';
 import 'package:droplet/features/home/home_screen.dart';
 import 'package:droplet/features/library/providers.dart';
+import 'package:droplet/core/platform/launcher_port.dart';
+import 'package:droplet/features/settings/emulators_screen.dart';
 import 'package:droplet/features/settings/folders_screen.dart';
 import 'package:droplet/features/settings/settings_screen.dart';
 import 'package:droplet/features/system/system_screen.dart';
@@ -22,6 +24,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import '../fakes/fake_downloader_port.dart';
+import '../fakes/fake_launcher_port.dart';
 import '../fakes/fake_permissions_port.dart';
 
 const _detail = GameDetail(
@@ -71,6 +74,7 @@ Widget _app(KeyValueStore store) => ProviderScope(
       ),
     ),
     downloaderPortProvider.overrideWithValue(FakeDownloaderPort()),
+    launcherPortProvider.overrideWithValue(FakeLauncherPort()),
     permissionsPortProvider.overrideWithValue(
       FakePermissionsPort(granted: true),
     ),
@@ -153,6 +157,17 @@ void main() {
     tester.element(find.byType(SettingsScreen)).go('/settings/folders');
     await tester.pumpAndSettle();
     expect(find.byType(FoldersScreen), findsOneWidget);
+    expect(find.byType(GlassBar), findsOneWidget);
+  });
+
+  testWidgets('settings emulators route is reachable', (tester) async {
+    await tester.pumpWidget(_app(await _signedIn()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-settings')));
+    await tester.pumpAndSettle();
+    tester.element(find.byType(SettingsScreen)).go('/settings/emulators');
+    await tester.pumpAndSettle();
+    expect(find.byType(EmulatorsScreen), findsOneWidget);
     expect(find.byType(GlassBar), findsOneWidget);
   });
 

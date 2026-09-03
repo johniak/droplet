@@ -47,6 +47,8 @@ class SettingsScreen extends ConsumerWidget {
           _ServerCard(),
           SectionLabel('Downloads'),
           _DownloadCard(),
+          SectionLabel('Emulators'),
+          _EmulatorCard(),
           SectionLabel('System files'),
           _SystemFilesCard(),
           SectionLabel('Device'),
@@ -174,6 +176,23 @@ class _ServerCard extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Which emulator Play starts, per system — the screen behind this row also
+/// holds the folder access those emulators need.
+class _EmulatorCard extends StatelessWidget {
+  const _EmulatorCard();
+
+  @override
+  Widget build(BuildContext context) => GlassPanel(
+    padding: EdgeInsets.zero,
+    child: SettingsRow(
+      title: 'Emulator per system',
+      subtitle: 'Choose what the Play button starts',
+      trailing: const Icon(Icons.chevron_right, color: kTextDim),
+      onTap: () => context.go('/settings/emulators'),
+    ),
+  );
 }
 
 class _DownloadCard extends ConsumerWidget {

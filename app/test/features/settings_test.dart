@@ -79,6 +79,10 @@ GoRouter _router() => GoRouter(
               builder: (_, __) => const Scaffold(body: Text('Folders')),
             ),
             GoRoute(
+              path: 'emulators',
+              builder: (_, __) => const Scaffold(body: Text('Emulators')),
+            ),
+            GoRoute(
               path: 'game/:id',
               builder: (_, s) =>
                   Scaffold(body: Text('Game ${s.pathParameters['id']}')),
@@ -370,6 +374,15 @@ void main() {
     await tester.tap(find.text('Folders per system'));
     await tester.pumpAndSettle();
     expect(find.text('Folders'), findsOneWidget);
+  });
+
+  testWidgets('emulators row opens the sub-screen', (tester) async {
+    await tester.pumpWidget(_screen(repo: await _signedIn()));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Emulator per system'), 200);
+    await tester.tap(find.text('Emulator per system'));
+    await tester.pumpAndSettle();
+    expect(find.text('Emulators'), findsOneWidget);
   });
 
   testWidgets('folders subtitle lists configured system codes', (tester) async {
