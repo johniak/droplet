@@ -24,11 +24,17 @@ class GamesGrid extends StatelessWidget {
   /// back to the system list instead of the library.
   final String Function(int id)? routeFor;
 
-  /// Cell shape follows the tallest cover in the list (square Switch icons
-  /// get shorter cells than portrait boxarts), plus room for two text lines.
-  static SliverGridDelegate delegateFor(Iterable<String> systemCodes) =>
+  /// Columns follow the available width (about one per 200 dp, at least two),
+  /// so a landscape handheld shows four tiles per row instead of two giants.
+  static int columnsFor(double width) => (width / 200).floor().clamp(2, 8);
+
+  /// Cell shape holds a cover plus room for two text lines.
+  static SliverGridDelegate delegateFor(
+    Iterable<String> systemCodes, {
+    double width = 400,
+  }) =>
       SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+        crossAxisCount: columnsFor(width),
         crossAxisSpacing: 14,
         mainAxisSpacing: 18,
         childAspectRatio:
@@ -36,14 +42,19 @@ class GamesGrid extends StatelessWidget {
       );
 
   @override
-  Widget build(BuildContext context) => GridView.builder(
-        padding: padding ??
-            EdgeInsets.fromLTRB(16, 12, 16, listBottomPad(context)),
-        gridDelegate: delegateFor(games.map((g) => g.systemCode)),
-        itemCount: games.length,
-        itemBuilder: (_, i) => GameTile(
-          game: games[i],
-          route: routeFor?.call(games[i].id),
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) => GridView.builder(
+          padding: padding ??
+              EdgeInsets.fromLTRB(16, 12, 16, listBottomPad(context)),
+          gridDelegate: delegateFor(
+            games.map((g) => g.systemCode),
+            width: constraints.maxWidth,
+          ),
+          itemCount: games.length,
+          itemBuilder: (_, i) => GameTile(
+            game: games[i],
+            route: routeFor?.call(games[i].id),
+          ),
         ),
       );
 }

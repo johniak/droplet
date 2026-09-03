@@ -19,6 +19,17 @@ void main() {
     expect(ratio(const []), closeTo(1 / (1 + kGridTextFactor), 1e-9));
   });
 
+  test('grid columns follow the width, at least two', () {
+    expect(GamesGrid.columnsFor(360), 2);
+    expect(GamesGrid.columnsFor(400), 2);
+    expect(GamesGrid.columnsFor(600), 3);
+    expect(GamesGrid.columnsFor(914), 4);
+    expect(GamesGrid.columnsFor(5000), 8);
+    final d = GamesGrid.delegateFor(const ['snes'], width: 914)
+        as SliverGridDelegateWithFixedCrossAxisCount;
+    expect(d.crossAxisCount, 4);
+  });
+
   test('wide layout breakpoint', () {
     expect(isWideWidth(599), isFalse);
     expect(isWideWidth(600), isTrue);
