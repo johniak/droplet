@@ -166,4 +166,12 @@ void main() {
       {'disc1/a.bin': 5},
     );
   });
+
+  test('files inside mods/ are reported relative to the game folder', () {
+    put('switch/HK/hk.nsp', 2);
+    put('switch/HK/mods/skin.zip', 3);
+    final index = scanDevice(settings, ['switch'], known({'switch': 'HK'}));
+    expect(index.games['switch']!['HK'], {'hk.nsp': 2, 'mods/skin.zip': 3});
+    expect(index.unknown, isEmpty);
+  });
 }

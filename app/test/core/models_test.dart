@@ -50,6 +50,11 @@ void main() {
     expect(f.role, FileRole.other);
   });
 
+  test('roleFrom knows mod and still falls back to other', () {
+    expect(roleFrom('mod'), FileRole.mod);
+    expect(roleFrom('banana'), FileRole.other);
+  });
+
   test('GamePage reads pagination', () {
     final page = GamePage.fromJson({'count': 1, 'next': null, 'results': []});
     expect(page.hasNext, false);

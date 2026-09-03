@@ -31,6 +31,7 @@ const roleLabels = {
   FileRole.dlc: 'DLC',
   FileRole.disc: 'Disc',
   FileRole.support: 'Other',
+  FileRole.mod: 'Mod',
   FileRole.other: 'Other',
 };
 

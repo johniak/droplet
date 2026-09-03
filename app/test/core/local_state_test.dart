@@ -88,4 +88,37 @@ void main() {
     );
     expect(s.presentPaths, ['/roms/psx/FF7/disc1/ff7.bin']);
   });
+
+  group('mods', () {
+    final withMod = [
+      f(1, 'hk.nsp', FileRole.base),
+      f(2, 'upd.nsp', FileRole.update, version: 'v2'),
+      f(3, 'mods/skin.zip', FileRole.mod),
+    ];
+
+    test('missing mod -> partial, not update available', () {
+      final s = diffGame(
+        withMod,
+        {'hk.nsp': 10, 'upd.nsp': 10},
+        settings,
+        'switch',
+        'HK',
+      );
+      expect(s.status, InstallStatus.partial);
+      expect(s.updateAvailable, false);
+      expect(s.missing.map((f) => f.name), ['mods/skin.zip']);
+    });
+
+    test('present mod -> installed and its path is deletable', () {
+      final s = diffGame(
+        withMod,
+        {'hk.nsp': 10, 'upd.nsp': 10, 'mods/skin.zip': 10},
+        settings,
+        'switch',
+        'HK',
+      );
+      expect(s.status, InstallStatus.installed);
+      expect(s.presentPaths, contains('/roms/switch/HK/mods/skin.zip'));
+    });
+  });
 }

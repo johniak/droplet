@@ -1,5 +1,5 @@
 /// Dart mirror of the backend JSON contract (see the M3 plan).
-enum FileRole { base, update, dlc, disc, support, other }
+enum FileRole { base, update, dlc, disc, support, mod, other }
 
 FileRole roleFrom(String raw) => FileRole.values.firstWhere(
       (r) => r.name == raw,

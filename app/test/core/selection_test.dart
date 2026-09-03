@@ -37,4 +37,13 @@ void main() {
     ]);
     expect(sel, {1, 2, 3});
   });
+
+  test('mods are always part of the default selection', () {
+    final files = [
+      f(1, FileRole.base),
+      f(2, FileRole.update, version: 'v1'),
+      f(3, FileRole.mod),
+    ];
+    expect(defaultSelection(files), {1, 2, 3});
+  });
 }
