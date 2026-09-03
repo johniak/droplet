@@ -101,5 +101,13 @@ class LooseFileAdmin(admin.ModelAdmin):
     search_fields = ["relative_path"]
     readonly_fields = ["system", "relative_path", "size"]
 
+    # Widok wyłącznie do podglądu: wiersze są lustrem skanu, więc ręczna edycja
+    # albo kasowanie i tak zniknęłyby przy najbliższym przebiegu.
     def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
         return False

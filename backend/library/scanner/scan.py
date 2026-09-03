@@ -43,9 +43,19 @@ def _sync_group(system: System, group, run: ScanRun, seen: set[str]) -> None:
                 mtime_ns=entry.mtime_ns,
             )
             run.files_created += 1
-        elif (existing.size, existing.mtime_ns) != (entry.size, entry.mtime_ns):
+            continue
+        fields: list[str] = []
+        # Ten sam plik pod inną grą (np. po migracji, gdzie stara gra miała
+        # głębszy folder) — przepinamy go, inaczej nowa gra co skan zostaje
+        # pusta i leci do kasacji, a skan nigdy się nie zbiega.
+        if existing.game_id != game.pk:
+            existing.game = game
+            fields.append("game")
+        if (existing.size, existing.mtime_ns) != (entry.size, entry.mtime_ns):
             existing.size, existing.mtime_ns = entry.size, entry.mtime_ns
-            existing.save(update_fields=["size", "mtime_ns"])
+            fields += ["size", "mtime_ns"]
+        if fields:
+            existing.save(update_fields=fields)
             run.files_updated += 1
 
 

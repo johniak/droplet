@@ -148,3 +148,56 @@ def test_unknown_directory_flagged(tmp_path):
     with override_settings(LIBRARY_ROOT=tmp_path):
         run_scan()
     assert System.objects.get(directory="Dziwny Folder").needs_config is True
+
+
+@pytest.mark.django_db
+def test_legacy_game_with_deeper_folder_is_reparented_and_converges(tmp_path):
+    """Po migracji plik zostaje pod starą grą — skan musi go przepiąć,
+
+    inaczej nowa gra co przebieg jest pusta, leci do kasacji i drugi skan
+    znowu ją tworzy (nigdy +0 ~0 -0).
+    """
+    _write(tmp_path / "psx" / "FF7" / "disc1" / "FF7 (Disc 1).bin", b"a" * 7)
+    psx = System.objects.create(code="psx", name="PSX", directory="psx")
+    legacy = Game.objects.create(
+        system=psx, folder="psx/FF7/disc1", title="Disc1", normalized_title="disc1"
+    )
+    stat = (tmp_path / "psx" / "FF7" / "disc1" / "FF7 (Disc 1).bin").stat()
+    GameFile.objects.create(
+        game=legacy,
+        relative_path="psx/FF7/disc1/FF7 (Disc 1).bin",
+        size=stat.st_size,
+        mtime_ns=stat.st_mtime_ns,
+    )
+    with override_settings(LIBRARY_ROOT=tmp_path):
+        run1 = run_scan()
+        run2 = run_scan()
+    game = Game.objects.get()
+    assert game.folder == "psx/FF7"
+    assert list(game.files.values_list("relative_path", flat=True)) == [
+        "psx/FF7/disc1/FF7 (Disc 1).bin"
+    ]
+    assert run1.files_updated == 1 and run1.files_deleted == 0
+    assert (run2.files_created, run2.files_updated, run2.files_deleted) == (0, 0, 0)
+
+
+@pytest.mark.django_db
+def test_second_legacy_game_in_one_folder_is_absorbed_by_the_folder_game(tmp_path):
+    """Migracja zostawia drugą grę z pustym folderem — skan wchłania jej plik."""
+    for name in ("a.bin", "b.bin"):
+        _write(tmp_path / "psx" / "FF7" / name, b"x")
+    psx = System.objects.create(code="psx", name="PSX", directory="psx")
+    first = Game.objects.create(
+        system=psx, folder="psx/FF7", title="FF7", normalized_title="ff7"
+    )
+    GameFile.objects.create(game=first, relative_path="psx/FF7/a.bin", size=1, mtime_ns=1)
+    second = Game.objects.create(
+        system=psx, folder="", title="FF7 disc 2", normalized_title="ff7 disc 2"
+    )
+    GameFile.objects.create(game=second, relative_path="psx/FF7/b.bin", size=1, mtime_ns=1)
+    with override_settings(LIBRARY_ROOT=tmp_path):
+        run_scan()
+        run2 = run_scan()
+    assert Game.objects.count() == 1
+    assert Game.objects.get().files.count() == 2
+    assert (run2.files_created, run2.files_updated, run2.files_deleted) == (0, 0, 0)

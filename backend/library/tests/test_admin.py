@@ -86,3 +86,17 @@ def test_scanrun_admin_shows_loose_files(admin_client_):
     ScanRun.objects.create(loose_files=4, status=ScanRun.Status.SUCCESS)
     page = admin_client_.get("/admin/library/scanrun/")
     assert b">4<" in page.content
+
+
+@pytest.mark.django_db
+def test_loose_file_admin_refuses_edits_and_deletes(admin_client_):
+    """Wiersze są lustrem skanu — nie ma czego ręcznie zmieniać ani kasować."""
+    from library.admin import LooseFileAdmin
+    from library.models import LooseFile, System
+
+    snes = System.objects.create(code="snes", name="SNES", directory="snes")
+    lf = LooseFile.objects.create(system=snes, relative_path="snes/a.sfc", size=1)
+    assert admin_client_.post(f"/admin/library/loosefile/{lf.pk}/change/", {}).status_code == 403
+    assert admin_client_.get(f"/admin/library/loosefile/{lf.pk}/delete/").status_code == 403
+    assert LooseFileAdmin.has_change_permission(None, None, lf) is False
+    assert LooseFileAdmin.has_delete_permission(None, None, lf) is False
