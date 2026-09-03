@@ -27,6 +27,8 @@ GameFileModel? bootFile(GameDetail game) {
   final base = files.where((f) => f.role == FileRole.base).toList()
     ..sort((a, b) => a.name.compareTo(b.name));
   if (base.isNotEmpty) return base.first;
+  // Updates are excluded on purpose: an update patches a base game, it
+  // never boots on its own.
   final rest = files.where(
     (f) =>
         f.role != FileRole.mod &&
@@ -73,6 +75,11 @@ LaunchRequest resolveTemplate({
     if (eq < 0) throw ArgumentError('Unknown token $token in ${spec.id}');
     final key = token.substring(0, eq);
     final raw = token.substring(eq + 1);
+    // Every placeholder is `%NAME%`; without the closing `%` the `substring`
+    // below would quietly eat the last character of the extra's name.
+    if (!key.endsWith('%')) {
+      throw ArgumentError('Unknown token $token in ${spec.id}');
+    }
     if (key == '%ACTION%') {
       action = raw;
     } else if (key == '%CATEGORY%') {
@@ -92,7 +99,11 @@ LaunchRequest resolveTemplate({
       throw ArgumentError('Unknown token $token in ${spec.id}');
     }
   }
-  final needsSaf = mode == DataMode.saf || extras.values.contains(tokenSaf);
+  // `contains`, not `==`: a template may one day wrap the token in a value
+  // (`file://%ROMSAF%`), and the native side substitutes the same way.
+  final needsSaf =
+      mode == DataMode.saf ||
+      extras.values.any((v) => v is String && v.contains(tokenSaf));
   if (needsSaf && tree == null) throw const LaunchPlanError('saf-tree-missing');
   return LaunchRequest(
     package: spec.package,

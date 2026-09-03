@@ -16,7 +16,8 @@ import '../../core/downloads/permissions.dart';
 import '../../core/downloads/storage_settings.dart';
 import '../../core/errors.dart';
 import '../../core/format.dart';
-import '../../core/platform/folder_picker_port.dart';
+import '../../core/launch/emulator_settings.dart';
+import '../../core/platform/launcher_port.dart';
 import '../../core/platform/permissions_port.dart';
 import '../../core/session/providers.dart';
 import '../game/providers.dart';
@@ -283,12 +284,27 @@ class _BaseDirDialogState extends ConsumerState<_BaseDirDialog> {
     super.dispose();
   }
 
-  /// The system folder picker; a cancelled pick leaves the field alone, so
-  /// typing the path by hand stays possible (SD cards come back as `null`).
+  String _helper = 'Where your emulators keep ROMs';
+
+  /// The system tree picker. Whatever the user grants here is also the tree
+  /// the emulators read ROMs through, so this one gesture covers both and
+  /// the Emulators screen normally has nothing left to ask for (spec §5).
+  /// A cancelled pick leaves the field alone, and so does a volume we cannot
+  /// name a path for (an SD card) — typing it by hand stays possible.
   Future<void> _browse() async {
-    final picked = await ref.read(folderPickerPortProvider).pickDirectory();
-    if (picked == null || !mounted) return;
-    setState(() => _controller.text = picked);
+    final tree = await ref.read(launcherPortProvider).pickRomTree();
+    if (tree == null) return;
+    await ref.read(emulatorSettingsRepositoryProvider).saveRomTree(tree);
+    if (!mounted) return;
+    ref.invalidate(romTreeProvider);
+    final path = tree.path;
+    setState(() {
+      if (path == null) {
+        _helper = 'Pick a folder on internal storage or type the path';
+      } else {
+        _controller.text = path;
+      }
+    });
   }
 
   @override
@@ -301,9 +317,7 @@ class _BaseDirDialogState extends ConsumerState<_BaseDirDialog> {
         TextField(
           key: const Key('base-dir-field'),
           controller: _controller,
-          decoration: const InputDecoration(
-            helperText: 'Where your emulators keep ROMs',
-          ),
+          decoration: InputDecoration(helperText: _helper),
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(

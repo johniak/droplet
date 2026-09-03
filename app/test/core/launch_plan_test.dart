@@ -184,6 +184,24 @@ void main() {
           DataMode.path);
     });
 
+    test('a token wrapping %ROMSAF% still needs the tree', () {
+      const wrapped = EmulatorSpec(
+        id: 'x',
+        name: 'x',
+        package: 'p',
+        template: '%EXTRA_uri%=file://%ROMSAF%',
+      );
+      expect(
+        () => resolveTemplate(spec: wrapped, romPath: '/r/g.iso'),
+        throwsA(isA<LaunchPlanError>()),
+      );
+      expect(
+        resolveTemplate(spec: wrapped, romPath: '/r/g.iso', tree: tree)
+            .extras['uri'],
+        'file:// ROMSAF ',
+      );
+    });
+
     test('saf template without a tree is an error', () {
       expect(
         () => resolveTemplate(spec: specById('azahar')!, romPath: '/r/g.3ds'),
@@ -219,6 +237,17 @@ void main() {
       );
       expect(
         () => resolveTemplate(spec: badData, romPath: '/r'),
+        throwsArgumentError,
+      );
+      // A key without its closing '%' would otherwise lose a character.
+      const unclosed = EmulatorSpec(
+        id: 'x',
+        name: 'x',
+        package: 'p',
+        template: '%EXTRA_bootPath=%ROM%',
+      );
+      expect(
+        () => resolveTemplate(spec: unclosed, romPath: '/r'),
         throwsArgumentError,
       );
     });

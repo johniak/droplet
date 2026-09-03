@@ -102,8 +102,9 @@ class _SystemRow extends ConsumerWidget {
     await ref
         .read(emulatorSettingsRepositoryProvider)
         .setChoice(system.code, id);
+    // `effectiveEmulatorProvider` watches the choice, so it follows on its
+    // own — invalidating it too would only rebuild it twice.
     ref.invalidate(emulatorChoiceProvider(system.code));
-    ref.invalidate(effectiveEmulatorProvider(system.code));
   }
 
   @override

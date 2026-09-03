@@ -3,7 +3,8 @@ enum DataMode {
   /// No data URI at all — the ROM travels in an extra.
   none,
 
-  /// `file://` path (only emulators that still accept it).
+  /// ES-DE's `%DATA%=%ROM%`. The native side still hands over a
+  /// FileProvider URI — a `file://` URI would trip StrictMode.
   path,
 
   /// `content://` document URI inside the persisted SAF tree.

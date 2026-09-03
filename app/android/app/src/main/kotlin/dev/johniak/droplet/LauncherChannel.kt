@@ -42,15 +42,30 @@ class LauncherChannel(private val activity: Activity) {
     private fun providerUri(path: String): Uri =
         FileProvider.getUriForFile(activity, "${activity.packageName}.files", File(path))
 
-    /** Document URI inside the persisted tree, or null when the file is outside it. */
+    /**
+     * Document URI inside the persisted tree, or null when the file is outside it.
+     *
+     * The tree document id of a whole volume ends with ':' ("primary:"), and
+     * then the relative path has to follow it directly: "primary:EMU/g.iso",
+     * never "primary:/EMU/g.iso" - the latter names nothing and every emulator
+     * refuses it. Any other id is a folder and takes a separator.
+     */
     private fun safUri(path: String, treeUri: String?, treePath: String?): Uri? {
         if (treeUri == null || treePath == null) return null
         val tree = Uri.parse(treeUri)
-        val base = treePath.trimEnd('/')
-        if (!path.startsWith("$base/")) return null
-        val rel = path.substring(base.length + 1)
+        val base = canonical(treePath).trimEnd('/')
+        val full = canonical(path)
+        if (!full.startsWith("$base/")) return null
+        val rel = full.substring(base.length + 1)
         val docId = DocumentsContract.getTreeDocumentId(tree)
-        return DocumentsContract.buildDocumentUriUsingTree(tree, "$docId/$rel")
+        val prefix = if (docId.endsWith(":") || docId.endsWith("/")) docId else "$docId/"
+        return DocumentsContract.buildDocumentUriUsingTree(tree, prefix + rel)
+    }
+
+    /** `/sdcard/...` is an alias of the external storage root; same tree. */
+    private fun canonical(path: String): String {
+        if (path != "/sdcard" && !path.startsWith("/sdcard/")) return path
+        return Environment.getExternalStorageDirectory().absolutePath + path.substring(7)
     }
 
     /** Returns null on success, otherwise a short error string for the UI. */
@@ -60,7 +75,10 @@ class LauncherChannel(private val activity: Activity) {
         val treeUri = spec["romTreeUri"] as String?
         val treePath = spec["romTreePath"] as String?
         val mode = spec["dataMode"] as String
-        val needsSaf = mode == "saf" || (spec["extras"] as Map<*, *>).values.any { it == TOKEN_SAF }
+        // `contains`, not `==`: a template may wrap a token in a longer value,
+        // and the substitution below works the same way.
+        val needsSaf = mode == "saf" ||
+            (spec["extras"] as Map<*, *>).values.any { it is String && it.contains(TOKEN_SAF) }
         val saf = safUri(romPath, treeUri, treePath)
         if (needsSaf && saf == null) return "saf-tree-missing"
         val provider = providerUri(romPath)
@@ -70,23 +88,28 @@ class LauncherChannel(private val activity: Activity) {
         intent.action = spec["action"] as String? ?: if (spec["activity"] != null) Intent.ACTION_MAIN else Intent.ACTION_VIEW
         (spec["category"] as String?)?.let { intent.addCategory(it) }
         val uris = mutableListOf<Uri>()
+        // ES-DE's `%DATA%=%ROM%` (a bare path) also travels as a FileProvider
+        // URI: a file:// URI trips StrictMode's FileUriExposedException on
+        // API 24+, and no current emulator would read it anyway.
         when (mode) {
-            "path" -> intent.data = Uri.fromFile(File(romPath))
+            "path", "provider" -> { intent.setDataAndType(provider, MIME); uris += provider }
             "saf" -> { intent.setDataAndType(saf, MIME); uris += saf!! }
-            "provider" -> { intent.setDataAndType(provider, MIME); uris += provider }
         }
         for ((k, v) in spec["extras"] as Map<*, *>) {
             val key = k as String
             when (v) {
                 is Boolean -> intent.putExtra(key, v)
                 is String -> {
-                    val value = when (v) {
-                        TOKEN_ROM -> romPath
-                        TOKEN_SAF -> { uris += saf!!; saf.toString() }
-                        TOKEN_PROVIDER -> { uris += provider; provider.toString() }
-                        else -> v.replace(TOKEN_ROM, romPath)
+                    var value = v
+                    if (value.contains(TOKEN_SAF)) {
+                        uris += saf!!
+                        value = value.replace(TOKEN_SAF, saf.toString())
                     }
-                    intent.putExtra(key, value)
+                    if (value.contains(TOKEN_PROVIDER)) {
+                        uris += provider
+                        value = value.replace(TOKEN_PROVIDER, provider.toString())
+                    }
+                    intent.putExtra(key, value.replace(TOKEN_ROM, romPath))
                 }
             }
         }
@@ -115,7 +138,14 @@ class LauncherChannel(private val activity: Activity) {
         pendingPick = result
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-        activity.startActivityForResult(intent, PICK_TREE)
+        try {
+            activity.startActivityForResult(intent, PICK_TREE)
+        } catch (e: Exception) {
+            // No document provider on this device: answer right away, or the
+            // Grant button waits on a result that will never come.
+            pendingPick = null
+            result.success(null)
+        }
     }
 
     /** Called from MainActivity.onActivityResult. Returns true when handled. */
@@ -125,13 +155,24 @@ class LauncherChannel(private val activity: Activity) {
         pendingPick = null
         val uri = data?.data
         if (resultCode != Activity.RESULT_OK || uri == null) { result.success(null); return true }
-        activity.contentResolver.takePersistableUriPermission(
-            uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        try {
+            activity.contentResolver.takePersistableUriPermission(
+                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        } catch (e: SecurityException) {
+            // Not persistable through this provider. The grant still holds
+            // for this process, so hand the tree back instead of crashing -
+            // and never leave `result` uncompleted.
+        }
         result.success(mapOf("uri" to uri.toString(), "path" to treePath(uri)))
         return true
     }
 
-    /** `primary:EMU/ROMs` -> /storage/emulated/0/EMU/ROMs; other volumes -> null. */
+    /**
+     * `primary:EMU/ROMs` -> /storage/emulated/0/EMU/ROMs, and the volume root
+     * `primary:` -> /storage/emulated/0 (the empty tail, mirroring the ':'
+     * rule in [safUri]). Other volumes -> null: we cannot name a path there,
+     * and a SAF launch from such a tree answers `saf-tree-missing`.
+     */
     private fun treePath(uri: Uri): String? {
         val id = DocumentsContract.getTreeDocumentId(uri)
         val parts = id.split(":", limit = 2)

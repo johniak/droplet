@@ -1,6 +1,8 @@
 import 'package:droplet/core/downloads/storage_settings.dart';
+import 'package:droplet/core/launch/emulator_settings.dart';
+import 'package:droplet/core/launch/launch_request.dart';
+import 'package:droplet/core/platform/launcher_port.dart';
 import 'package:droplet/core/platform/downloader_port.dart';
-import 'package:droplet/core/platform/folder_picker_port.dart';
 import 'package:droplet/core/platform/permissions_port.dart';
 import 'package:droplet/core/session/providers.dart';
 import 'package:droplet/core/session/session_repository.dart';
@@ -14,18 +16,17 @@ import 'package:shared_preferences_platform_interface/in_memory_shared_preferenc
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 import '../fakes/fake_downloader_port.dart';
-import '../fakes/fake_folder_picker_port.dart';
+import '../fakes/fake_launcher_port.dart';
 import '../fakes/fake_permissions_port.dart';
 
 Widget _screen({
   required StorageSettingsRepository repo,
   required PermissionsPort port,
-  FakeFolderPickerPort? picker,
+  FakeLauncherPort? picker,
 }) =>
     ProviderScope(
       overrides: [
-        folderPickerPortProvider
-            .overrideWithValue(picker ?? FakeFolderPickerPort(null)),
+        launcherPortProvider.overrideWithValue(picker ?? FakeLauncherPort()),
         sessionRepositoryProvider
             .overrideWithValue(SessionRepository(MemoryKeyValueStore())),
         storageSettingsRepositoryProvider.overrideWithValue(repo),
@@ -145,10 +146,15 @@ void main() {
     expect(find.text('Something went wrong'), findsOneWidget);
   });
 
-  testWidgets('Browse fills the field from the folder picker and Save persists it',
+  testWidgets('Browse fills the field, saves the tree, and Save persists it',
       (tester) async {
     final repo = StorageSettingsRepository(SharedPreferencesAsync());
-    final picker = FakeFolderPickerPort('/storage/emulated/0/EMU/ROMs');
+    final picker = FakeLauncherPort(
+      tree: const RomTree(
+        uri: 'content://tree',
+        path: '/storage/emulated/0/EMU/ROMs',
+      ),
+    );
     await tester.pumpWidget(_screen(
       repo: repo,
       port: FakePermissionsPort(granted: true),
@@ -159,8 +165,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('browse-folder')));
     await tester.pumpAndSettle();
-    expect(picker.calls, 1);
+    expect(picker.picks, 1);
     expect(find.text('/storage/emulated/0/EMU/ROMs'), findsOneWidget);
+    // The same grant is the tree the emulators read ROMs through, so the
+    // Emulators screen has nothing left to ask for.
+    final tree = await EmulatorSettingsRepository(
+      SharedPreferencesAsync(),
+    ).romTree();
+    expect(tree!.uri, 'content://tree');
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect((await repo.load()).baseDir, '/storage/emulated/0/EMU/ROMs');
@@ -168,7 +180,7 @@ void main() {
 
   testWidgets('a cancelled pick leaves the typed path alone', (tester) async {
     final repo = StorageSettingsRepository(SharedPreferencesAsync());
-    final picker = FakeFolderPickerPort(null);
+    final picker = FakeLauncherPort();
     await tester.pumpWidget(_screen(
       repo: repo,
       port: FakePermissionsPort(granted: true),
@@ -180,7 +192,40 @@ void main() {
     await tester.enterText(find.byKey(const Key('base-dir-field')), '/typed');
     await tester.tap(find.byKey(const Key('browse-folder')));
     await tester.pumpAndSettle();
-    expect(picker.calls, 1);
+    expect(picker.picks, 1);
     expect(find.text('/typed'), findsOneWidget);
+    expect(
+      await EmulatorSettingsRepository(SharedPreferencesAsync()).romTree(),
+      isNull,
+    );
+  });
+
+  testWidgets('a tree we cannot name a path for keeps the typed text', (
+    tester,
+  ) async {
+    final repo = StorageSettingsRepository(SharedPreferencesAsync());
+    final picker = FakeLauncherPort(tree: const RomTree(uri: 'content://sd'));
+    await tester.pumpWidget(_screen(
+      repo: repo,
+      port: FakePermissionsPort(granted: true),
+      picker: picker,
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Change'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('base-dir-field')), '/typed');
+    await tester.tap(find.byKey(const Key('browse-folder')));
+    await tester.pumpAndSettle();
+    expect(find.text('/typed'), findsOneWidget);
+    expect(
+      find.text('Pick a folder on internal storage or type the path'),
+      findsOneWidget,
+    );
+    // The grant itself is still worth keeping.
+    expect(
+      (await EmulatorSettingsRepository(SharedPreferencesAsync()).romTree())!
+          .uri,
+      'content://sd',
+    );
   });
 }

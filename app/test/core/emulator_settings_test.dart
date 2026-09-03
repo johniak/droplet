@@ -1,4 +1,5 @@
 import 'package:droplet/core/launch/emulator_settings.dart';
+import 'package:droplet/core/launch/launch_plan.dart';
 import 'package:droplet/core/launch/launch_request.dart';
 import 'package:droplet/core/platform/launcher_port.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -72,6 +73,31 @@ void main() {
       await container.read(installedEmulatorPackagesProvider.future),
       {'org.azahar_emu.azahar', 'org.citra.emu'},
     );
+  });
+
+  test('the installed RetroArch build is the one that gets launched', () async {
+    for (final package in ['com.retroarch', 'com.retroarch.aarch64']) {
+      final container = ProviderContainer(
+        overrides: [
+          launcherPortProvider.overrideWithValue(
+            FakeLauncherPort(installed: {package}),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final spec = await container.read(
+        effectiveEmulatorProvider('snes').future,
+      );
+      expect(spec!.id, 'ra-snes9x');
+      expect(spec.package, package);
+      // ...and %ANDROIDPACKAGE% follows it into the core path.
+      final request = resolveTemplate(spec: spec, romPath: '/roms/snes/g.sfc');
+      expect(request.package, package);
+      expect(
+        request.extras['LIBRETRO'],
+        '/data/data/$package/cores/snes9x_libretro_android.so',
+      );
+    }
   });
 
   test('romTreeProvider reads what the repository saved', () async {

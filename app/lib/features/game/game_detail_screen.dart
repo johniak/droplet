@@ -535,40 +535,71 @@ class _Actions extends ConsumerWidget {
 /// Play, or the way to get an emulator set up. Nothing at all while the
 /// device is still being asked which emulators it has — a button that
 /// flashes "Set up emulator" on every open would only mislead.
-class _PlayControl extends ConsumerWidget {
+class _PlayControl extends ConsumerStatefulWidget {
   const _PlayControl({required this.game, required this.file});
 
   final GameDetail game;
   final GameFileModel file;
 
-  Future<void> _play(
-    BuildContext context,
-    WidgetRef ref,
-    EmulatorSpec spec,
-  ) async {
-    final settings = await ref.read(storageSettingsProvider.future);
-    final tree = await ref.read(romTreeProvider.future);
-    final romPath = settings.pathFor(game.systemCode, game.folder, file.name);
-    final LaunchRequest request;
+  @override
+  ConsumerState<_PlayControl> createState() => _PlayControlState();
+}
+
+class _PlayControlState extends ConsumerState<_PlayControl> {
+  /// A launch is in flight — two quick taps would start the emulator twice.
+  bool _busy = false;
+
+  GameDetail get game => widget.game;
+
+  Future<void> _play(EmulatorSpec spec) async {
+    setState(() => _busy = true);
     try {
-      request = resolveTemplate(spec: spec, romPath: romPath, tree: tree);
-    } on LaunchPlanError {
-      if (!context.mounted) return;
-      _snack(context, 'Grant folder access in Settings → Emulators');
-      return;
+      final settings = await ref.read(storageSettingsProvider.future);
+      final tree = await ref.read(romTreeProvider.future);
+      final romPath = settings.pathFor(
+        game.systemCode,
+        game.folder,
+        widget.file.name,
+      );
+      final LaunchRequest request;
+      try {
+        request = resolveTemplate(spec: spec, romPath: romPath, tree: tree);
+      } on LaunchPlanError {
+        _snack('Grant folder access in Settings → Emulators');
+        return;
+      }
+      String? error;
+      try {
+        error = await ref.read(launcherPortProvider).launch(request);
+      } catch (e) {
+        // The channel wraps anything the Kotlin handler throws into a
+        // PlatformException; a snackbar beats an unhandled async error.
+        error = e is PlatformException ? (e.message ?? e.code) : '$e';
+      }
+      if (error != null) _snack("Couldn't start ${spec.name}: $error");
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-    final error = await ref.read(launcherPortProvider).launch(request);
-    if (!context.mounted || error == null) return;
-    _snack(context, "Couldn't start ${spec.name}: $error");
   }
 
-  static void _snack(BuildContext context, String message) =>
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+  void _snack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    // A system the catalogue knows nothing about: the Emulators screen would
+    // only repeat that, so there is nowhere to send anyone.
+    if (catalogFor(game.systemCode).isEmpty) {
+      return const Text(
+        'No emulator configured',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: kTextDim, fontSize: 13),
+      );
+    }
     final emulator = ref.watch(effectiveEmulatorProvider(game.systemCode));
     if (emulator.isLoading) return const SizedBox(height: 48);
     final spec = emulator.value;
@@ -583,7 +614,8 @@ class _PlayControl extends ConsumerWidget {
       key: const Key('play-button'),
       label: 'Play',
       icon: Icons.play_arrow_rounded,
-      onPressed: () => _play(context, ref, spec),
+      busy: _busy,
+      onPressed: () => _play(spec),
     );
   }
 }

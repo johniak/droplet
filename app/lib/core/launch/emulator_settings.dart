@@ -69,7 +69,8 @@ final installedEmulatorsProvider =
       final installed = await ref.watch(installedEmulatorPackagesProvider.future);
       return [
         for (final spec in catalogFor(code))
-          if (installed.contains(spec.package)) spec,
+          if (spec.installedPackage(installed) case final package?)
+            spec.withPackage(package),
       ];
     });
 

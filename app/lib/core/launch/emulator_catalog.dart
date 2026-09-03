@@ -6,6 +6,7 @@ class EmulatorSpec {
     required this.id,
     required this.name,
     required this.package,
+    this.altPackages = const [],
     this.activity,
     required this.template,
   });
@@ -17,11 +18,43 @@ class EmulatorSpec {
   final String name;
 
   final String package;
+
+  /// Other packages shipping the same emulator — RetroArch's 64-bit build
+  /// is a different package, not a different emulator.
+  final List<String> altPackages;
+
   final String? activity;
   final String template;
+
+  /// Every package that can provide this emulator, preferred first.
+  List<String> get packages => [package, ...altPackages];
+
+  /// The package to launch, or `null` when none of them is on the device.
+  String? installedPackage(Set<String> installed) {
+    for (final candidate in packages) {
+      if (installed.contains(candidate)) return candidate;
+    }
+    return null;
+  }
+
+  /// The same entry pinned to the package actually installed —
+  /// `%ANDROIDPACKAGE%` has to expand to that one, or the config and core
+  /// paths point at a build that is not there.
+  EmulatorSpec withPackage(String installedPackage) => EmulatorSpec(
+    id: id,
+    name: name,
+    package: installedPackage,
+    altPackages: altPackages,
+    activity: activity,
+    template: template,
+  );
 }
 
 const _raPackage = 'com.retroarch';
+
+/// The standalone 64-bit build — a separate package with the same activity
+/// and cores. Most devices carry this one instead of `com.retroarch`.
+const _raPackage64 = 'com.retroarch.aarch64';
 const _raActivity = 'com.retroarch.browser.retroactivity.RetroActivityFuture';
 
 /// A RetroArch core entry: the same three extras for every core, only the
@@ -30,6 +63,7 @@ EmulatorSpec _ra(String id, String core, String name) => EmulatorSpec(
   id: 'ra-$id',
   name: 'RetroArch ($name)',
   package: _raPackage,
+  altPackages: const [_raPackage64],
   activity: _raActivity,
   template:
       '%EXTRA_CONFIGFILE%=%EXTERNALDATA%/Android/data/%ANDROIDPACKAGE%'
@@ -261,5 +295,5 @@ EmulatorSpec? specById(String id) => _byId[id];
 
 /// Every package in the catalogue — what we ask the device about.
 final Set<String> allCatalogPackages = {
-  for (final spec in _byId.values) spec.package,
+  for (final spec in _byId.values) ...spec.packages,
 };

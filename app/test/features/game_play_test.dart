@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:droplet/app/widgets/primary_button.dart';
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/local_state.dart';
 import 'package:droplet/core/downloads/storage_settings.dart';
@@ -9,6 +12,7 @@ import 'package:droplet/features/game/game_detail_screen.dart';
 import 'package:droplet/features/game/providers.dart';
 import 'package:droplet/features/library/providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -200,6 +204,59 @@ void main() {
     await tester.pumpAndSettle();
     expect(port.launched.single.romTreeUri, 'content://tree');
     expect(port.launched.single.dataMode, DataMode.saf);
+  });
+
+  testWidgets('a system the catalogue does not cover says so', (tester) async {
+    final port = FakeLauncherPort(installed: {'dev.eden.eden_emulator'});
+    await tester.pumpWidget(
+      _app(
+        game: _game(
+          system: 'zx81',
+          systemName: 'ZX81',
+          files: [_file('g.p', FileRole.base)],
+        ),
+        state: _installed,
+        port: port,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('No emulator configured'), findsOneWidget);
+    // Nothing to set up: the Emulators screen could only repeat it.
+    expect(find.byKey(const Key('setup-emulator')), findsNothing);
+    expect(find.byKey(const Key('play-button')), findsNothing);
+  });
+
+  testWidgets('an exception from the channel lands in the snackbar too', (
+    tester,
+  ) async {
+    final port = FakeLauncherPort(installed: {'dev.eden.eden_emulator'})
+      ..launchThrows = PlatformException(code: 'error', message: 'no activity');
+    await tester.pumpWidget(
+      _app(game: _game(), state: _installed, port: port),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('play-button')));
+    await tester.pumpAndSettle();
+    expect(find.text("Couldn't start Eden: no activity"), findsOneWidget);
+  });
+
+  testWidgets('a launch in flight ignores a second tap', (tester) async {
+    final port = FakeLauncherPort(installed: {'dev.eden.eden_emulator'})
+      ..hold = Completer<void>();
+    await tester.pumpWidget(
+      _app(game: _game(), state: _installed, port: port),
+    );
+    await tester.pumpAndSettle();
+    final play = find.byKey(const Key('play-button'));
+    await tester.tap(play);
+    await tester.pump();
+    expect(tester.widget<PrimaryButton>(play).busy, isTrue);
+    await tester.tap(play);
+    await tester.pump();
+    port.hold!.complete();
+    await tester.pumpAndSettle();
+    expect(port.launched, hasLength(1));
+    expect(tester.widget<PrimaryButton>(play).busy, isFalse);
   });
 
   testWidgets('a launch error lands in a snackbar', (tester) async {

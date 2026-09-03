@@ -39,6 +39,23 @@ void main() {
     );
   });
 
+  test('RetroArch answers to both of its packages', () {
+    final spec = specById('ra-snes9x')!;
+    expect(spec.packages, ['com.retroarch', 'com.retroarch.aarch64']);
+    expect(allCatalogPackages, contains('com.retroarch.aarch64'));
+    // Whichever build is on the device is the one we launch.
+    expect(spec.installedPackage({'com.retroarch.aarch64'}),
+        'com.retroarch.aarch64');
+    expect(spec.installedPackage({'com.retroarch'}), 'com.retroarch');
+    expect(spec.installedPackage({'org.citra.emu'}), isNull);
+    final resolved = spec.withPackage('com.retroarch.aarch64');
+    expect((resolved.id, resolved.name, resolved.activity),
+        (spec.id, spec.name, spec.activity));
+    expect(resolved.package, 'com.retroarch.aarch64');
+    // A single-package entry keeps answering to just the one.
+    expect(specById('eden')!.packages, ['dev.eden.eden_emulator']);
+  });
+
   test('gc and wii share the Dolphin entries', () {
     expect(catalogFor('gc').first, same(catalogFor('wii').first));
     expect(catalogFor('gc').map((s) => s.id), ['dolphin', 'ra-dolphin']);
