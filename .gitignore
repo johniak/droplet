@@ -17,3 +17,7 @@ app/build/
 
 # brainstorming visual companion
 .superpowers/
+
+# artefakty Gradle
+app/android/build/
+app/android/.gradle/

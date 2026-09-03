@@ -18,20 +18,52 @@ na TrueNAS SCALE, pierwsze uruchomienie, aktualizacje i backup.
 
 ## 2. Instalacja jako Custom App
 
-1. W TrueNAS: **Apps → Discover Apps → Custom App → Install via YAML**.
-2. Wklej zawartość `docker-compose.yml` z repozytorium, podmieniając:
-   - `${LIBRARY_PATH}` → ścieżka datasetu z ROMami, np. `/mnt/tank/roms`,
-   - definicję wolumenu `droplet-data` → bind na dataset danych, np.:
+Gotowy obraz backendu leży na Docker Hubie:
+[`johniak/droplet-backend`](https://hub.docker.com/r/johniak/droplet-backend)
+(`linux/amd64` i `linux/arm64`). Tagi: `latest` i `X.Y.Z` z wydań, `edge` z
+gałęzi `main`. TrueNAS nie buduje obrazów ze źródeł, więc w YAML-u poniżej
+używamy `image:`, a nie `build:`.
 
-     ```yaml
-     volumes:
-       droplet-data:
-         driver: local
-         driver_opts:
-           type: none
-           o: bind
-           device: /mnt/tank/apps/droplet
-     ```
+1. W TrueNAS: **Apps → Discover Apps → Custom App → Install via YAML**.
+2. Wklej poniższy YAML, podmieniając ścieżki datasetów i wartości `environment`:
+
+   ```yaml
+   services:
+     web:
+       image: johniak/droplet-backend:latest
+       command: ["web"]
+       restart: unless-stopped
+       ports: ["8000:8000"]
+       environment: &env
+         DJANGO_SECRET_KEY: "<długi losowy sekret>"
+         DJANGO_ALLOWED_HOSTS: "*"
+         DROPLET_ADMIN_USER: "<login>"
+         DROPLET_ADMIN_PASSWORD: "<hasło>"
+         DROPLET_AUTO_COVERS: "1"
+       volumes:
+         - /mnt/tank/apps/droplet:/data
+         - /mnt/tank/roms:/library:ro
+       healthcheck:
+         test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/api/health/')"]
+         interval: 10s
+         timeout: 5s
+         retries: 5
+         start_period: 30s
+     worker:
+       image: johniak/droplet-backend:latest
+       command: ["worker"]
+       restart: unless-stopped
+       environment: *env
+       volumes:
+         - /mnt/tank/apps/droplet:/data
+         - /mnt/tank/roms:/library:ro
+       depends_on:
+         web:
+           condition: service_healthy
+   ```
+
+   Kontenery działają jako root, więc ACL-e datasetów nie wymagają dodatkowej
+   konfiguracji. Dataset z ROM-ami jest montowany tylko do odczytu.
 
 3. Ustaw zmienne środowiskowe (sekcja `environment` obu serwisów):
 
@@ -86,15 +118,20 @@ wymaganych zmiennych środowiskowych albo brak praw zapisu do datasetu `/data`.
 
 ## 4. Aktualizacja
 
+Na TrueNAS: podnieś tag w YAML-u (np. `johniak/droplet-backend:0.4.0`) albo zostaw
+`latest` i zrób **Edit → Update** aplikacji; przy `latest` TrueNAS pobierze nowy
+obraz, jeśli w ustawieniach appki włączysz „pull images". Migracje bazy wykonają
+się automatycznie przy starcie kontenera `web`.
+
+Z repozytorium (compose na dowolnym hoście):
+
 ```bash
 git pull
-docker compose build
+docker compose pull      # obraz z Docker Huba
 docker compose up -d
+# albo lokalny build ze źródeł:
+docker compose up -d --build
 ```
-
-Na TrueNAS: przebuduj/wypchnij nowy obraz, a następnie zrób **Edit → Update**
-(re-deploy) aplikacji. Migracje bazy wykonają się automatycznie przy starcie
-kontenera `web`.
 
 ### Aktualizacja do M7 (katalogi per gra)
 
