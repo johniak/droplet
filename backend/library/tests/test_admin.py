@@ -115,3 +115,25 @@ def test_loose_file_hint_distinguishes_unpacked_mods():
     assert admin_obj.hint(b) == "przenieś do katalogu gry"
     c = LooseFile.objects.create(system=system, relative_path="switch/Orphan/mods/skin.zip", size=1)
     assert admin_obj.hint(c).startswith("mod bez gry")
+
+
+@pytest.mark.django_db
+def test_scan_now_button_works_with_empty_list(admin_client_, monkeypatch):
+    from library import admin as library_admin
+
+    calls = []
+
+    class FakeTask:
+        def enqueue(self):
+            calls.append(1)
+
+    monkeypatch.setattr(library_admin, "scan_library", FakeTask())
+    page = admin_client_.get("/admin/library/scanrun/")
+    assert b"Skanuj teraz" in page.content
+    assert b"/admin/library/scanrun/scan-now/" in page.content
+    resp = admin_client_.post("/admin/library/scanrun/scan-now/")
+    assert resp.status_code == 302 and resp.url == "/admin/library/scanrun/"
+    assert calls == [1]
+    # GET nie odpala skanu
+    assert admin_client_.get("/admin/library/scanrun/scan-now/").status_code == 405
+    assert calls == [1]

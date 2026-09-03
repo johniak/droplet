@@ -1,4 +1,7 @@
 from django.contrib import admin
+from django.shortcuts import redirect
+from django.urls import path, reverse
+from django.views.decorators.http import require_POST
 from django.db.models import Count
 
 from .models import Game, GameFile, LooseFile, ScanRun, System
@@ -92,6 +95,23 @@ class ScanRunAdmin(admin.ModelAdmin):
     def run_scan_action(self, request, queryset):
         scan_library.enqueue()
         self.message_user(request, "Skan dodany do kolejki")
+
+    # Akcje Django wymagają zaznaczonych wierszy, a przy świeżej bazie lista
+    # jest pusta — przycisk „Skanuj teraz” w pasku narzędzi działa zawsze.
+    def get_urls(self):
+        custom = [
+            path(
+                "scan-now/",
+                self.admin_site.admin_view(require_POST(self.scan_now)),
+                name="library_scanrun_scan_now",
+            )
+        ]
+        return custom + super().get_urls()
+
+    def scan_now(self, request):
+        scan_library.enqueue()
+        self.message_user(request, "Skan dodany do kolejki")
+        return redirect(reverse("admin:library_scanrun_changelist"))
 
 
 @admin.register(LooseFile)
