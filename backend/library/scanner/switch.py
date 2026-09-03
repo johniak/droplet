@@ -26,10 +26,15 @@ def parse_switch(stem: str) -> SwitchInfo:
     tid = tid_m.group(1).upper() if tid_m else None
     ver_m = _VER.search(stem)
     version = ver_m.group(1) if ver_m else ""
+    suffix = tid[-3:] if tid else None
     if _DLC.search(stem):
         role = "dlc"
-    elif _UPD.search(stem) or (tid and tid.endswith("800")):
+    elif _UPD.search(stem) or suffix == "800":
         role = "update"
+    elif suffix is not None and suffix != "000":
+        # Title id spoza rodziny base/update: 13. cyfra podbita o 1 i licznik
+        # w końcówce (…5001, …5002) — tak Nintendo numeruje DLC.
+        role = "dlc"
     else:
         role = "base"
     return SwitchInfo(title_id=tid, role=role, version=version)
