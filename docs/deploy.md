@@ -221,6 +221,20 @@ Zasady:
   udziale pełny szablon katalogów z handhelda. Aplikacja i tak pokazuje tylko
   systemy z co najmniej jedną grą.
 
+### Pliki systemowe: BIOS, firmware, klucze (od M9)
+
+```
+bios/
+├── RetroArch/            # scph1001.bin, dc_boot.bin, … (katalog System RetroArch)
+└── Switch/               # Firmware 22.5.0.zip, prod.keys, title.keys
+```
+
+`bios/` to zwykły system o kodzie `bios`; każdy podkatalog to paczka do
+pobrania. Aplikacja nie pokazuje go na półkach — paczki są w **Settings →
+System files** i lądują na telefonie w `<ROMs>/bios/<Paczka>/`. W emulatorze
+wskazujesz ten katalog (RetroArch: Settings → Directory → System/BIOS) albo
+konkretny plik (Eden: prod.keys, firmware z zipa).
+
 ### Mody (od M8)
 
 Mod to plik w podkatalogu `mods/` katalogu gry:

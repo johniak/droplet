@@ -15,10 +15,10 @@ def _scan_and_wait(base_url, auth):
 
 def test_full_flow(base_url, auth):
     games = _scan_and_wait(base_url, auth)
-    assert games["count"] == 3
+    assert games["count"] == 4  # 3 gry + paczka bios/RetroArch
 
     systems = requests.get(f"{base_url}/api/systems/", headers=auth, timeout=10).json()
-    assert {s["code"] for s in systems} >= {"snes", "psx", "switch"}
+    assert {s["code"] for s in systems} >= {"snes", "psx", "switch", "bios"}
 
     mario = requests.get(
         f"{base_url}/api/games/",

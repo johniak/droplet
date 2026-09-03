@@ -26,7 +26,10 @@ def test_scan_result_contents(base_url, auth):
 
     manifest = requests.get(f"{base_url}/api/manifest/", headers=auth, timeout=10).json()
     by_folder = {e["folder"]: e for e in manifest}
-    assert set(by_folder) == {"Super Mario World (USA)", "Tekken (USA)", "Hollow Knight"}
+    assert set(by_folder) == {"Super Mario World (USA)", "Tekken (USA)", "Hollow Knight", "RetroArch"}
+    bios = by_folder["RetroArch"]
+    assert bios["system_code"] == "bios"
+    assert [f["name"] for f in bios["files"]] == ["scph1001.bin"]
     hk = by_folder["Hollow Knight"]["files"]
     assert {f["role"] for f in hk} == {"base", "update", "mod"}
     mod = next(f for f in hk if f["role"] == "mod")

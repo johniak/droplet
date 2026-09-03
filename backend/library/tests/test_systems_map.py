@@ -25,3 +25,10 @@ def test_switch_has_no_thumbnail_repo():
     # libretro-thumbnails has no Switch repository (the API returns 404), so the
     # automatic matcher must skip the system instead of erroring on every scan.
     assert lookup_system("switch").thumbnail_repo == ""
+
+
+def test_bios_pseudo_system():
+    for name in ("bios", "BIOS", "firmware", "system"):
+        spec = lookup_system(name)
+        assert spec.code == "bios" and spec.is_switch is False
+    assert lookup_system("bios").thumbnail_repo == ""

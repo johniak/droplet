@@ -12,6 +12,9 @@ class SystemSpec:
 
 
 _SPECS = [
+    # Pliki systemowe (BIOS, firmware, klucze): zwykły system, każdy podkatalog
+    # to paczka do pobrania; aplikacja chowa go z półek i pokazuje w Ustawieniach.
+    SystemSpec("bios", "BIOS & firmware", ""),
     SystemSpec(
         "nes",
         "Nintendo Entertainment System",
@@ -38,6 +41,7 @@ _SPECS = [
 ]
 
 _ALIASES = {
+    "bios": ["bios", "firmware", "system"],
     "nes": ["nes", "nintendo - nintendo entertainment system", "famicom"],
     "snes": ["snes", "nintendo - super nintendo entertainment system", "sfc"],
     "n64": ["n64", "nintendo - nintendo 64"],
