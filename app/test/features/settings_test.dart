@@ -427,9 +427,38 @@ void main() {
           isDirectory: false,
         ),
       ],
-      root.path,
+      StorageSettings(root.path, const {}),
+      const ['snes'],
     );
     expect(outside.existsSync(), isTrue);
+  });
+
+  test('deleteUnknown refuses a system dir and a path with ..', () {
+    final root = Directory.systemTemp.createTempSync('roms');
+    addTearDown(() => root.deleteSync(recursive: true));
+    final settings = StorageSettings(root.path, const {});
+    final systemDir = Directory('${root.path}/snes')..createSync();
+    final sibling = Directory('${root.path}/keep')..createSync();
+    deleteUnknown(
+      [
+        UnknownEntry(
+          systemCode: 'snes',
+          path: systemDir.path,
+          bytes: 0,
+          isDirectory: true,
+        ),
+        UnknownEntry(
+          systemCode: 'snes',
+          path: '${root.path}/snes/../keep',
+          bytes: 0,
+          isDirectory: true,
+        ),
+      ],
+      settings,
+      const ['snes'],
+    );
+    expect(systemDir.existsSync(), isTrue);
+    expect(sibling.existsSync(), isTrue);
   });
 
   test('deleteUnknown skips entries that are already gone', () {
@@ -450,7 +479,8 @@ void main() {
           isDirectory: true,
         ),
       ],
-      root.path,
+      StorageSettings(root.path, const {}),
+      const ['snes'],
     );
     expect(Directory(root.path).listSync(), isEmpty);
   });

@@ -57,6 +57,37 @@ void main() {
     expect(find.text('Ustawienia'), findsOneWidget);
   });
 
+  testWidgets('a separator or .. in the field never reaches the settings', (
+    tester,
+  ) async {
+    final repo = StorageSettingsRepository(SharedPreferencesAsync());
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storageSettingsRepositoryProvider.overrideWithValue(repo),
+          systemsProvider.overrideWith((ref) async => systems),
+        ],
+        child: MaterialApp.router(routerConfig: _router()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final field = find.byKey(const Key('system-dir-snes'));
+    await tester.enterText(field, 'SNES');
+    await tester.pumpAndSettle();
+    // Pole zapisuje się znak po znaku, więc „..” i separator muszą po prostu
+    // odpaść — inaczej katalog systemu wyszedłby poza drzewo ROMów.
+    await tester.enterText(field, '..');
+    await tester.pumpAndSettle();
+    expect((await repo.load()).systemDirs['snes'], 'SNES');
+    await tester.enterText(field, 'a/b');
+    await tester.pumpAndSettle();
+    expect((await repo.load()).systemDirs['snes'], 'SNES');
+    // Puste pole to brak nadpisania, a nie katalog o pustej nazwie.
+    await tester.enterText(field, '');
+    await tester.pumpAndSettle();
+    expect((await repo.load()).systemDirs.containsKey('snes'), isFalse);
+  });
+
   testWidgets('saving a folder invalidates storageSettingsProvider', (
     tester,
   ) async {

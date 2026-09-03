@@ -184,8 +184,11 @@ class DeviceIndexController extends AsyncNotifier<Map<int, LocalGameState>> {
     LibrarySnapshot snapshot,
     StorageSettings settings,
   ) {
+    // Klucze po rozwiązanym katalogu, nie po kodzie systemu — patrz
+    // [knownFolderKey]: dwa systemy mogą dzielić jeden podkatalog.
     final known = {
-      for (final e in snapshot.manifest) '${e.systemCode}/${e.folder}',
+      for (final e in snapshot.manifest)
+        knownFolderKey(settings, e.systemCode, e.folder),
     };
     _last = _scan(
       settings,

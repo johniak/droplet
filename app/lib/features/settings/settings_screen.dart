@@ -339,9 +339,10 @@ class _DeviceCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final baseDir = ref.watch(storageSettingsProvider).value?.baseDir;
-    final free =
-        baseDir == null ? null : ref.watch(freeBytesProvider(baseDir)).value;
+    final settings = ref.watch(storageSettingsProvider).value;
+    final free = settings == null
+        ? null
+        : ref.watch(freeBytesProvider(settings.baseDir)).value;
     return GlassPanel(
       padding: EdgeInsets.zero,
       child: Column(
@@ -354,7 +355,7 @@ class _DeviceCard extends ConsumerWidget {
             ),
           ),
           const _Divider(),
-          _UnknownRow(baseDir: baseDir),
+          _UnknownRow(settings: settings),
         ],
       ),
     );
@@ -367,10 +368,20 @@ String pluralPositions(int n) => switch (n % 10) {
       _ => '$n pozycji',
     };
 
-/// Usuwa tylko wpisy leżące pod [baseDir] — nic poza katalogiem ROMów.
-void deleteUnknown(List<UnknownEntry> entries, String baseDir) {
+/// Usuwa tylko wpisy leżące pod katalogiem ROMów — i to nie byle jakie:
+/// `..` w ścieżce wyprowadziłoby kasowanie poza drzewo mimo pasującego
+/// prefiksu, a sam katalog systemu nigdy nie jest „nieznanym wpisem" (byłby
+/// nim tylko wskutek błędnego nadpisania i zabrałby ze sobą całą kolekcję).
+void deleteUnknown(
+  List<UnknownEntry> entries,
+  StorageSettings settings,
+  Iterable<String> systemCodes,
+) {
+  final baseDir = settings.baseDir;
+  final systemDirs = {for (final code in systemCodes) settings.dirFor(code)};
   for (final e in entries) {
-    if (!e.path.startsWith('$baseDir/')) continue;
+    if (!insideBaseDir(e.path, baseDir)) continue;
+    if (systemDirs.contains(e.path)) continue;
     if (e.isDirectory) {
       final d = Directory(e.path);
       if (d.existsSync()) d.deleteSync(recursive: true);
@@ -393,18 +404,18 @@ String _summary(List<UnknownEntry> entries) =>
 /// Pliki i katalogi w drzewie ROMów, których nie zna żadna gra z biblioteki —
 /// zwykle pozostałości po układzie sprzed katalogów per gra.
 class _UnknownRow extends ConsumerWidget {
-  const _UnknownRow({required this.baseDir});
+  const _UnknownRow({required this.settings});
 
-  final String? baseDir;
+  final StorageSettings? settings;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unknown = ref.watch(unknownOnDeviceProvider);
-    // Bez katalogu ROMów (ustawienia jeszcze się ładują) nie ma czego usuwać,
-    // więc wiersz nie jest klikalny — i nie udaje klikalnego szewronem.
-    final open = unknown.isEmpty || baseDir == null
+    // Bez ustawień (jeszcze się ładują) nie ma czego usuwać, więc wiersz nie
+    // jest klikalny — i nie udaje klikalnego szewronem.
+    final open = unknown.isEmpty || settings == null
         ? null
-        : () => _showUnknown(context, ref, unknown, baseDir!);
+        : () => _showUnknown(context, ref, unknown, settings!);
     return SettingsRow(
       key: const Key('unknown-on-device'),
       title: 'Nieznane na urządzeniu',
@@ -420,14 +431,15 @@ class _UnknownRow extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     List<UnknownEntry> unknown,
-    String baseDir,
+    StorageSettings settings,
   ) async {
+    final baseDir = settings.baseDir;
     final shown = unknown.take(50).toList();
     // „Nieznane" znaczy „nie ma tego w manifeście" — a przy pustym manifeście
     // (biblioteka jeszcze nie pobrana) nieznane jest *wszystko*. Kasowanie
     // hurtem skasowałoby wtedy całą kolekcję, więc przycisk jest wyłączony.
-    final manifest =
-        ref.read(librarySnapshotProvider).value?.manifest ?? const [];
+    final snapshot = ref.read(librarySnapshotProvider).value;
+    final manifest = snapshot?.manifest ?? const [];
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -476,7 +488,11 @@ class _UnknownRow extends ConsumerWidget {
       ),
     );
     if (confirmed != true) return;
-    deleteUnknown(unknown, baseDir);
+    deleteUnknown(
+      unknown,
+      settings,
+      [for (final s in snapshot?.systems ?? const []) s.code],
+    );
     await ref.read(deviceIndexProvider.notifier).refresh();
   }
 }

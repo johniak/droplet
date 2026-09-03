@@ -12,6 +12,13 @@ void main() {
     expect(s.dirFor('snes'), '/roms/snes');
   });
 
+  test('an empty override is no override at all', () {
+    final s = StorageSettings('/roms', const {'snes': '', 'psx': '  '});
+    expect(s.systemDirs, isEmpty);
+    expect(s.dirFor('snes'), '/roms/snes');
+    expect(s.gameDir('psx', 'FF7'), '/roms/psx/FF7');
+  });
+
   test('gameDir and pathFor put every file inside the game folder', () {
     final s = StorageSettings('/roms', {});
     expect(s.gameDir('snes', 'Mario (USA)'), '/roms/snes/Mario (USA)');
@@ -56,6 +63,35 @@ void main() {
       );
       final settings = await container.read(storageSettingsProvider.future);
       expect(settings.baseDir, '/storage/emulated/0/RetroArch/roms');
+    });
+
+    test('an empty override is removed, not stored as an empty dir', () async {
+      final repo = StorageSettingsRepository(SharedPreferencesAsync());
+      await repo.saveSystemDir('snes', 'SNES');
+      await repo.saveSystemDir('snes', '   ');
+      final s = await repo.load();
+      expect(s.systemDirs.containsKey('snes'), isFalse);
+      expect(s.dirFor('snes'), '/storage/emulated/0/RetroArch/roms/snes');
+    });
+
+    test('a dangerous override is ignored and the old value stays', () async {
+      final repo = StorageSettingsRepository(SharedPreferencesAsync());
+      await repo.saveSystemDir('snes', 'SNES');
+      for (final bad in ['..', '../..', r'a\b', 'a/b', '.']) {
+        await repo.saveSystemDir('snes', bad);
+        expect((await repo.load()).systemDirs['snes'], 'SNES', reason: bad);
+      }
+    });
+
+    test('load drops overrides that a previous version could have saved',
+        () async {
+      final prefs = SharedPreferencesAsync();
+      await prefs.setString(
+        'storage.system_dirs',
+        '{"snes":"","psx":"..","gb":" gameboy "}',
+      );
+      final s = await StorageSettingsRepository(prefs).load();
+      expect(s.systemDirs, {'gb': 'gameboy'});
     });
 
     test('wifiOnly defaults to false and persists', () async {

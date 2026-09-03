@@ -25,12 +25,17 @@ void main() {
     file.writeAsBytesSync(List.filled(size, 0));
   }
 
+  /// Klucze znanych folderów idą po rozwiązanym katalogu, nie po kodzie.
+  Set<String> known(Map<String, String> folders) => {
+        for (final e in folders.entries) knownFolderKey(settings, e.key, e.value),
+      };
+
   test('known folders are indexed, everything else is unknown', () {
     put('snes/Mario (USA)/Mario (USA).sfc');
     put('snes/Zelda (USA)/z.sfc');          // nieznany folder
     put('snes/loose.sfc', 2);               // plik luzem
     put('psx/FF7/disc1/FF7 (Disc 1).bin', 8);
-    final index = scanDevice(settings, ['snes', 'psx', 'gba'], {'snes/Mario (USA)', 'psx/FF7'});
+    final index = scanDevice(settings, ['snes', 'psx', 'gba'], known({'snes': 'Mario (USA)', 'psx': 'FF7'}));
     expect(index.games['snes']!['Mario (USA)'], {'Mario (USA).sfc': 4});
     expect(index.games['psx']!['FF7'], {'disc1/FF7 (Disc 1).bin': 8});
     expect(index.games.containsKey('gba'), isFalse);
@@ -53,7 +58,8 @@ void main() {
       ManifestEntry(gameId: 3, systemCode: 'snes', folder: 'Absent',
           files: [f(4, 'a.sfc', FileRole.base)]),
     ];
-    final index = scanDevice(settings, ['snes', 'switch'], {'snes/Mario (USA)', 'switch/HK', 'snes/Absent'});
+    final index = scanDevice(settings, ['snes', 'switch'],
+        {...known({'snes': 'Mario (USA)', 'switch': 'HK'}), knownFolderKey(settings, 'snes', 'Absent')});
     final states = buildLocalStates(manifest, index, settings);
     expect(states[1]!.status, InstallStatus.installed);
     expect(states[1]!.presentPaths, ['${root.path}/snes/Mario (USA)/Mario (USA).sfc']);
@@ -68,7 +74,7 @@ void main() {
     put('snes/Mario (USA)/.thumbs/cache.png', 9);
     put('snes/.nomedia', 1);
     put('snes/.thumbnails/x.png', 7);
-    final index = scanDevice(settings, ['snes'], {'snes/Mario (USA)'});
+    final index = scanDevice(settings, ['snes'], known({'snes': 'Mario (USA)'}));
     expect(index.games['snes']!['Mario (USA)'], {'Mario (USA).sfc': 4});
     expect(index.unknown, isEmpty);
   });
@@ -91,7 +97,7 @@ void main() {
       Process.runSync('chmod', ['700', locked]);
       Process.runSync('chmod', ['700', lockedSystem]);
     });
-    final index = scanDevice(settings, ['snes', 'psx'], {'snes/Mario (USA)', 'psx/FF7'});
+    final index = scanDevice(settings, ['snes', 'psx'], known({'snes': 'Mario (USA)', 'psx': 'FF7'}));
     // Nieczytelny podkatalog nie gubi reszty plików gry...
     expect(index.games['snes']!['Mario (USA)'], {'Mario (USA).sfc': 4});
     // ...a nieczytelny katalog systemu po prostu wypada ze skanu.
@@ -105,7 +111,59 @@ void main() {
       ManifestEntry(gameId: 1, systemCode: 'snes', folder: 'Mario (USA)',
           files: [f(1, 'Mario (USA).sfc', FileRole.base)]),
     ];
-    final index = scanDevice(settings, ['snes'], {'snes/Mario (USA)'});
+    final index = scanDevice(settings, ['snes'], known({'snes': 'Mario (USA)'}));
     expect(buildLocalStates(manifest, index, settings)[1]!.status, InstallStatus.none);
+  });
+
+  test('an empty override falls back to the code, never to the ROM dir', () {
+    // Nadpisanie „" dawało kiedyś `<roms>/`, więc skan listował sam katalog
+    // ROMów i każdy katalog systemu wychodził jako nieznany.
+    put('snes/Mario (USA)/Mario (USA).sfc');
+    final blank = StorageSettings(root.path, const {'snes': '  '});
+    expect(blank.dirFor('snes'), '${root.path}/snes');
+    final index = scanDevice(
+      blank,
+      ['snes'],
+      {knownFolderKey(blank, 'snes', 'Mario (USA)')},
+    );
+    expect(index.games['snes']!['Mario (USA)'], {'Mario (USA).sfc': 4});
+    expect(index.unknown, isEmpty);
+  });
+
+  test('two systems sharing one directory do not cross-list each other', () {
+    put('gameboy/Tetris/t.gb');
+    put('gameboy/Zelda DX/z.gbc');
+    final shared = StorageSettings(
+      root.path,
+      const {'gb': 'gameboy', 'gbc': 'gameboy'},
+    );
+    final index = scanDevice(shared, ['gb', 'gbc'], {
+      knownFolderKey(shared, 'gb', 'Tetris'),
+      knownFolderKey(shared, 'gbc', 'Zelda DX'),
+    });
+    expect(index.unknown, isEmpty);
+    // Katalog przeskanowany raz, ale rozmiary widoczne dla obu kodów — każdy
+    // wpis manifestu szuka po swoim.
+    expect(index.games['gb']!['Tetris'], {'t.gb': 4});
+    expect(index.games['gbc']!['Zelda DX'], {'z.gbc': 4});
+  });
+
+  test('a system dir outside the ROM tree is not scanned at all', () {
+    put('snes/Mario (USA)/Mario (USA).sfc');
+    // `..` nie przejdzie przez repozytorium, ale `StorageSettings` zbudowane
+    // wprost (albo stary zapis w prefsach) nie ma prawa wyprowadzić skanu.
+    final escaping = StorageSettings('${root.path}/snes', const {});
+    expect(
+      scanDevice(escaping, ['..'], const {}).unknown,
+      isEmpty,
+    );
+  });
+
+  test('sizes stay relative when the base path ends with a slash', () {
+    put('snes/Mario (USA)/disc1/a.bin', 5);
+    expect(
+      sizesUnder(Directory('${root.path}/snes/Mario (USA)/')),
+      {'disc1/a.bin': 5},
+    );
   });
 }

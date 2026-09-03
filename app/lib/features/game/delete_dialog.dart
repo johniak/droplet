@@ -35,7 +35,7 @@ Future<void> deleteLocalFiles(
       if (e is Directory) e,
   ]..sort((a, b) => b.path.length.compareTo(a.path.length));
   for (final child in [...nested, dir]) {
-    if (child.listSync().isEmpty) child.deleteSync();
+    if (child.listSync(followLinks: false).isEmpty) child.deleteSync();
   }
 }
 
