@@ -20,5 +20,6 @@ curl -sf localhost:8800/api/health/ >/dev/null || { echo "backend e2e nie wstał
 adb devices | grep -qw device || { echo "brak podłączonego urządzenia Android"; exit 1; }
 # E2E=true: aplikacja nie pokazuje systemowych dialogów uprawnień (M5) — test nie umie ich kliknąć
 # Podshell, żeby `cd app` nie zmieniało cwd tego skryptu (i tak samo trapu).
-(cd app && flutter test integration_test \
+# E2E_DEVICE: przy kilku podłączonych urządzeniach flutter wymaga wskazania celu
+(cd app && flutter test -d "${E2E_DEVICE:-emulator-5554}" integration_test \
   --dart-define=E2E_SERVER="$E2E_SERVER" --dart-define=E2E=true)
