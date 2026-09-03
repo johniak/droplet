@@ -15,13 +15,13 @@ import 'package:go_router/go_router.dart';
 import '../fakes/fake_device_index.dart';
 
 GameSummary g(int id, String title, String system) => GameSummary(
-      id: id,
-      title: title,
-      systemCode: system,
-      hasCover: false,
-      totalSize: 5,
-      folder: title,
-    );
+  id: id,
+  title: title,
+  systemCode: system,
+  hasCover: false,
+  totalSize: 5,
+  folder: title,
+);
 
 final games = [g(1, 'Super Mario World', 'snes'), g(2, 'Tekken', 'psx')];
 const systems = [
@@ -36,44 +36,44 @@ const _none = LocalGameState(
   presentPaths: [],
 );
 
-LibrarySnapshot snap({bool fromCache = false, Set<int> previous = const {1, 2}}) =>
-    LibrarySnapshot(
-      systems: systems,
-      games: games,
-      manifest: [],
-      fromCache: fromCache,
-      previousIds: previous,
-    );
+LibrarySnapshot snap({
+  bool fromCache = false,
+  Set<int> previous = const {1, 2},
+}) => LibrarySnapshot(
+  systems: systems,
+  games: games,
+  manifest: [],
+  fromCache: fromCache,
+  previousIds: previous,
+);
 
 GoRouter _router() => GoRouter(
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (_, __) => const HomeScreen(),
       routes: [
         GoRoute(
-          path: '/',
-          builder: (_, __) => const HomeScreen(),
-          routes: [
-            GoRoute(
-              path: 'system/:code',
-              builder: (_, s) =>
-                  Scaffold(body: Text('System ${s.pathParameters['code']}')),
-            ),
-            GoRoute(
-              path: 'game/:id',
-              builder: (_, s) =>
-                  Scaffold(body: Text('Game ${s.pathParameters['id']}')),
-            ),
-          ],
+          path: 'system/:code',
+          builder: (_, s) =>
+              Scaffold(body: Text('System ${s.pathParameters['code']}')),
+        ),
+        GoRoute(
+          path: 'game/:id',
+          builder: (_, s) =>
+              Scaffold(body: Text('Game ${s.pathParameters['id']}')),
         ),
       ],
-    );
+    ),
+  ],
+);
 
 // riverpod 3 throws if the same provider appears twice in an overrides list
 // (even with different values), so — unlike the naive `...overrides` spread —
 // a per-slot override (snapshot, second game's local state) replaces the
 // matching default instead of sitting next to it.
-Widget _app({
-  Override? snapshotOverride,
-  LocalGameState local2 = _none,
-}) => ProviderScope(
+Widget _app({Override? snapshotOverride, LocalGameState local2 = _none}) =>
+    ProviderScope(
       overrides: [
         snapshotOverride ??
             librarySnapshotProvider.overrideWith((ref) async => snap()),
@@ -92,21 +92,21 @@ Widget _appWithContainer(
   Override? snapshotOverride,
   Override? indexOverride,
 }) => ProviderScope(
-      overrides: [
-        snapshotOverride ??
-            librarySnapshotProvider.overrideWith((ref) async => snap()),
-        indexOverride ??
-            deviceIndexProvider.overrideWith(
-              () => FakeDeviceIndex({1: _none, 2: _none}),
-            ),
-      ],
-      child: Consumer(
-        builder: (context, ref, _) {
-          onContainer(ProviderScope.containerOf(context));
-          return MaterialApp.router(routerConfig: _router());
-        },
-      ),
-    );
+  overrides: [
+    snapshotOverride ??
+        librarySnapshotProvider.overrideWith((ref) async => snap()),
+    indexOverride ??
+        deviceIndexProvider.overrideWith(
+          () => FakeDeviceIndex({1: _none, 2: _none}),
+        ),
+  ],
+  child: Consumer(
+    builder: (context, ref, _) {
+      onContainer(ProviderScope.containerOf(context));
+      return MaterialApp.router(routerConfig: _router());
+    },
+  ),
+);
 
 void main() {
   testWidgets('shelves keep stable keys when the installed shelf appears', (
@@ -118,7 +118,9 @@ void main() {
     await tester.pumpWidget(
       _appWithContainer(
         (c) => container = c,
-        indexOverride: deviceIndexProvider.overrideWith(() => FakeDeviceIndex({})),
+        indexOverride: deviceIndexProvider.overrideWith(
+          () => FakeDeviceIndex({}),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -129,7 +131,8 @@ void main() {
 
     // A rescan finds game 1 on disk — the shelf then jumps into the middle
     // of the list.
-    final index = container.read(deviceIndexProvider.notifier) as FakeDeviceIndex;
+    final index =
+        container.read(deviceIndexProvider.notifier) as FakeDeviceIndex;
     index.states[1] = const LocalGameState(
       status: InstallStatus.installed,
       updateAvailable: false,
@@ -169,6 +172,38 @@ void main() {
     container.invalidate(librarySnapshotProvider);
     await tester.pumpAndSettle();
     expect(find.text('New in library: 1 game'), findsOneWidget);
+  });
+
+  testWidgets('new in library ignores support packs', (tester) async {
+    // A pack has an id the snapshot never saw before, but it must not show
+    // up in the "New in library" count — only real games do.
+    final withPack = LibrarySnapshot(
+      systems: systems,
+      games: games,
+      supportPacks: const [
+        GameSummary(
+          id: 99,
+          title: 'RetroArch',
+          systemCode: 'bios',
+          hasCover: false,
+          totalSize: 4,
+          folder: 'RetroArch',
+        ),
+      ],
+      manifest: const [],
+      fromCache: false,
+      previousIds: const {1, 2},
+    );
+    await tester.pumpWidget(
+      _appWithContainer(
+        (_) {},
+        snapshotOverride: librarySnapshotProvider.overrideWith(
+          (ref) async => withPack,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('New in library'), findsNothing);
   });
 
   testWidgets('several new games use the plural form', (tester) async {

@@ -16,10 +16,10 @@ import 'theme.dart';
 export 'shell.dart' show hidesNavBar;
 
 GoRoute _gameRoute() => GoRoute(
-      path: 'game/:id',
-      builder: (_, s) =>
-          GameDetailScreen(gameId: int.parse(s.pathParameters['id']!)),
-    );
+  path: 'game/:id',
+  builder: (_, s) =>
+      GameDetailScreen(gameId: int.parse(s.pathParameters['id']!)),
+);
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier(0);
@@ -79,6 +79,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'folders',
                     builder: (_, __) => const FoldersScreen(),
                   ),
+                  // The System files card links here so a tap stays on the
+                  // Settings tab instead of jumping to the library branch.
+                  _gameRoute(),
                 ],
               ),
             ],

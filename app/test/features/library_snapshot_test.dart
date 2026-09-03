@@ -55,8 +55,8 @@ class _OkClient extends ApiClient {
 
   @override
   Future<List<SystemModel>> fetchSystems() async => [
-        const SystemModel(id: 1, code: 'snes', name: 'SNES', gameCount: 1),
-      ];
+    const SystemModel(id: 1, code: 'snes', name: 'SNES', gameCount: 1),
+  ];
 
   @override
   Future<GamePage> fetchGames({
@@ -73,8 +73,63 @@ class _OkClient extends ApiClient {
   }
 
   @override
-  Future<List<ManifestEntry>> fetchManifest() async =>
-      const [_marioEntry, _tekkenEntry];
+  Future<List<ManifestEntry>> fetchManifest() async => const [
+    _marioEntry,
+    _tekkenEntry,
+  ];
+}
+
+const _biosPack = GameSummary(
+  id: 3,
+  title: 'RetroArch',
+  systemCode: 'bios',
+  hasCover: false,
+  totalSize: 4,
+  folder: 'RetroArch',
+);
+const _biosEntry = ManifestEntry(
+  gameId: 3,
+  systemCode: 'bios',
+  folder: 'RetroArch',
+  files: [
+    GameFileModel(
+      id: 10,
+      name: 'scph1001.bin',
+      relativePath: '',
+      role: FileRole.other,
+      discNumber: null,
+      version: '',
+      size: 4,
+    ),
+  ],
+);
+
+class _OkClientWithBios extends ApiClient {
+  _OkClientWithBios() : super(baseUrl: 'http://nas:8000', token: 't');
+
+  @override
+  Future<List<SystemModel>> fetchSystems() async => [
+    const SystemModel(id: 1, code: 'snes', name: 'SNES', gameCount: 1),
+    const SystemModel(
+      id: 2,
+      code: 'bios',
+      name: 'BIOS & firmware',
+      gameCount: 1,
+    ),
+  ];
+
+  @override
+  Future<GamePage> fetchGames({
+    String? system,
+    String? search,
+    int page = 1,
+  }) async => GamePage(count: 2, hasNext: false, results: [_mario, _biosPack]);
+
+  @override
+  Future<List<ManifestEntry>> fetchManifest() async => const [
+    _marioEntry,
+    _biosEntry,
+  ];
 }
 
 class _OfflineClient extends ApiClient {
@@ -82,16 +137,18 @@ class _OfflineClient extends ApiClient {
 
   @override
   Future<List<SystemModel>> fetchSystems() async => throw DioException(
-        requestOptions: RequestOptions(path: '/api/systems/'),
-        type: DioExceptionType.connectionError,
-      );
+    requestOptions: RequestOptions(path: '/api/systems/'),
+    type: DioExceptionType.connectionError,
+  );
 }
 
 ProviderContainer _container(ApiClient client, Directory dir) =>
     ProviderContainer(
       overrides: [
         apiClientProvider.overrideWithValue(client),
-        libraryCacheProvider.overrideWith((ref) async => LibraryCache(dir.path)),
+        libraryCacheProvider.overrideWith(
+          (ref) async => LibraryCache(dir.path),
+        ),
       ],
     );
 
@@ -139,11 +196,7 @@ void main() {
     addTearDown(container.dispose);
     // In Riverpod 3 the `.future` of an errored provider stays pending unless
     // something listens, so the state is observed instead.
-    container.listen(
-      librarySnapshotProvider,
-      (_, __) {},
-      onError: (_, __) {},
-    );
+    container.listen(librarySnapshotProvider, (_, __) {}, onError: (_, __) {});
     await Future<void>.delayed(const Duration(milliseconds: 50));
     final state = container.read(librarySnapshotProvider);
     expect(state.hasError, true);
@@ -172,5 +225,41 @@ void main() {
     final container = _container(_OkClient(), dir);
     addTearDown(container.dispose);
     expect((await container.read(systemsProvider.future)).single.code, 'snes');
+  });
+
+  test('the snapshot splits bios packs out of games and systems', () async {
+    final container = _container(_OkClientWithBios(), dir);
+    addTearDown(container.dispose);
+    final snapshot = await container.read(librarySnapshotProvider.future);
+    expect(snapshot.games.map((g) => g.systemCode), isNot(contains('bios')));
+    expect(snapshot.systems.map((s) => s.code), isNot(contains('bios')));
+    expect(snapshot.games.length, 1);
+    expect(snapshot.systems.length, 1);
+    expect(snapshot.supportPacks.single.title, 'RetroArch');
+    // The manifest stays complete — the device scan still needs to know the
+    // `bios` folder.
+    expect(
+      snapshot.manifest.map((e) => e.systemCode),
+      containsAll(['snes', 'bios']),
+    );
+  });
+
+  test('previousIds never count support packs as new', () async {
+    await LibraryCache(dir.path).save(
+      [
+        const SystemModel(
+          id: 2,
+          code: 'bios',
+          name: 'BIOS & firmware',
+          gameCount: 1,
+        ),
+      ],
+      [_biosPack],
+      const [_biosEntry],
+    );
+    final container = _container(_OkClientWithBios(), dir);
+    addTearDown(container.dispose);
+    final snapshot = await container.read(librarySnapshotProvider.future);
+    expect(snapshot.previousIds, isEmpty);
   });
 }

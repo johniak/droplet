@@ -15,6 +15,11 @@ final libraryCacheProvider = FutureProvider<LibraryCache>(
   (ref) async => LibraryCache((await getApplicationDocumentsDirectory()).path),
 );
 
+/// The system code for BIOS/firmware/keys packs — a plain system like any
+/// other on the server (see `systems_map`), but kept out of shelves, search
+/// and counts on the app side (see [LibrarySnapshot]).
+const kBiosSystemCode = 'bios';
+
 /// Everything the library screen needs, from one source: the server when it
 /// answers, the last cached copy when it does not.
 class LibrarySnapshot {
@@ -24,26 +29,62 @@ class LibrarySnapshot {
     required this.manifest,
     required this.fromCache,
     required this.previousIds,
+    this.supportPacks = const [],
   });
 
+  /// Never contains the `bios` system — see [supportPacks].
   final List<SystemModel> systems;
+
+  /// Never contains games of the `bios` system — see [supportPacks].
   final List<GameSummary> games;
 
-  /// Files of every game — the source of truth for comparing with disk.
+  /// System files (BIOS, firmware, keys): games of the `bios` system, split
+  /// out of [games] so shelves, search, "New in library" and system counts
+  /// all ignore them. Shown instead in its own Settings card.
+  final List<GameSummary> supportPacks;
+
+  /// Files of every game, packs included — the source of truth for comparing
+  /// with disk, and for the device scan to know the `bios` folder.
   final List<ManifestEntry> manifest;
 
   final bool fromCache;
 
-  /// Ids known before this refresh — used for the "what's new" hint.
+  /// Ids known before this refresh — used for the "what's new" hint. Never
+  /// includes pack ids, so packs never count as "new".
   final Set<int> previousIds;
 }
+
+LibrarySnapshot _snapshotFrom({
+  required List<SystemModel> systems,
+  required List<GameSummary> games,
+  required List<ManifestEntry> manifest,
+  required bool fromCache,
+  required Set<int> previousIds,
+}) => LibrarySnapshot(
+  systems: [
+    for (final s in systems)
+      if (s.code != kBiosSystemCode) s,
+  ],
+  games: [
+    for (final g in games)
+      if (g.systemCode != kBiosSystemCode) g,
+  ],
+  supportPacks: [
+    for (final g in games)
+      if (g.systemCode == kBiosSystemCode) g,
+  ],
+  manifest: manifest,
+  fromCache: fromCache,
+  previousIds: previousIds,
+);
 
 final librarySnapshotProvider = FutureProvider<LibrarySnapshot>((ref) async {
   final client = ref.watch(apiClientProvider);
   final cache = await ref.watch(libraryCacheProvider.future);
   final previous = await cache.load();
   final previousIds = <int>{
-    for (final g in previous?.games ?? const <GameSummary>[]) g.id,
+    for (final g in previous?.games ?? const <GameSummary>[])
+      if (g.systemCode != kBiosSystemCode) g.id,
   };
   try {
     final systems = await client.fetchSystems();
@@ -57,7 +98,7 @@ final librarySnapshotProvider = FutureProvider<LibrarySnapshot>((ref) async {
     }
     final manifest = await client.fetchManifest();
     await cache.save(systems, games, manifest);
-    return LibrarySnapshot(
+    return _snapshotFrom(
       systems: systems,
       games: games,
       manifest: manifest,
@@ -66,7 +107,7 @@ final librarySnapshotProvider = FutureProvider<LibrarySnapshot>((ref) async {
     );
   } on DioException {
     if (previous == null) rethrow;
-    return LibrarySnapshot(
+    return _snapshotFrom(
       systems: previous.systems,
       games: previous.games,
       manifest: previous.manifest,
@@ -91,8 +132,9 @@ class SearchQuery extends Notifier<String> {
   void update(String query) => state = query;
 }
 
-final searchQueryProvider =
-    NotifierProvider<SearchQuery, String>(SearchQuery.new);
+final searchQueryProvider = NotifierProvider<SearchQuery, String>(
+  SearchQuery.new,
+);
 
 enum LibrarySort { title, recentlyAdded }
 
@@ -107,11 +149,12 @@ final sortProvider = NotifierProvider<SortOrder, LibrarySort>(SortOrder.new);
 
 /// The disk scan injected into the controller — this lets tests count how
 /// many times the index really touched the disk.
-typedef DeviceScanner = DeviceIndex Function(
-  StorageSettings settings,
-  Iterable<String> systemCodes,
-  Set<String> knownFolderKeys,
-);
+typedef DeviceScanner =
+    DeviceIndex Function(
+      StorageSettings settings,
+      Iterable<String> systemCodes,
+      Set<String> knownFolderKeys,
+    );
 
 /// One disk scan for the whole library: the state of every game in the
 /// manifest, and along the way a list of files and folders it does not know.
@@ -190,11 +233,14 @@ class DeviceIndexController extends AsyncNotifier<Map<int, LocalGameState>> {
       for (final e in snapshot.manifest)
         knownFolderKey(settings, e.systemCode, e.folder),
     };
-    _last = _scan(
-      settings,
-      [for (final s in snapshot.systems) s.code],
-      known,
-    );
+    // The manifest's own codes, union'd in: `snapshot.systems` excludes
+    // `bios` (see [LibrarySnapshot]), but its folder still needs scanning so
+    // `localStateProvider` works for support packs too.
+    final systemCodes = {
+      for (final s in snapshot.systems) s.code,
+      for (final e in snapshot.manifest) e.systemCode,
+    };
+    _last = _scan(settings, systemCodes, known);
     return buildLocalStates(snapshot.manifest, _last, settings);
   }
 
@@ -209,8 +255,8 @@ class DeviceIndexController extends AsyncNotifier<Map<int, LocalGameState>> {
 
 final deviceIndexProvider =
     AsyncNotifierProvider<DeviceIndexController, Map<int, LocalGameState>>(
-  DeviceIndexController.new,
-);
+      DeviceIndexController.new,
+    );
 
 /// Files and folders in the ROM tree that no game in the manifest knows.
 final unknownOnDeviceProvider = Provider<List<UnknownEntry>>((ref) {
@@ -219,14 +265,14 @@ final unknownOnDeviceProvider = Provider<List<UnknownEntry>>((ref) {
 });
 
 Set<int> installedFrom(Map<int, LocalGameState> states) => {
-      for (final e in states.entries)
-        if (e.value.status != InstallStatus.none) e.key,
-    };
+  for (final e in states.entries)
+    if (e.value.status != InstallStatus.none) e.key,
+};
 
 Set<int> updatableFrom(Map<int, LocalGameState> states) => {
-      for (final e in states.entries)
-        if (e.value.updateAvailable) e.key,
-    };
+  for (final e in states.entries)
+    if (e.value.updateAvailable) e.key,
+};
 
 /// The sets widgets read. Providers **derived from providers** deliberately
 /// stay out of other providers' chains (see `homeShelvesProvider`):
@@ -249,18 +295,18 @@ class SystemFilterState extends Notifier<SystemFilter> {
   void select(SystemFilter filter) => state = filter;
 }
 
-final systemFilterProvider =
-    NotifierProvider<SystemFilterState, SystemFilter>(SystemFilterState.new);
+final systemFilterProvider = NotifierProvider<SystemFilterState, SystemFilter>(
+  SystemFilterState.new,
+);
 
 List<GameSummary> sortGames(List<GameSummary> games, LibrarySort sort) {
   final out = [...games];
-  out.sort(
-    switch (sort) {
-      LibrarySort.title => (a, b) =>
-          a.title.toLowerCase().compareTo(b.title.toLowerCase()),
-      LibrarySort.recentlyAdded => (a, b) => b.id.compareTo(a.id),
-    },
-  );
+  out.sort(switch (sort) {
+    LibrarySort.title => (a, b) => a.title.toLowerCase().compareTo(
+      b.title.toLowerCase(),
+    ),
+    LibrarySort.recentlyAdded => (a, b) => b.id.compareTo(a.id),
+  });
   return out;
 }
 
@@ -269,14 +315,17 @@ List<GameSummary> applyFilter(
   SystemFilter filter,
   Set<int> installed,
   Set<int> updatable,
-) =>
-    switch (filter) {
-      SystemFilter.all => games,
-      SystemFilter.installed =>
-        [for (final g in games) if (installed.contains(g.id)) g],
-      SystemFilter.updatable =>
-        [for (final g in games) if (updatable.contains(g.id)) g],
-    };
+) => switch (filter) {
+  SystemFilter.all => games,
+  SystemFilter.installed => [
+    for (final g in games)
+      if (installed.contains(g.id)) g,
+  ],
+  SystemFilter.updatable => [
+    for (final g in games)
+      if (updatable.contains(g.id)) g,
+  ],
+};
 
 class SystemShelf {
   const SystemShelf({required this.system, required this.games});
@@ -305,12 +354,14 @@ HomeShelves buildShelves(
   Set<int> installedIds,
   LibrarySort sort,
 ) {
-  final recent =
-      sortGames(games, LibrarySort.recentlyAdded).take(kRecentShelfSize);
-  final installed = sortGames(
-    [for (final g in games) if (installedIds.contains(g.id)) g],
-    sort,
-  );
+  final recent = sortGames(
+    games,
+    LibrarySort.recentlyAdded,
+  ).take(kRecentShelfSize);
+  final installed = sortGames([
+    for (final g in games)
+      if (installedIds.contains(g.id)) g,
+  ], sort);
   return HomeShelves(
     recent: recent.toList(),
     installed: installed,
@@ -318,10 +369,10 @@ HomeShelves buildShelves(
       for (final system in systems)
         SystemShelf(
           system: system,
-          games: sortGames(
-            [for (final g in games) if (g.systemCode == system.code) g],
-            sort,
-          ),
+          games: sortGames([
+            for (final g in games)
+              if (g.systemCode == system.code) g,
+          ], sort),
         ),
     ],
   );
@@ -338,10 +389,15 @@ final homeShelvesProvider = FutureProvider<HomeShelves>((ref) async {
 });
 
 /// Games of one system after the filter chip and sorting.
-final systemGamesProvider =
-    FutureProvider.family<List<GameSummary>, String>((ref, code) async {
+final systemGamesProvider = FutureProvider.family<List<GameSummary>, String>((
+  ref,
+  code,
+) async {
   final snapshot = await ref.watch(librarySnapshotProvider.future);
-  final own = [for (final g in snapshot.games) if (g.systemCode == code) g];
+  final own = [
+    for (final g in snapshot.games)
+      if (g.systemCode == code) g,
+  ];
   return sortGames(
     applyFilter(
       own,
@@ -357,11 +413,8 @@ final systemGamesProvider =
 final gamesProvider = FutureProvider<List<GameSummary>>((ref) async {
   final snapshot = await ref.watch(librarySnapshotProvider.future);
   final search = ref.watch(searchQueryProvider).trim().toLowerCase();
-  return sortGames(
-    [
-      for (final g in snapshot.games)
-        if (search.isEmpty || g.title.toLowerCase().contains(search)) g,
-    ],
-    ref.watch(sortProvider),
-  );
+  return sortGames([
+    for (final g in snapshot.games)
+      if (search.isEmpty || g.title.toLowerCase().contains(search)) g,
+  ], ref.watch(sortProvider));
 });

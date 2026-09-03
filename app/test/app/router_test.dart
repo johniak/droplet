@@ -50,38 +50,39 @@ const _systems = [
 ];
 
 Widget _app(KeyValueStore store) => ProviderScope(
-      overrides: [
-        sessionRepositoryProvider.overrideWithValue(SessionRepository(store)),
-        librarySnapshotProvider.overrideWith(
-          (ref) async => const LibrarySnapshot(
-            systems: _systems,
-            games: _games,
-            manifest: [],
-            fromCache: false,
-            previousIds: {7},
-          ),
-        ),
-        gameDetailProvider(7).overrideWith((ref) async => _detail),
-        localStateProvider(7).overrideWith(
-          (ref) async => const LocalGameState(
-            status: InstallStatus.none,
-            updateAvailable: false,
-            missing: [],
-            presentPaths: [],
-          ),
-        ),
-        downloaderPortProvider.overrideWithValue(FakeDownloaderPort()),
-        permissionsPortProvider.overrideWithValue(
-          FakePermissionsPort(granted: true),
-        ),
-      ],
-      child: const DropletApp(),
-    );
+  overrides: [
+    sessionRepositoryProvider.overrideWithValue(SessionRepository(store)),
+    librarySnapshotProvider.overrideWith(
+      (ref) async => const LibrarySnapshot(
+        systems: _systems,
+        games: _games,
+        manifest: [],
+        fromCache: false,
+        previousIds: {7},
+      ),
+    ),
+    gameDetailProvider(7).overrideWith((ref) async => _detail),
+    localStateProvider(7).overrideWith(
+      (ref) async => const LocalGameState(
+        status: InstallStatus.none,
+        updateAvailable: false,
+        missing: [],
+        presentPaths: [],
+      ),
+    ),
+    downloaderPortProvider.overrideWithValue(FakeDownloaderPort()),
+    permissionsPortProvider.overrideWithValue(
+      FakePermissionsPort(granted: true),
+    ),
+  ],
+  child: const DropletApp(),
+);
 
 Future<MemoryKeyValueStore> _signedIn() async {
   final store = MemoryKeyValueStore();
-  await SessionRepository(store)
-      .save(const Session(serverUrl: 'http://nas:8000', token: 't'));
+  await SessionRepository(
+    store,
+  ).save(const Session(serverUrl: 'http://nas:8000', token: 't'));
   return store;
 }
 
@@ -155,6 +156,24 @@ void main() {
     expect(find.byType(GlassBar), findsOneWidget);
   });
 
+  testWidgets('game/:id also nests under settings, staying on that tab', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app(await _signedIn()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-settings')));
+    await tester.pumpAndSettle();
+    tester.element(find.byType(SettingsScreen)).go('/settings/game/7');
+    await tester.pumpAndSettle();
+    expect(find.byType(GameDetailScreen), findsOneWidget);
+    expect(find.byType(GlassBar), findsNothing);
+
+    await tester.tap(find.byKey(const Key('back-button')));
+    await tester.pumpAndSettle();
+    expect(find.byType(SettingsScreen), findsOneWidget);
+    expect(find.byType(GlassBar), findsOneWidget);
+  });
+
   testWidgets('go to a game from downloads lands in the library branch', (
     tester,
   ) async {
@@ -203,8 +222,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(LoginScreen), findsOneWidget);
     await repo.save(const Session(serverUrl: 'http://nas:8000', token: 't'));
-    container.read(sessionProvider.notifier).state =
-        const AsyncData(Session(serverUrl: 'http://nas:8000', token: 't'));
+    container.read(sessionProvider.notifier).state = const AsyncData(
+      Session(serverUrl: 'http://nas:8000', token: 't'),
+    );
     await tester.pumpAndSettle();
     expect(find.byType(HomeScreen), findsOneWidget);
   });
