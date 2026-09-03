@@ -129,4 +129,44 @@ void main() {
     expect(Directory('$baseDir/switch/Hollow Knight').existsSync(), isFalse,
         reason: 'game folder (with mods/) was left behind');
   });
+
+  testWidgets('a bios pack downloads into bios/<pack> from Settings', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ProviderScope(child: DropletApp()));
+    await tester.pumpAndSettle();
+    // Session and base directory survive from the first test.
+    final baseDir = '${(await getApplicationDocumentsDirectory()).path}/roms';
+
+    await tester.tap(find.byKey(const Key('nav-settings')));
+    await tester.pumpAndSettle();
+    await pumpUntil(tester, find.text('RetroArch'));
+    await tester.tap(find.text('RetroArch'));
+    await tester.pumpAndSettle();
+    await pumpUntil(tester, find.textContaining('Download ·'));
+    await tester.tap(find.textContaining('Download ·'));
+    await tester.pumpAndSettle();
+
+    var installed = false;
+    for (var i = 0; i < 60 && !installed; i++) {
+      await tester.pump(const Duration(seconds: 1));
+      installed = tester.any(find.text('Installed'));
+    }
+    expect(installed, isTrue, reason: "download didn't finish within 60s");
+
+    final packDir = Directory('$baseDir/bios/RetroArch');
+    final biosFile = File('${packDir.path}/scph1001.bin');
+    expect(biosFile.existsSync(), isTrue, reason: 'missing BIOS at $biosFile');
+    expect(biosFile.lengthSync(), 4); // size from the fixture library
+
+    await pumpUntil(tester, find.text('Delete from device'));
+    await tester.tap(find.text('Delete from device'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle(const Duration(seconds: 3));
+    expect(biosFile.existsSync(), isFalse,
+        reason: 'BIOS file was left behind after deletion');
+    expect(packDir.existsSync(), isFalse,
+        reason: 'empty pack folder was left behind after deletion');
+  });
 }
