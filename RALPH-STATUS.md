@@ -5,9 +5,13 @@ Status pętli Ralph budującej Droplet wg planów M0–M7.
 ## Czeka na Jana
 
 - **M7 na NAS-ie**: uporządkuj bibliotekę (każda gra w folderze),
-  `docker compose up -d --build` (migracja 0002), `manage.py scan`, przejrzyj
-  `/admin/library/loosefile/`; w aplikacji 0.3.0 stare płaskie pliki pokażą się
-  w Ustawienia → Nieznane na urządzeniu.
+  `docker compose up -d --build` (migracja 0002), a potem `manage.py scan`
+  **dwa razy** — drugi przebieg musi dać `+0 ~0 -0` (pierwszy przepina pliki
+  starych gier do katalogów). Przejrzyj `/admin/library/loosefile/`: gry sprzed
+  M7 leżące luzem znikają z biblioteki, dopóki nie przeniesiesz ich do katalogu
+  gry. W aplikacji 0.3.0 stary, płaski układ pokaże się w Ustawienia → Nieznane
+  na urządzeniu, a w Ustawienia → Foldery per system puste pole znaczy
+  „podkatalog o nazwie kodu systemu". Szczegóły: `docs/deploy.md` §4.
 
 - **M1 Task 11 kroki 2–4 — skan prawdziwej biblioteki na TrueNAS.** Wymaga realnego
   NAS-a z Twoimi ROMami:

@@ -96,6 +96,38 @@ Na TrueNAS: przebuduj/wypchnij nowy obraz, a następnie zrób **Edit → Update*
 (re-deploy) aplikacji. Migracje bazy wykonają się automatycznie przy starcie
 kontenera `web`.
 
+### Aktualizacja do M7 (katalogi per gra)
+
+Migracja `library.0002_folders` nadaje starym grom folder wyliczony z pierwszego
+pliku, ale dopiero skan uzgadnia bazę z dyskiem. Po aktualizacji uruchom skan
+**dwa razy**:
+
+```bash
+docker compose exec web python manage.py scan
+docker compose exec web python manage.py scan   # musi dać +0 ~0 -0
+```
+
+Pierwszy przebieg przepina pliki do gier wyznaczonych przez katalogi i kasuje
+puste, osierocone wpisy; drugi jest już tylko potwierdzeniem, że baza się
+zbiegła (`files_created`/`files_updated`/`files_deleted` = 0 we wpisie
+`ScanRun`).
+
+Czego się spodziewać:
+
+- **Gry sprzed M7 leżące luzem** (plik bezpośrednio w katalogu systemu) znikają
+  z biblioteki, a ich pliki lądują w **„Do uporządkowania"**
+  (`/admin/library/loosefile/`). Wrócą jako gry, gdy przeniesiesz je do katalogu
+  gry i uruchomisz skan ponownie.
+- **Dwie stare gry wskazujące ten sam katalog** (np. `disc1/` i `disc2/` jednej
+  gry) scalają się w jedną pozycję — folder jest unikalny, więc bierze go
+  pierwsza, a pliki drugiej skan przepina do niej.
+- W aplikacji 0.3.0 stary, płaski układ na telefonie pokaże się w
+  **Ustawienia → Nieznane na urządzeniu**.
+- W **Ustawienia → Foldery per system** puste pole znaczy „podkatalog o nazwie
+  kodu systemu" — nie kasuje nadpisania na coś pustego. Wartość z separatorem
+  (`/`, `\`) albo `..` jest ignorowana: katalog systemu musi zostać wewnątrz
+  katalogu ROMów.
+
 ## 5. Układ biblioteki (od M7)
 
 Droplet traktuje **katalog jako grę**: pod katalogiem systemu każdy podkatalog to
