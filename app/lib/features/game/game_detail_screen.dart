@@ -20,6 +20,11 @@ import '../../core/downloads/space.dart';
 import '../../core/downloads/storage_settings.dart';
 import '../../core/errors.dart';
 import '../../core/format.dart';
+import '../../core/launch/emulator_catalog.dart';
+import '../../core/launch/emulator_settings.dart';
+import '../../core/launch/launch_plan.dart';
+import '../../core/launch/launch_request.dart';
+import '../../core/platform/launcher_port.dart';
 import '../../core/session/providers.dart';
 import '../library/providers.dart';
 import '../library/widgets/cover_image.dart';
@@ -486,9 +491,16 @@ class _Actions extends ConsumerWidget {
             if (free != null) '${formatBytes(free)} free',
             if (dir != null) 'saving to: $dir',
           ].join(' · ');
+    // Play sits above the download/delete row: it is what someone opening an
+    // installed game came for, and it needs the full width for itself.
+    final boot = state.status == InstallStatus.installed ? bootFile(game) : null;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (boot != null) ...[
+          _PlayControl(game: game, file: boot),
+          const SizedBox(height: 8),
+        ],
         if (installed)
           PrimaryButton(label: 'Delete from device', onPressed: onDelete, ghost: true)
         else ...[
@@ -516,6 +528,62 @@ class _Actions extends ConsumerWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Play, or the way to get an emulator set up. Nothing at all while the
+/// device is still being asked which emulators it has — a button that
+/// flashes "Set up emulator" on every open would only mislead.
+class _PlayControl extends ConsumerWidget {
+  const _PlayControl({required this.game, required this.file});
+
+  final GameDetail game;
+  final GameFileModel file;
+
+  Future<void> _play(
+    BuildContext context,
+    WidgetRef ref,
+    EmulatorSpec spec,
+  ) async {
+    final settings = await ref.read(storageSettingsProvider.future);
+    final tree = await ref.read(romTreeProvider.future);
+    final romPath = settings.pathFor(game.systemCode, game.folder, file.name);
+    final LaunchRequest request;
+    try {
+      request = resolveTemplate(spec: spec, romPath: romPath, tree: tree);
+    } on LaunchPlanError {
+      if (!context.mounted) return;
+      _snack(context, 'Grant folder access in Settings → Emulators');
+      return;
+    }
+    final error = await ref.read(launcherPortProvider).launch(request);
+    if (!context.mounted || error == null) return;
+    _snack(context, "Couldn't start ${spec.name}: $error");
+  }
+
+  static void _snack(BuildContext context, String message) =>
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final emulator = ref.watch(effectiveEmulatorProvider(game.systemCode));
+    if (emulator.isLoading) return const SizedBox(height: 48);
+    final spec = emulator.value;
+    if (spec == null) {
+      return TextButton(
+        key: const Key('setup-emulator'),
+        onPressed: () => context.go('/settings/emulators'),
+        child: const Text('Set up emulator'),
+      );
+    }
+    return PrimaryButton(
+      key: const Key('play-button'),
+      label: 'Play',
+      icon: Icons.play_arrow_rounded,
+      onPressed: () => _play(context, ref, spec),
     );
   }
 }

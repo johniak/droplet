@@ -9,12 +9,17 @@ class PrimaryButton extends StatelessWidget {
     required this.onPressed,
     this.ghost = false,
     this.busy = false,
+    this.icon,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final bool ghost;
   final bool busy;
+
+  /// Drawn before the label — for buttons that do more than the screen's
+  /// default action (Play).
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -55,13 +60,26 @@ class PrimaryButton extends StatelessWidget {
                         color: kText,
                       ),
                     )
-                  : Text(
-                      label,
-                      style: TextStyle(
-                        color: ghost ? kText : Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (icon != null) ...[
+                          Icon(
+                            icon,
+                            size: 20,
+                            color: ghost ? kText : Colors.white,
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(
+                          label,
+                          style: TextStyle(
+                            color: ghost ? kText : Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
             ),
           ),

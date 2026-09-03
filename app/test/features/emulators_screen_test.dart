@@ -135,4 +135,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Granted: content://sd'), findsOneWidget);
   });
+
+  testWidgets('back returns to Settings', (tester) async {
+    await tester.pumpWidget(_app(FakeLauncherPort(), repo));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('back-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Settings'), findsOneWidget);
+  });
 }

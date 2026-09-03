@@ -63,6 +63,18 @@ void main() {
     await pumpUntil(tester, find.byKey(const Key('nav-settings')));
     await tester.tap(find.byKey(const Key('nav-settings')));
     await tester.pumpAndSettle();
+
+    // Emulators: the test device has none installed, so every system row
+    // says which ones it would take.
+    await tester.scrollUntilVisible(find.text('Emulator per system'), 200);
+    await tester.tap(find.text('Emulator per system'));
+    await tester.pumpAndSettle();
+    await pumpUntil(tester, find.text('Folder access for emulators'));
+    expect(find.textContaining('Not installed: Eden'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('back-button')));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(find.text('Sign out'), -200);
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
     expect(find.text('Sign in'), findsOneWidget);
