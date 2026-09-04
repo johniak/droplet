@@ -233,12 +233,36 @@ class _ServerCard extends ConsumerWidget {
             autofocus: true,
             title: 'Sign out',
             trailing: const Icon(Icons.logout, size: 18, color: kTextDim),
-            onTap: () => ref.read(sessionProvider.notifier).signOut(),
+            onTap: () => _confirmSignOut(context, ref),
           ),
         ],
       ),
     );
   }
+}
+
+/// One stray A on the pad must not sign the user out: confirm first, with
+/// the safe answer focused.
+Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
+  final yes = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Sign out?'),
+      content: const Text('Downloaded games stay on the device.'),
+      actions: [
+        TextButton(
+          autofocus: true,
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Sign out', style: TextStyle(color: kDanger)),
+        ),
+      ],
+    ),
+  );
+  if (yes == true) await ref.read(sessionProvider.notifier).signOut();
 }
 
 /// Which emulator Play starts, per system — the screen behind this row also

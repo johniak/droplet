@@ -88,6 +88,13 @@ Widget _app(List<GameSummary> games, {List<Override> overrides = const []}) =>
     );
 
 void main() {
+  // The focus glow follows Flutter's highlight mode: visible only after a key
+  // or pad event. These tests assert on the glow, so they run in that mode.
+  setUp(() => FocusManager.instance.highlightStrategy =
+      FocusHighlightStrategy.alwaysTraditional);
+  tearDown(() => FocusManager.instance.highlightStrategy =
+      FocusHighlightStrategy.automatic);
+
   final games = [g(1, 'Mario'), g(2, 'Zelda'), g(3, 'Metroid')];
   // One device index feeds both the badges and the filter chips.
   final states = [

@@ -79,6 +79,13 @@ Widget _padApp(FakeDownloaderPort port, LocalGameState state) => ProviderScope(
 );
 
 void main() {
+  // The focus glow follows Flutter's highlight mode: visible only after a key
+  // or pad event. These tests assert on the glow, so they run in that mode.
+  setUp(() => FocusManager.instance.highlightStrategy =
+      FocusHighlightStrategy.alwaysTraditional);
+  tearDown(() => FocusManager.instance.highlightStrategy =
+      FocusHighlightStrategy.automatic);
+
   testWidgets('Download takes the focus and Start presses it', (tester) async {
     final port = FakeDownloaderPort();
     await tester.pumpWidget(_padApp(port, _none));

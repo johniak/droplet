@@ -41,12 +41,17 @@ class FocusGlow extends StatefulWidget {
 }
 
 class _FocusGlowState extends State<FocusGlow> {
-  bool _focused = false;
+  /// Focus itself (drives scroll-into-view) versus the visible highlight:
+  /// Flutter only shows focus highlights in "traditional" mode, which starts
+  /// after the first key/pad event and ends at the next touch — so a screen
+  /// opens with nothing selected and the glow appears once the pad is used.
+  bool _highlight = false;
 
   bool get _enabled => widget.enabled && widget.onTap != null;
 
+  void _onShowHighlight(bool show) => setState(() => _highlight = show);
+
   void _onFocusChange(bool focused) {
-    setState(() => _focused = focused);
     if (!focused) return;
     if (!mounted) return;
     // A surface outside any viewport (a bottom bar, a dialog) has nothing to
@@ -69,6 +74,7 @@ class _FocusGlowState extends State<FocusGlow> {
       autofocus: widget.autofocus,
       focusNode: widget.focusNode,
       onFocusChange: _onFocusChange,
+      onShowFocusHighlight: _onShowHighlight,
       actions: {
         ActivateIntent: CallbackAction<ActivateIntent>(
           onInvoke: (_) {
@@ -78,17 +84,17 @@ class _FocusGlowState extends State<FocusGlow> {
         ),
       },
       child: AnimatedScale(
-        scale: _focused ? widget.scale : 1,
+        scale: _highlight ? widget.scale : 1,
         duration: const Duration(milliseconds: 150),
         child: DecoratedBox(
           key: const Key('focus-glow-ring'),
           position: DecorationPosition.foreground,
           decoration: BoxDecoration(
             borderRadius: radius,
-            border: _focused
+            border: _highlight
                 ? Border.all(color: kAccent, width: 2)
                 : null,
-            boxShadow: _focused
+            boxShadow: _highlight
                 ? [
                     BoxShadow(
                       color: kAccent.withValues(alpha: 0.45),

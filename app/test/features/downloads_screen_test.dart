@@ -109,6 +109,13 @@ const _localNone = LocalGameState(
 final _settings = StorageSettings('/roms', const {});
 
 void main() {
+  // The focus glow follows Flutter's highlight mode: visible only after a key
+  // or pad event. These tests assert on the glow, so they run in that mode.
+  setUp(() => FocusManager.instance.highlightStrategy =
+      FocusHighlightStrategy.alwaysTraditional);
+  tearDown(() => FocusManager.instance.highlightStrategy =
+      FocusHighlightStrategy.automatic);
+
   late FakeDownloaderPort port;
   late DownloadManager manager;
 

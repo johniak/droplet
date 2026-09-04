@@ -114,6 +114,13 @@ Widget _appWithContainer(
 );
 
 void main() {
+  // The focus glow follows Flutter's highlight mode: visible only after a key
+  // or pad event. These tests assert on the glow, so they run in that mode.
+  setUp(() => FocusManager.instance.highlightStrategy =
+      FocusHighlightStrategy.alwaysTraditional);
+  tearDown(() => FocusManager.instance.highlightStrategy =
+      FocusHighlightStrategy.automatic);
+
   testWidgets('shelves keep stable keys when the installed shelf appears', (
     tester,
   ) async {

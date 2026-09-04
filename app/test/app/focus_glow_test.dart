@@ -16,6 +16,30 @@ Widget _wrap(Widget child) =>
     MaterialApp(theme: buildTheme(), home: Scaffold(body: Center(child: child)));
 
 void main() {
+  // The glow follows Flutter's focus highlight mode; tests that assert on it
+  // force the "key/pad" mode, and one test below checks the touch behaviour.
+  setUp(() => FocusManager.instance.highlightStrategy =
+      FocusHighlightStrategy.alwaysTraditional);
+  tearDown(() => FocusManager.instance.highlightStrategy =
+      FocusHighlightStrategy.automatic);
+
+  testWidgets('no glow in touch mode until a key is pressed', (tester) async {
+    FocusManager.instance.highlightStrategy = FocusHighlightStrategy.alwaysTouch;
+    final node = FocusNode();
+    addTearDown(node.dispose);
+    await tester.pumpWidget(
+      _wrap(FocusGlow(focusNode: node, onTap: () {}, child: const Text('Go'))),
+    );
+    node.requestFocus();
+    await tester.pumpAndSettle();
+    expect(node.hasFocus, isTrue);
+    expect(_ring(tester, find.byType(FocusGlow)).border, isNull);
+    FocusManager.instance.highlightStrategy = FocusHighlightStrategy.automatic;
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+    expect(_ring(tester, find.byType(FocusGlow)).border, isNotNull);
+  });
+
   testWidgets('a tap calls onTap', (tester) async {
     var taps = 0;
     await tester.pumpWidget(

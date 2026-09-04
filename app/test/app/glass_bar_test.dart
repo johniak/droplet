@@ -15,6 +15,13 @@ bool _focused(WidgetTester tester, String key) =>
     null;
 
 void main() {
+  // The focus glow follows Flutter's highlight mode: visible only after a key
+  // or pad event. These tests assert on the glow, so they run in that mode.
+  setUp(() => FocusManager.instance.highlightStrategy =
+      FocusHighlightStrategy.alwaysTraditional);
+  tearDown(() => FocusManager.instance.highlightStrategy =
+      FocusHighlightStrategy.automatic);
+
   testWidgets('three tabs, taps report index, badge shows count', (
     tester,
   ) async {

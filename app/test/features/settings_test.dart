@@ -164,6 +164,13 @@ Future<SessionRepository> _signedIn() async {
 }
 
 void main() {
+  // The focus glow follows Flutter's highlight mode: visible only after a key
+  // or pad event. These tests assert on the glow, so they run in that mode.
+  setUp(() => FocusManager.instance.highlightStrategy =
+      FocusHighlightStrategy.alwaysTraditional);
+  tearDown(() => FocusManager.instance.highlightStrategy =
+      FocusHighlightStrategy.automatic);
+
   setUp(() {
     SharedPreferencesAsyncPlatform.instance =
         InMemorySharedPreferencesAsync.empty();
@@ -181,6 +188,15 @@ void main() {
     expect(find.text('API v1'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Sign out'), -200);
     await tester.tap(find.text('Sign out'));
+    await tester.pumpAndSettle();
+    // confirmation first — Cancel keeps the session
+    expect(find.text('Sign out?'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(await repo.load(), isNotNull);
+    await tester.tap(find.text('Sign out'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sign out').last);
     await tester.pumpAndSettle();
     expect(await repo.load(), isNull);
   });
