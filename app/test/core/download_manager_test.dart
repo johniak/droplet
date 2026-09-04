@@ -139,6 +139,42 @@ void main() {
     expect(manager.progress[7]?.status, GameProgressStatus.failed);
   });
 
+  test('without database records the in-memory tasks still get paused', () async {
+    await start();
+    port.trackRecords = false;
+    await manager.pauseGame(7);
+    await manager.cancelGame(7);
+    expect(port.paused, [port.enqueued.single.taskId]);
+    expect(port.cancelled, [port.enqueued.single.taskId]);
+    expect(manager.progress[7], isNull);
+  });
+
+  test('a download this manager never enqueued is reached via the live queue',
+      () async {
+    // e.g. started by a previous app version, before tracking was enabled
+    final foreign = DownloadTask(
+      taskId: 'foreign',
+      url: 'http://nas/api/files/1/download',
+      group: 'game-7',
+      filename: 'x.sfc',
+    );
+    port.live.add(foreign);
+    await manager.pauseGame(7);
+    await manager.resumeGame(7);
+    await manager.cancelGame(7);
+    expect(port.paused, ['foreign']);
+    expect(port.resumed, ['foreign']);
+    expect(port.cancelled, ['foreign']);
+  });
+
+  test('the same task in records, live queue and memory is acted on once',
+      () async {
+    await start();
+    port.live.add(port.enqueued.single);
+    await manager.pauseGame(7);
+    expect(port.paused, [port.enqueued.single.taskId]);
+  });
+
   test('pause/resume/cancel/retry act on the game group', () async {
     await start();
     await manager.pauseGame(7);

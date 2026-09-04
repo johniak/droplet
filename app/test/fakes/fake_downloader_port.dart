@@ -13,6 +13,13 @@ class FakeDownloaderPort implements DownloaderPort {
   final resumed = <String>[];
   final cancelled = <String>[];
 
+  /// `false` mimics an untracked database (records missing) so tests can
+  /// prove the live queue / in-memory fallbacks.
+  bool trackRecords = true;
+
+  /// Tasks the "native queue" reports; empty by default.
+  final live = <DownloadTask>[];
+
   @override
   Stream<TaskUpdate> get updates => controller.stream;
 
@@ -45,9 +52,14 @@ class FakeDownloaderPort implements DownloaderPort {
 
   @override
   Future<List<TaskRecord>> recordsForGroup(String group) async => [
-        for (final t in enqueued.where((t) => t.group == group))
-          TaskRecord(t, TaskStatus.running, 0.5, 1024),
+        if (trackRecords)
+          for (final t in enqueued.where((t) => t.group == group))
+            TaskRecord(t, TaskStatus.running, 0.5, 1024),
       ];
+
+  @override
+  Future<List<Task>> liveTasksForGroup(String group) async =>
+      [for (final t in live) if (t.group == group) t];
 
   // Mirrors Task.filePath() for BaseDirectory.root: the plugin stores the
   // directory without the leading slash and puts it back when resolving.

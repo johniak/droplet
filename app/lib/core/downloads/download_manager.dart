@@ -165,21 +165,40 @@ class DownloadManager {
     }
   }
 
+  /// Every task of a game we can lay hands on: tracked database records,
+  /// what the native queue reports right now, and what this manager enqueued
+  /// itself — merged by task id. A download started before tracking was on
+  /// (or in a previous app version) is still reachable through the last two.
+  Future<List<DownloadTask>> _tasksOf(int gameId) async {
+    final group = 'game-$gameId';
+    final byId = <String, DownloadTask>{};
+    for (final record in await _port.recordsForGroup(group)) {
+      byId[record.taskId] = record.task as DownloadTask;
+    }
+    for (final task in await _port.liveTasksForGroup(group)) {
+      byId.putIfAbsent(task.taskId, () => task as DownloadTask);
+    }
+    for (final task in _tasksByGame[gameId] ?? const <DownloadTask>[]) {
+      byId.putIfAbsent(task.taskId, () => task);
+    }
+    return byId.values.toList();
+  }
+
   Future<void> pauseGame(int gameId) async {
-    for (final record in await _port.recordsForGroup('game-$gameId')) {
-      await _port.pause(record.task as DownloadTask);
+    for (final task in await _tasksOf(gameId)) {
+      await _port.pause(task);
     }
   }
 
   Future<void> resumeGame(int gameId) async {
-    for (final record in await _port.recordsForGroup('game-$gameId')) {
-      await _port.resume(record.task as DownloadTask);
+    for (final task in await _tasksOf(gameId)) {
+      await _port.resume(task);
     }
   }
 
   Future<void> cancelGame(int gameId) async {
-    for (final record in await _port.recordsForGroup('game-$gameId')) {
-      await _port.cancel(record.task.taskId);
+    for (final task in await _tasksOf(gameId)) {
+      await _port.cancel(task.taskId);
     }
     _progress.remove(gameId);
     _emit();

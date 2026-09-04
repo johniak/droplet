@@ -14,6 +14,11 @@ abstract class DownloaderPort {
   Future<bool> cancel(String taskId);
   Future<List<TaskRecord>> allRecords();
   Future<List<TaskRecord>> recordsForGroup(String group);
+
+  /// Tasks the native queue holds right now for [group] (enqueued/running) —
+  /// independent of the database, so a download started before tracking was
+  /// enabled can still be paused or cancelled.
+  Future<List<Task>> liveTasksForGroup(String group);
   Future<String> filePath(Task task);
   Future<int?> fileLength(String path);
   Future<void> deleteFile(String path);
@@ -28,6 +33,16 @@ abstract class DownloaderPort {
 /// DownloadManager (another ProviderContainer, e.g. in tests) throws.
 final _updates = FileDownloader().updates.asBroadcastStream();
 
+/// Records exist only for tracked tasks: without `trackTasks()` the database
+/// stays empty and pause/resume/cancel find nothing to act on.
+bool _tracking = false;
+
+Future<void> _ensureTracking() async {
+  if (_tracking) return;
+  await FileDownloader().trackTasks();
+  _tracking = true;
+}
+
 class BackgroundDownloaderPort implements DownloaderPort {
   const BackgroundDownloaderPort();
 
@@ -35,7 +50,10 @@ class BackgroundDownloaderPort implements DownloaderPort {
   Stream<TaskUpdate> get updates => _updates;
 
   @override
-  Future<bool> enqueue(DownloadTask task) => FileDownloader().enqueue(task);
+  Future<bool> enqueue(DownloadTask task) async {
+    await _ensureTracking();
+    return FileDownloader().enqueue(task);
+  }
 
   @override
   Future<bool> pause(DownloadTask task) => FileDownloader().pause(task);
@@ -51,8 +69,14 @@ class BackgroundDownloaderPort implements DownloaderPort {
   Future<List<TaskRecord>> allRecords() => FileDownloader().database.allRecords();
 
   @override
-  Future<List<TaskRecord>> recordsForGroup(String group) =>
-      FileDownloader().database.allRecords(group: group);
+  Future<List<TaskRecord>> recordsForGroup(String group) async {
+    await _ensureTracking();
+    return FileDownloader().database.allRecords(group: group);
+  }
+
+  @override
+  Future<List<Task>> liveTasksForGroup(String group) =>
+      FileDownloader().allTasks(group: group);
 
   @override
   Future<String> filePath(Task task) => task.filePath();
