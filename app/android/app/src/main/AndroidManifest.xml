@@ -65,6 +65,7 @@
         <package android:name="org.kenjinx.android"/>
         <package android:name="org.azahar_emu.azahar"/>
         <package android:name="org.citra.emu"/>
+        <package android:name="org.citra.citra_emu"/>
         <package android:name="me.magnum.melonds"/>
         <package android:name="me.magnum.melondualds"/>
         <package android:name="com.github.stenzek.duckstation"/>

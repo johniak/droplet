@@ -152,11 +152,21 @@ final Map<String, List<EmulatorSpec>> _catalog = {
       template:
           '%ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% $_viewSaf',
     ),
+    // Citra MMJ (weihuoya) ships as org.citra.emu and takes a plain path.
+    const EmulatorSpec(
+      id: 'citra-mmj',
+      name: 'Citra MMJ',
+      package: 'org.citra.emu',
+      activity: 'org.citra.emu.ui.MainActivity',
+      template: '%EXTRA_GamePath%=%ROM%',
+    ),
     const EmulatorSpec(
       id: 'citra',
       name: 'Citra',
-      package: 'org.citra.emu',
-      template: _viewSaf,
+      package: 'org.citra.citra_emu',
+      activity: 'org.citra.citra_emu.activities.EmulationActivity',
+      template:
+          '%ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% $_viewSaf',
     ),
     _ra('citra', 'citra', 'Citra'),
   ],

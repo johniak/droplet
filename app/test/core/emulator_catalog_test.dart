@@ -60,4 +60,12 @@ void main() {
     expect(catalogFor('gc').first, same(catalogFor('wii').first));
     expect(catalogFor('gc').map((s) => s.id), ['dolphin', 'ra-dolphin']);
   });
+
+  test('Citra MMJ (org.citra.emu) launches with a plain path extra', () {
+    final mmj = specById('citra-mmj')!;
+    expect((mmj.package, mmj.activity), ('org.citra.emu', 'org.citra.emu.ui.MainActivity'));
+    expect(mmj.template, '%EXTRA_GamePath%=%ROM%');
+    expect(specById('citra')!.package, 'org.citra.citra_emu');
+    expect(catalogFor('n3ds').map((s) => s.id), ['azahar', 'citra-mmj', 'citra', 'ra-citra']);
+  });
 }

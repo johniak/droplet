@@ -47,11 +47,11 @@ void main() {
     );
     await container
         .read(emulatorSettingsRepositoryProvider)
-        .setChoice('n3ds', 'citra');
+        .setChoice('n3ds', 'citra-mmj');
     container.invalidate(emulatorChoiceProvider('n3ds'));
     expect(
       (await container.read(effectiveEmulatorProvider('n3ds').future))!.id,
-      'citra',
+      'citra-mmj',
     );
     // Not installed: the choice is remembered but does not win.
     await container
@@ -67,7 +67,7 @@ void main() {
     expect(
       (await container.read(installedEmulatorsProvider('n3ds').future))
           .map((s) => s.id),
-      ['azahar', 'citra'],
+      ['azahar', 'citra-mmj'],
     );
     expect(
       await container.read(installedEmulatorPackagesProvider.future),
