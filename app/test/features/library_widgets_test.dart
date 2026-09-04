@@ -17,6 +17,7 @@ import 'package:droplet/features/library/widgets/sort_menu.dart';
 import 'package:droplet/core/downloads/download_manager.dart';
 import 'package:droplet/features/downloads/providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -548,6 +549,26 @@ void main() {
     await tester.enterText(find.byType(TextField), 'tek');
     expect(last, 'tek');
     expect(find.text('Search'), findsOneWidget);
+  });
+
+  testWidgets('SearchField hands the focus back on B, keeps it otherwise', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(SearchField(hint: 'Search', onChanged: (_) {})),
+    );
+    await tester.tap(find.byType(TextField));
+    await tester.pumpAndSettle();
+    final node = tester.widget<TextField>(find.byType(TextField)).focusNode!;
+    expect(node.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
+    await tester.pumpAndSettle();
+    expect(node.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonB);
+    await tester.pumpAndSettle();
+    expect(node.hasFocus, isFalse);
   });
 
   testWidgets('SortMenu switches the sort provider', (tester) async {

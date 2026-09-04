@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/layout.dart';
 import '../../../app/tokens.dart';
+import '../../../app/widgets/focus_glow.dart';
 import '../../../core/api/models.dart';
 import '../../../core/format.dart';
 import '../../../core/session/providers.dart';
@@ -66,11 +67,28 @@ class CoverThumb extends ConsumerWidget {
   }
 }
 
+/// Leaves the search field — and the keyboard it put up — behind before
+/// navigating: the game screen sets its own focus, and a field that kept it
+/// would swallow the pad's next press.
+void openGame(BuildContext context, String route) {
+  FocusScope.of(context).unfocus();
+  context.go(route);
+}
+
 class GameTile extends StatelessWidget {
-  const GameTile({super.key, required this.game, this.hero = true, this.route});
+  const GameTile({
+    super.key,
+    required this.game,
+    this.hero = true,
+    this.route,
+    this.autofocus = false,
+  });
 
   final GameSummary game;
   final bool hero;
+
+  /// The first tile of a grid takes the focus when the screen opens.
+  final bool autofocus;
 
   /// Target route on tap — `/game/{id}` by default, but the system screen
   /// passes `/system/<code>/game/<id>` so the navigation stack goes back to
@@ -78,64 +96,72 @@ class GameTile extends StatelessWidget {
   final String? route;
 
   @override
-  Widget build(BuildContext context) => InkWell(
-        borderRadius: BorderRadius.circular(kRadiusCover),
-        onTap: () => context.go(route ?? '/game/${game.id}'),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CoverThumb(game: game, hero: hero),
-            const SizedBox(height: 8),
-            Text(
-              game.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: kText,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                height: 1.25,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              formatBytes(game.totalSize),
-              style: const TextStyle(color: kTextDim, fontSize: 12),
-            ),
-          ],
+  Widget build(BuildContext context) => FocusGlow(
+    autofocus: autofocus,
+    onTap: () => openGame(context, route ?? '/game/${game.id}'),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CoverThumb(game: game, hero: hero),
+        const SizedBox(height: 8),
+        Text(
+          game.title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: kText,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            height: 1.25,
+          ),
         ),
-      );
+        const SizedBox(height: 2),
+        Text(
+          formatBytes(game.totalSize),
+          style: const TextStyle(color: kTextDim, fontSize: 12),
+        ),
+      ],
+    ),
+  );
 }
 
 class ShelfCard extends StatelessWidget {
-  const ShelfCard({super.key, required this.game, this.width = 96});
+  const ShelfCard({
+    super.key,
+    required this.game,
+    this.width = 96,
+    this.autofocus = false,
+  });
 
   final GameSummary game;
   final double width;
 
+  /// The very first card of the very first shelf — where Home starts.
+  final bool autofocus;
+
   @override
   Widget build(BuildContext context) => SizedBox(
-        width: width,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(kRadiusCover),
-          onTap: () => context.go('/game/${game.id}'),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CoverThumb(game: game),
-              const SizedBox(height: 6),
-              Text(
-                game.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: kText,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+    width: width,
+    child: FocusGlow(
+      autofocus: autofocus,
+      onTap: () => openGame(context, '/game/${game.id}'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CoverThumb(game: game),
+          const SizedBox(height: 6),
+          Text(
+            game.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: kText,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }

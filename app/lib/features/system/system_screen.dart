@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/input/gamepad.dart';
 import '../../app/layout.dart';
 import '../../app/tokens.dart';
 import '../../app/widgets/circle_icon_button.dart';
+import '../../app/widgets/focus_glow.dart';
 import '../../app/widgets/primary_button.dart';
 import '../../app/widgets/pulse_box.dart';
 import '../../core/api/models.dart';
@@ -35,6 +37,15 @@ class SystemScreen extends ConsumerStatefulWidget {
 class _SystemScreenState extends ConsumerState<SystemScreen> {
   var _query = '';
 
+  /// Y hands the focus to the field; the field itself never grabs it.
+  final _searchNode = FocusNode();
+
+  @override
+  void dispose() {
+    _searchNode.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final systems = ref.watch(systemsProvider);
@@ -44,57 +55,73 @@ class _SystemScreenState extends ConsumerState<SystemScreen> {
         .firstOrNull;
     final search = SearchField(
       hint: 'Search in ${system?.name ?? widget.code}',
+      focusNode: _searchNode,
       onChanged: (v) => setState(() => _query = v),
     );
-    return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final wide = isWideWidth(constraints.maxWidth);
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _Header(
-                  system: system,
-                  code: widget.code,
-                  search: wide ? search : null,
-                ),
-                if (!wide)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    child: search,
-                  ),
-                const _FilterChips(),
-                Expanded(
-                  child: systems.when(
-                    loading: () => const _Skeleton(),
-                    error: (e, _) => _Message(
-                      humanizeError(e),
-                      action: 'Retry',
-                      onAction: () => ref.invalidate(librarySnapshotProvider),
-                    ),
-                    data: (_) {
-                      if (system == null) {
-                        return const _Message('Unknown system');
-                      }
-                      final list = filterByQuery(
-                        games.value ?? const [],
-                        _query,
-                      );
-                      if (list.isEmpty) {
-                        return const _Message('Nothing matches');
-                      }
-                      return GamesGrid(
-                        games: list,
-                        routeFor: (id) => '/system/${widget.code}/game/$id',
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
+    return Actions(
+      actions: {
+        FocusSearchIntent: CallbackAction<FocusSearchIntent>(
+          onInvoke: (_) {
+            _searchNode.requestFocus();
+            return null;
           },
+        ),
+      },
+      child: FocusTraversalGroup(
+        policy: ReadingOrderTraversalPolicy(),
+        child: Scaffold(
+          body: SafeArea(
+            bottom: false,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = isWideWidth(constraints.maxWidth);
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _Header(
+                      system: system,
+                      code: widget.code,
+                      search: wide ? search : null,
+                    ),
+                    if (!wide)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        child: search,
+                      ),
+                    const _FilterChips(),
+                    Expanded(
+                      child: systems.when(
+                        loading: () => const _Skeleton(),
+                        error: (e, _) => _Message(
+                          humanizeError(e),
+                          action: 'Retry',
+                          onAction: () =>
+                              ref.invalidate(librarySnapshotProvider),
+                        ),
+                        data: (_) {
+                          if (system == null) {
+                            return const _Message('Unknown system');
+                          }
+                          final list = filterByQuery(
+                            games.value ?? const [],
+                            _query,
+                          );
+                          if (list.isEmpty) {
+                            return const _Message('Nothing matches');
+                          }
+                          return GamesGrid(
+                            games: list,
+                            autofocusFirst: true,
+                            routeFor: (id) => '/system/${widget.code}/game/$id',
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
         ),
       ),
     );
@@ -186,7 +213,9 @@ class _FilterChips extends ConsumerWidget {
           for (final entry in _labels.entries)
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: GestureDetector(
+              child: FocusGlow(
+                scale: 1,
+                borderRadius: 999,
                 onTap: () =>
                     ref.read(systemFilterProvider.notifier).select(entry.key),
                 child: Container(

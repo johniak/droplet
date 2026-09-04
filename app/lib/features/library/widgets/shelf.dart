@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/layout.dart';
 import '../../../app/tokens.dart';
+import '../../../app/widgets/focus_glow.dart';
 import '../../../app/widgets/glass_panel.dart';
 import '../../../core/api/models.dart';
 import 'game_tile.dart';
@@ -15,6 +16,7 @@ class Shelf extends StatelessWidget {
     this.onSeeAll,
     this.cardWidth = 96,
     this.limit = 12,
+    this.autofocusFirst = false,
   });
 
   final String title;
@@ -23,6 +25,9 @@ class Shelf extends StatelessWidget {
   final VoidCallback? onSeeAll;
   final double cardWidth;
   final int limit;
+
+  /// Home's first shelf: its first card is where the pad starts.
+  final bool autofocusFirst;
 
   @override
   Widget build(BuildContext context) {
@@ -58,41 +63,51 @@ class Shelf extends StatelessWidget {
       children: [
         // The whole header — title and "N ›" — is one tap target, so hitting
         // "Nintendo Switch" works just like hitting the counter.
-        onSeeAll != null
-            ? GestureDetector(
-                onTap: onSeeAll,
-                behavior: HitTestBehavior.opaque,
-                child: header,
-              )
-            : header,
+        if (onSeeAll case final seeAll?)
+          FocusGlow(
+            scale: 1,
+            borderRadius: kRadiusCard,
+            onTap: seeAll,
+            child: header,
+          )
+        else
+          header,
         SizedBox(
           height: cardHeight,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: shown.length + (overflow ? 1 : 0),
-            itemBuilder: (_, i) => Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: i < shown.length
-                  ? ShelfCard(game: shown[i], width: cardWidth)
-                  : SizedBox(
-                      width: cardWidth,
-                      child: GlassPanel(
-                        onTap: onSeeAll,
-                        padding: EdgeInsets.zero,
-                        child: Center(
-                          child: Text(
-                            'All (${games.length})',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: kAccent,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+          // Its own group, so the pad walks the shelf sideways instead of
+          // stepping out of it.
+          child: FocusTraversalGroup(
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: shown.length + (overflow ? 1 : 0),
+              itemBuilder: (_, i) => Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: i < shown.length
+                    ? ShelfCard(
+                        game: shown[i],
+                        width: cardWidth,
+                        autofocus: autofocusFirst && i == 0,
+                      )
+                    : SizedBox(
+                        width: cardWidth,
+                        child: GlassPanel(
+                          onTap: onSeeAll,
+                          padding: EdgeInsets.zero,
+                          child: Center(
+                            child: Text(
+                              'All (${games.length})',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: kAccent,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
+              ),
             ),
           ),
         ),

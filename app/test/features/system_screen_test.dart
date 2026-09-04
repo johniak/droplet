@@ -1,3 +1,5 @@
+import 'package:droplet/app/input/gamepad.dart';
+import 'package:droplet/app/widgets/focus_glow.dart';
 import 'package:droplet/app/widgets/pulse_box.dart';
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/local_state.dart';
@@ -7,12 +9,17 @@ import 'package:droplet/features/library/widgets/sort_menu.dart';
 import 'package:droplet/features/system/system_screen.dart';
 import 'package:droplet/features/library/widgets/search_field.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import '../fakes/fake_device_index.dart';
+import '../helpers/focus.dart';
+
+Finder chip(String label) =>
+    find.ancestor(of: find.text(label), matching: find.byType(FocusGlow));
 
 GameSummary g(int id, String title) => GameSummary(
       id: id,
@@ -202,6 +209,69 @@ void main() {
   test('filterByQuery is case-insensitive', () {
     expect(filterByQuery(games, 'MAR').single.title, 'Mario');
     expect(filterByQuery(games, '  '), hasLength(3));
+  });
+
+  testWidgets('the pad starts on the first tile and reaches the chips', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(_app(games, overrides: states));
+    await tester.pumpAndSettle();
+    expect(hasGlow(tester, find.byType(GameTile).first), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pumpAndSettle();
+    expect(hasGlow(tester, chip('All')), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+    expect(hasGlow(tester, chip('On device')), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonA);
+    await tester.pumpAndSettle();
+    expect(find.byType(GameTile), findsNWidgets(2));
+  });
+
+  testWidgets('Y focuses the search field, Escape hands the focus back', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          librarySnapshotProvider.overrideWith(
+            (ref) async => LibrarySnapshot(
+              systems: systems,
+              games: games,
+              manifest: [],
+              fromCache: false,
+              previousIds: const {},
+            ),
+          ),
+          ...states,
+        ],
+        child: MaterialApp(
+          home: GamepadShortcuts(
+            currentIndex: 0,
+            onTab: (_) {},
+            child: const SystemScreen(code: 'snes'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.focusNode!.hasFocus, isFalse);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonY);
+    await tester.pumpAndSettle();
+    expect(field.focusNode!.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(field.focusNode!.hasFocus, isFalse);
   });
 
   testWidgets('wide layout puts the search field into the header row', (

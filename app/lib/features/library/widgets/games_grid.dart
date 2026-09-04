@@ -11,9 +11,14 @@ class GamesGrid extends StatelessWidget {
     required this.games,
     this.padding,
     this.routeFor,
+    this.autofocusFirst = false,
   });
 
   final List<GameSummary> games;
+
+  /// The first tile takes the focus when the grid is what the screen opens
+  /// on (the System screen, and Home's search results).
+  final bool autofocusFirst;
 
   /// 16/12/16 by default, with bottom padding for the floating bar —
   /// computed from `MediaQuery`, so it resolves only in `build`.
@@ -54,6 +59,7 @@ class GamesGrid extends StatelessWidget {
           itemBuilder: (_, i) => GameTile(
             game: games[i],
             route: routeFor?.call(games[i].id),
+            autofocus: autofocusFirst && i == 0,
           ),
         ),
       );

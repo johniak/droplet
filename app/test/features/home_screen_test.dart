@@ -1,19 +1,23 @@
 import 'dart:async';
 
+import 'package:droplet/app/input/gamepad.dart';
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/local_state.dart';
 import 'package:droplet/features/home/home_screen.dart';
 import 'package:droplet/features/library/providers.dart';
+import 'package:droplet/features/library/widgets/game_tile.dart';
 import 'package:droplet/features/library/widgets/games_grid.dart';
 import 'package:droplet/features/library/widgets/shelf.dart';
 import 'package:droplet/features/library/widgets/search_field.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import '../fakes/fake_device_index.dart';
+import '../helpers/focus.dart';
 
 GameSummary g(int id, String title, String system) => GameSummary(
   id: id,
@@ -396,6 +400,65 @@ void main() {
     );
     await tester.pump();
     expect(find.byType(HomeSkeleton), findsOneWidget);
+  });
+
+  testWidgets('the pad starts on the first card and walks right', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+    // 'Recently added' is the first shelf and lists the newest first, so its
+    // first card is Tekken (id 2) and the second Super Mario World (id 1).
+    final cards = find.byType(ShelfCard);
+    expect(hasGlow(tester, cards.first), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+    expect(hasGlow(tester, cards.first), isFalse);
+    expect(hasGlow(tester, cards.at(1)), isTrue);
+
+    // A is the pad's "open".
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonA);
+    await tester.pumpAndSettle();
+    expect(find.text('Game 1'), findsOneWidget);
+  });
+
+  testWidgets('Y focuses the search field, B hands the focus back', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProviderScope(
+          overrides: [
+            librarySnapshotProvider.overrideWith((ref) async => snap()),
+            deviceIndexProvider.overrideWith(
+              () => FakeDeviceIndex({1: _none, 2: _none}),
+            ),
+          ],
+          // The shell is what carries the Y shortcut in the real app.
+          child: GamepadShortcuts(
+            currentIndex: 0,
+            onTab: (_) {},
+            child: const HomeScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.focusNode!.hasFocus, isFalse);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonY);
+    await tester.pumpAndSettle();
+    expect(field.focusNode!.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonB);
+    await tester.pumpAndSettle();
+    expect(field.focusNode!.hasFocus, isFalse);
   });
 
   testWidgets('skeleton does not overflow on a narrow phone screen', (

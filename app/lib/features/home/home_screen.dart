@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/input/gamepad.dart';
 import '../../app/layout.dart';
 import '../../app/tokens.dart';
 import '../../app/widgets/primary_button.dart';
@@ -25,6 +26,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// is a new object, so new games get announced again, while repeated
   /// rebuilds of the same snapshot announce only once.
   LibrarySnapshot? _lastAnnounced;
+
+  /// Y hands the focus to the field; the field itself never grabs it.
+  final _searchNode = FocusNode();
+
+  @override
+  void dispose() {
+    _searchNode.dispose();
+    super.dispose();
+  }
 
   /// Once per snapshot: what the refresh brought in.
   void _announceNewGames(LibrarySnapshot snapshot) {
@@ -55,48 +65,63 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final query = ref.watch(searchQueryProvider).trim();
     final search = SearchField(
       hint: 'Search the library',
+      focusNode: _searchNode,
       onChanged: (v) => ref.read(searchQueryProvider.notifier).update(v),
     );
-    return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final wide = isWideWidth(constraints.maxWidth);
-            return Column(
-              children: [
-                _Header(search: wide ? search : null),
-                if (!wide)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                    child: search,
-                  ),
-                if (ref.watch(isOfflineProvider)) const _OfflinePill(),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: () async =>
-                        ref.invalidate(librarySnapshotProvider),
-                    child: snapshot.when(
-                      loading: () => const HomeSkeleton(),
-                      error: (e, _) => _Message(
-                        title: humanizeError(e),
-                        action: 'Retry',
-                        onAction: () => ref.invalidate(librarySnapshotProvider),
-                      ),
-                      data: (s) => s.games.isEmpty
-                          ? const _Message(
-                              title: 'Nothing here yet',
-                              subtitle: 'Run a scan on the server.',
-                            )
-                          : query.isEmpty
-                          ? const _Shelves()
-                          : const _Results(),
-                    ),
-                  ),
-                ),
-              ],
-            );
+    return Actions(
+      actions: {
+        FocusSearchIntent: CallbackAction<FocusSearchIntent>(
+          onInvoke: (_) {
+            _searchNode.requestFocus();
+            return null;
           },
+        ),
+      },
+      child: FocusTraversalGroup(
+        policy: ReadingOrderTraversalPolicy(),
+        child: Scaffold(
+          body: SafeArea(
+            bottom: false,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = isWideWidth(constraints.maxWidth);
+                return Column(
+                  children: [
+                    _Header(search: wide ? search : null),
+                    if (!wide)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                        child: search,
+                      ),
+                    if (ref.watch(isOfflineProvider)) const _OfflinePill(),
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: () async =>
+                            ref.invalidate(librarySnapshotProvider),
+                        child: snapshot.when(
+                          loading: () => const HomeSkeleton(),
+                          error: (e, _) => _Message(
+                            title: humanizeError(e),
+                            action: 'Retry',
+                            onAction: () =>
+                                ref.invalidate(librarySnapshotProvider),
+                          ),
+                          data: (s) => s.games.isEmpty
+                              ? const _Message(
+                                  title: 'Nothing here yet',
+                                  subtitle: 'Run a scan on the server.',
+                                )
+                              : query.isEmpty
+                              ? const _Shelves()
+                              : const _Results(),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
         ),
       ),
     );
@@ -181,6 +206,8 @@ class _Shelves extends ConsumerWidget {
           title: 'Recently added',
           games: shelves.recent,
           cardWidth: 120,
+          // Where the pad lands when Home opens.
+          autofocusFirst: true,
         ),
         if (shelves.installed.isNotEmpty)
           Shelf(
@@ -228,7 +255,7 @@ class _Results extends ConsumerWidget {
             ),
           ),
         ),
-        Expanded(child: GamesGrid(games: games)),
+        Expanded(child: GamesGrid(games: games, autofocusFirst: true)),
       ],
     );
   }
