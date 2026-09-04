@@ -117,6 +117,11 @@ FocusGlow(
   wyników (jeśli są) albo z powrotem na pierwszą półkę. Implementacja:
   `SearchField` ma `FocusNode` z `onKeyEvent`: `gameButtonB`/`escape` →
   `unfocus()` + `KeyEventResult.handled`.
+- Gałęzie shellu: własny kontener (`BranchHost`) zamiast `IndexedStack`
+  go_routera — ukryte zakładki są za `ExcludeFocus`, więc D-pad nie wejdzie
+  w niewidoczny ekran; po zmianie zakładki fokus wraca do zapamiętanego
+  elementu nowej gałęzi (po dotyku tylko do jej scope'u), a zapamiętane pole
+  szukania nie odzyskuje fokusu (klawiatura).
 - `GlassBar`: poza nawigacją fokusem (`ExcludeFocus`) — fokus kierunkowy nie
   wychodzi poza scope trasy, więc pasek i tak byłby nieosiągalny; zakładki
   zmienia L1/R1 (i dotyk).

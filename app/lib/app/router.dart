@@ -11,6 +11,7 @@ import '../features/settings/emulators_screen.dart';
 import '../features/settings/folders_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/system/system_screen.dart';
+import 'branch_host.dart';
 import 'shell.dart';
 import 'theme.dart';
 
@@ -41,9 +42,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/login',
         builder: (_, __) => const AppBackground(child: LoginScreen()),
       ),
-      StatefulShellRoute.indexedStack(
+      StatefulShellRoute(
         builder: (context, state, shell) =>
             AppShell(shell: shell, hideBar: hidesNavBar(state.uri.path)),
+        navigatorContainerBuilder: (context, shell, children) =>
+            BranchHost(index: shell.currentIndex, children: children),
         branches: [
           StatefulShellBranch(
             routes: [

@@ -27,6 +27,7 @@ import 'package:go_router/go_router.dart';
 import '../fakes/fake_downloader_port.dart';
 import '../fakes/fake_launcher_port.dart';
 import '../fakes/fake_permissions_port.dart';
+import '../helpers/focus.dart';
 
 const _detail = GameDetail(
   id: 7,
@@ -167,6 +168,38 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonSelect);
     await tester.pumpAndSettle();
     expect(find.byType(SettingsScreen), findsOneWidget);
+  });
+
+  testWidgets('a tab switch takes the focus out of the hidden branch', (
+    tester,
+  ) async {
+    FocusManager.instance.highlightStrategy =
+        FocusHighlightStrategy.alwaysTraditional;
+    addTearDown(
+      () => FocusManager.instance.highlightStrategy =
+          FocusHighlightStrategy.automatic,
+    );
+    await tester.pumpWidget(_app(await _signedIn()));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonSelect);
+    await tester.pumpAndSettle();
+    expect(focusedAncestor<SettingsScreen>(), isNotNull);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonLeft1);
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonLeft1);
+    await tester.pumpAndSettle();
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(focusedAncestor<SettingsScreen>(), isNull);
+
+    // Down then A used to land on a Settings row behind the library.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(focusedAncestor<HomeScreen>(), isNotNull);
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonA);
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(focusedAncestor<SettingsScreen>(), isNull);
   });
 
   testWidgets('settings folders route is reachable and keeps the bar', (
