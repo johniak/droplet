@@ -11,6 +11,7 @@ class CircleIconButton extends StatelessWidget {
     required this.onPressed,
     this.tooltip,
     this.autofocus = false,
+    this.focusNode,
   });
 
   final IconData icon;
@@ -20,12 +21,17 @@ class CircleIconButton extends StatelessWidget {
   /// Screens whose first useful control is Back start here.
   final bool autofocus;
 
+  /// Lets a screen hand Back the focus later than the first frame — see the
+  /// game screen, whose bottom bar answers asynchronously.
+  final FocusNode? focusNode;
+
   @override
   Widget build(BuildContext context) {
     final button = FocusGlow(
       scale: 1,
       borderRadius: 18,
       autofocus: autofocus,
+      focusNode: focusNode,
       onTap: onPressed,
       child: Material(
         color: Colors.black.withValues(alpha: 0.45),

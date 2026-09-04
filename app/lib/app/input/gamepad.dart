@@ -41,6 +41,15 @@ GamepadIntent? intentFor(LogicalKeyboardKey key) => switch (key) {
   _ => null,
 };
 
+/// True while a text field holds the focus. The pad's buttons reach the
+/// shell from above `EditableText`, whose own shortcuts cover none of them —
+/// so Start and Select would fire mid-word without this guard.
+bool isTyping() {
+  final context = FocusManager.instance.primaryFocus?.context;
+  return context != null &&
+      context.findAncestorWidgetOfExactType<EditableText>() != null;
+}
+
 const gamepadShortcuts = <ShortcutActivator, Intent>{
   SingleActivator(LogicalKeyboardKey.gameButtonLeft1): PreviousTabIntent(),
   SingleActivator(LogicalKeyboardKey.gameButtonRight1): NextTabIntent(),
@@ -89,7 +98,7 @@ class GamepadShortcuts extends StatelessWidget {
         ),
         OpenSettingsIntent: CallbackAction<OpenSettingsIntent>(
           onInvoke: (_) {
-            onTab(_tabs - 1);
+            if (!isTyping()) onTab(_tabs - 1);
             return null;
           },
         ),

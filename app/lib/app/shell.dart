@@ -22,22 +22,23 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => AppBackground(
-    child: Scaffold(
-      extendBody: true,
-      // Above the branches, so L1/R1/Select/Y/Start work on every screen —
-      // the game screen included, since it lives under the shell too.
-      body: GamepadShortcuts(
-        currentIndex: shell.currentIndex,
-        onTab: _goTab,
-        child: shell,
+    // Above the whole Scaffold, bar included: the shortcuts have to fire
+    // wherever the focus happens to sit, and the game screen lives under the
+    // shell too.
+    child: GamepadShortcuts(
+      currentIndex: shell.currentIndex,
+      onTab: _goTab,
+      child: Scaffold(
+        extendBody: true,
+        body: shell,
+        bottomNavigationBar: hideBar
+            ? null
+            : GlassBar(
+                currentIndex: shell.currentIndex,
+                badge: ref.watch(activeCountProvider),
+                onTap: _goTab,
+              ),
       ),
-      bottomNavigationBar: hideBar
-          ? null
-          : GlassBar(
-              currentIndex: shell.currentIndex,
-              badge: ref.watch(activeCountProvider),
-              onTap: _goTab,
-            ),
     ),
   );
 }

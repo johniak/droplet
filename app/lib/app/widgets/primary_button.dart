@@ -54,7 +54,11 @@ class PrimaryButton extends StatelessWidget {
           scale: 1,
           borderRadius: kRadiusCard,
           autofocus: autofocus,
-          onTap: enabled ? onPressed : null,
+          // A button that has an action stays focusable even while it is
+          // busy — losing the focus mid-launch would strand the pad. Only
+          // the tap is ignored until it finishes.
+          enabled: onPressed != null,
+          onTap: busy ? null : onPressed,
           child: Center(
             child: busy
                 ? const SizedBox(

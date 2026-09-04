@@ -6,10 +6,6 @@ import '../tokens.dart';
 /// focusable, it activates on A (`ActivateIntent`) and on touch, it draws a
 /// visible accent ring while focused, and it scrolls itself into view when
 /// the focus lands on it.
-///
-/// The ring follows plain focus rather than Flutter's "focus highlight" mode:
-/// on Android that mode starts out as `touch`, which would leave a pad-driven
-/// app with no visible focus at all until a key is pressed.
 class FocusGlow extends StatefulWidget {
   const FocusGlow({
     super.key,
@@ -22,8 +18,8 @@ class FocusGlow extends StatefulWidget {
     this.enabled = true,
   });
 
-  /// Null disables the surface just like `enabled: false` does — a button
-  /// with nothing to do must not swallow the focus.
+  /// What A and a tap do. Null keeps the surface focusable but inert — a
+  /// button that is busy must not drop the focus it holds.
   final VoidCallback? onTap;
   final Widget child;
   final bool autofocus;
@@ -34,6 +30,8 @@ class FocusGlow extends StatefulWidget {
   /// growing row would push its neighbours around.
   final double scale;
 
+  /// Whether the surface takes the focus at all. False for a control with
+  /// nothing to do, which must not swallow a D-pad press.
   final bool enabled;
 
   @override
@@ -46,8 +44,6 @@ class _FocusGlowState extends State<FocusGlow> {
   /// after the first key/pad event and ends at the next touch — so a screen
   /// opens with nothing selected and the glow appears once the pad is used.
   bool _highlight = false;
-
-  bool get _enabled => widget.enabled && widget.onTap != null;
 
   void _onShowHighlight(bool show) => setState(() => _highlight = show);
 
@@ -70,7 +66,7 @@ class _FocusGlowState extends State<FocusGlow> {
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(widget.borderRadius);
     return FocusableActionDetector(
-      enabled: _enabled,
+      enabled: widget.enabled,
       autofocus: widget.autofocus,
       focusNode: widget.focusNode,
       onFocusChange: _onFocusChange,
@@ -110,7 +106,7 @@ class _FocusGlowState extends State<FocusGlow> {
               // here would make every surface take two D-pad presses.
               canRequestFocus: false,
               focusColor: Colors.transparent,
-              onTap: _enabled ? widget.onTap : null,
+              onTap: widget.enabled ? widget.onTap : null,
               borderRadius: radius,
               child: widget.child,
             ),

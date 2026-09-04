@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/input/gamepad.dart';
 import '../../../app/layout.dart';
 import '../../../app/tokens.dart';
 import '../../../app/widgets/focus_glow.dart';
@@ -67,11 +68,11 @@ class CoverThumb extends ConsumerWidget {
   }
 }
 
-/// Leaves the search field — and the keyboard it put up — behind before
-/// navigating: the game screen sets its own focus, and a field that kept it
-/// would swallow the pad's next press.
+/// Leaves only the search field behind — the keyboard it put up would
+/// swallow the pad's next press. Every other focus stays put, so popping back
+/// from the game screen lands on the tile it was opened from.
 void openGame(BuildContext context, String route) {
-  FocusScope.of(context).unfocus();
+  if (isTyping()) FocusManager.instance.primaryFocus?.unfocus();
   context.go(route);
 }
 

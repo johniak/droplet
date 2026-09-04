@@ -18,7 +18,16 @@ import android.view.MotionEvent
  */
 class GamepadAxes(private val dispatch: (KeyEvent) -> Unit) {
     companion object {
-        const val DEADZONE = 0.5f
+        /** A new direction needs a firm push... */
+        const val ENGAGE = 0.6f
+
+        /** ...and survives until the axis falls back below this. Two
+         *  thresholds, not one: a worn stick resting on a single threshold
+         *  would flip on consecutive samples (~100 Hz) and fire a burst of
+         *  key presses, and on a diagonal the two axes would trade the focus
+         *  back and forth. */
+        const val RELEASE = 0.4f
+
         const val FIRST_REPEAT_MS = 400L
         const val REPEAT_MS = 120L
     }
@@ -43,25 +52,40 @@ class GamepadAxes(private val dispatch: (KeyEvent) -> Unit) {
         if (!isStick || event.action != MotionEvent.ACTION_MOVE) return false
         val x = pick(event.getAxisValue(MotionEvent.AXIS_HAT_X), event.getAxisValue(MotionEvent.AXIS_X))
         val y = pick(event.getAxisValue(MotionEvent.AXIS_HAT_Y), event.getAxisValue(MotionEvent.AXIS_Y))
-        update(direction(x, y), ::heldNav, { heldNav = it }, repeatNav)
+        update(direction(x, y, heldNav), ::heldNav, { heldNav = it }, repeatNav)
         val rz = event.getAxisValue(MotionEvent.AXIS_RZ)
-        val scroll = when {
-            rz > DEADZONE -> KeyEvent.KEYCODE_PAGE_DOWN
-            rz < -DEADZONE -> KeyEvent.KEYCODE_PAGE_UP
-            else -> null
-        }
-        update(scroll, ::heldScroll, { heldScroll = it }, repeatScroll)
+        update(scroll(rz, heldScroll), ::heldScroll, { heldScroll = it }, repeatScroll)
         return true
     }
 
     /** Hat wins when it moves; otherwise the analog stick. */
-    private fun pick(hat: Float, stick: Float) = if (kotlin.math.abs(hat) > DEADZONE) hat else stick
+    private fun pick(hat: Float, stick: Float) = if (kotlin.math.abs(hat) > ENGAGE) hat else stick
 
-    private fun direction(x: Float, y: Float): Int? = when {
-        kotlin.math.abs(x) < DEADZONE && kotlin.math.abs(y) < DEADZONE -> null
-        kotlin.math.abs(x) >= kotlin.math.abs(y) ->
-            if (x > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT
-        else -> if (y > 0) KeyEvent.KEYCODE_DPAD_DOWN else KeyEvent.KEYCODE_DPAD_UP
+    private fun direction(x: Float, y: Float, current: Int?): Int? {
+        // Whatever we already report survives on its own axis alone: a
+        // diagonal keeps going the way it started until that axis lets go.
+        when (current) {
+            KeyEvent.KEYCODE_DPAD_LEFT -> if (x < -RELEASE) return current
+            KeyEvent.KEYCODE_DPAD_RIGHT -> if (x > RELEASE) return current
+            KeyEvent.KEYCODE_DPAD_UP -> if (y < -RELEASE) return current
+            KeyEvent.KEYCODE_DPAD_DOWN -> if (y > RELEASE) return current
+        }
+        val ax = kotlin.math.abs(x)
+        val ay = kotlin.math.abs(y)
+        return when {
+            ax < ENGAGE && ay < ENGAGE -> null
+            ax >= ay -> if (x > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT
+            else -> if (y > 0) KeyEvent.KEYCODE_DPAD_DOWN else KeyEvent.KEYCODE_DPAD_UP
+        }
+    }
+
+    /** The right stick's vertical axis, with the same hysteresis. */
+    private fun scroll(rz: Float, current: Int?): Int? = when {
+        current == KeyEvent.KEYCODE_PAGE_DOWN && rz > RELEASE -> current
+        current == KeyEvent.KEYCODE_PAGE_UP && rz < -RELEASE -> current
+        rz > ENGAGE -> KeyEvent.KEYCODE_PAGE_DOWN
+        rz < -ENGAGE -> KeyEvent.KEYCODE_PAGE_UP
+        else -> null
     }
 
     private fun update(next: Int?, held: () -> Int?, set: (Int?) -> Unit, repeat: Runnable) {

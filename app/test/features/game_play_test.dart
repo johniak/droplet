@@ -146,6 +146,7 @@ void main() {
       _app(game: _game(), state: _installed, port: port, pad: true),
     );
     await tester.pumpAndSettle();
+    expect(focusedAncestor<PrimaryButton>()?.label, 'Play');
     expect(hasGlow(tester, find.byKey(const Key('play-button'))), isTrue);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonStart);
@@ -281,6 +282,26 @@ void main() {
     await tester.tap(find.byKey(const Key('play-button')));
     await tester.pumpAndSettle();
     expect(find.text("Couldn't start Eden: no activity"), findsOneWidget);
+  });
+
+  testWidgets('a busy Play keeps the focus it holds', (tester) async {
+    final port = FakeLauncherPort(installed: {'dev.eden.eden_emulator'})
+      ..hold = Completer<void>();
+    await tester.pumpWidget(
+      _app(game: _game(), state: _installed, port: port, pad: true),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('play-button')));
+    await tester.pump();
+    expect(
+      tester.widget<PrimaryButton>(find.byKey(const Key('play-button'))).busy,
+      isTrue,
+    );
+    // Losing the focus mid-launch would strand the pad on a screen with no
+    // selection at all.
+    expect(focusedAncestor<PrimaryButton>()?.label, 'Play');
+    port.hold!.complete();
+    await tester.pumpAndSettle();
   });
 
   testWidgets('a launch in flight ignores a second tap', (tester) async {

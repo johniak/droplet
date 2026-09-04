@@ -1,7 +1,8 @@
 import 'package:droplet/app/widgets/glass_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../helpers/focus.dart';
 
 bool _focused(WidgetTester tester, String key) =>
     (tester.widget<DecoratedBox>(
@@ -58,7 +59,9 @@ void main() {
     expect(find.byType(Badge), findsNothing);
   });
 
-  testWidgets('the pad walks the tabs and picks one with A', (tester) async {
+  testWidgets('the tabs stay tappable but out of the pad\'s way', (
+    tester,
+  ) async {
     final taps = <int>[];
     await tester.pumpWidget(
       MaterialApp(
@@ -67,17 +70,15 @@ void main() {
         ),
       ),
     );
+    // Directional focus cannot cross a page's route scope into the bar, so a
+    // tab the pad could reach only by accident is worse than none: L1/R1
+    // switch tabs instead (spec §4).
     FocusScope.of(tester.element(find.byType(GlassBar))).nextFocus();
     await tester.pumpAndSettle();
-    expect(_focused(tester, 'nav-library'), isTrue);
-
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-    await tester.pumpAndSettle();
+    expect(focusedAncestor<GlassBar>(), isNull);
     expect(_focused(tester, 'nav-library'), isFalse);
-    expect(_focused(tester, 'nav-downloads'), isTrue);
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonA);
-    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('nav-downloads')));
     expect(taps, [1]);
   });
 }

@@ -19,6 +19,7 @@ import 'package:droplet/features/settings/settings_screen.dart';
 import 'package:droplet/features/system/system_screen.dart';
 import 'package:droplet/main.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -145,6 +146,27 @@ void main() {
     await tester.tap(find.byKey(const Key('nav-library')));
     await tester.pumpAndSettle();
     expect(find.byType(HomeScreen), findsOneWidget);
+  });
+
+  testWidgets('L1/R1 and Select switch branches from the real shell', (
+    tester,
+  ) async {
+    // The shortcuts sit above the whole Scaffold, so they fire wherever the
+    // focus happens to be — including with nothing focused at all.
+    await tester.pumpWidget(_app(await _signedIn()));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonRight1);
+    await tester.pumpAndSettle();
+    expect(find.byType(DownloadsScreen), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonRight1);
+    await tester.pumpAndSettle();
+    expect(find.byType(SettingsScreen), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonLeft1);
+    await tester.pumpAndSettle();
+    expect(find.byType(DownloadsScreen), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonSelect);
+    await tester.pumpAndSettle();
+    expect(find.byType(SettingsScreen), findsOneWidget);
   });
 
   testWidgets('settings folders route is reachable and keeps the bar', (

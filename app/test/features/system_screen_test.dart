@@ -225,6 +225,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(_app(games, overrides: states));
     await tester.pumpAndSettle();
+    expect(focusedAncestor<GameTile>()?.game.id, 1);
     expect(hasGlow(tester, find.byType(GameTile).first), isTrue);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);

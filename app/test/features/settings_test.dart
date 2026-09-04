@@ -189,8 +189,10 @@ void main() {
     await tester.scrollUntilVisible(find.text('Sign out'), -200);
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
-    // confirmation first — Cancel keeps the session
+    // confirmation first — Cancel keeps the session, and holds the focus so
+    // a stray A cannot sign anyone out
     expect(find.text('Sign out?'), findsOneWidget);
+    expect((focusedAncestor<TextButton>()!.child! as Text).data, 'Cancel');
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(await repo.load(), isNotNull);
@@ -206,6 +208,7 @@ void main() {
   ) async {
     await tester.pumpWidget(_screen(repo: await _signedIn()));
     await tester.pumpAndSettle();
+    expect(focusedAncestor<SettingsRow>()?.title, 'Sign out');
     expect(
       hasGlow(
         tester,

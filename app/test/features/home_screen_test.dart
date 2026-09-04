@@ -419,10 +419,12 @@ void main() {
     // 'Recently added' is the first shelf and lists the newest first, so its
     // first card is Tekken (id 2) and the second Super Mario World (id 1).
     final cards = find.byType(ShelfCard);
+    expect(focusedAncestor<ShelfCard>()?.game.id, 2);
     expect(hasGlow(tester, cards.first), isTrue);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
+    expect(focusedAncestor<ShelfCard>()?.game.id, 1);
     expect(hasGlow(tester, cards.first), isFalse);
     expect(hasGlow(tester, cards.at(1)), isTrue);
 
@@ -430,6 +432,27 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonA);
     await tester.pumpAndSettle();
     expect(find.text('Game 1'), findsOneWidget);
+  });
+
+  testWidgets('coming back from a game returns to the card it was opened from', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+    expect(focusedAncestor<ShelfCard>()?.game.id, 1);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonA);
+    await tester.pumpAndSettle();
+    expect(find.text('Game 1'), findsOneWidget);
+
+    // The tile kept the focus, so the route restores it on the way back.
+    GoRouter.of(tester.element(find.text('Game 1'))).pop();
+    await tester.pumpAndSettle();
+    expect(focusedAncestor<ShelfCard>()?.game.id, 1);
   });
 
   testWidgets('Y focuses the search field, B hands the focus back', (

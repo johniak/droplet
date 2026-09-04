@@ -14,3 +14,11 @@ bool hasGlow(WidgetTester tester, Finder container) {
   );
   return (box.decoration as BoxDecoration).border != null;
 }
+
+/// The widget of type [T] that actually holds the primary focus, if any —
+/// the ring proves a repaint, this proves where the focus is.
+T? focusedAncestor<T extends Widget>() => FocusManager
+    .instance
+    .primaryFocus
+    ?.context
+    ?.findAncestorWidgetOfExactType<T>();

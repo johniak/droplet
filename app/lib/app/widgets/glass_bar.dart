@@ -40,9 +40,11 @@ class GlassBar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(kRadiusBar),
                   border: Border.all(color: kGlassBorder),
                 ),
-                // Its own traversal group: left/right walks the three tabs
-                // instead of escaping sideways into the content above.
-                child: FocusTraversalGroup(
+                // Not a traversal target: directional focus cannot cross out
+                // of a page's route scope into the bar anyway, and a tab the
+                // pad could only reach by accident is worse than none. L1/R1
+                // switch tabs; touch still works.
+                child: ExcludeFocus(
                   child: Row(
                     children: [
                       for (var i = 0; i < items.length; i++)

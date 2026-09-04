@@ -57,14 +57,73 @@ int bytesToFetch(GameDetail game, Set<int> selected, LocalGameState local) {
 
 const _heroHeight = 260.0;
 
-class GameDetailScreen extends ConsumerWidget {
+/// Will the bottom bar hand the focus to something? Play (or "Set up
+/// emulator") and Delete on an installed game, the transfer controls while a
+/// download runs, and otherwise the Download button — that one only when it
+/// is enabled. Pure, so the screen can ask before the bar is built.
+bool bottomBarTakesFocus(
+  GameDetail game,
+  LocalGameState local, {
+  required bool offline,
+  required bool transferring,
+}) {
+  if (local.status == InstallStatus.installed || transferring) return true;
+  return !offline &&
+      bytesToFetch(game, defaultSelection(game.files), local) > 0;
+}
+
+class GameDetailScreen extends ConsumerStatefulWidget {
   const GameDetailScreen({super.key, required this.gameId});
 
   final int gameId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final detail = ref.watch(gameDetailProvider(gameId));
+  ConsumerState<GameDetailScreen> createState() => _GameDetailScreenState();
+}
+
+class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
+  final _backNode = FocusNode();
+
+  @override
+  void dispose() {
+    _backNode.dispose();
+    super.dispose();
+  }
+
+  /// Requested after the frame rather than through `autofocus`: autofocus
+  /// only counts the moment a node is registered, and whether the bottom bar
+  /// has anything to offer is answered a few frames later.
+  void _focusBackIfIdle() {
+    if (mounted && FocusScope.of(context).focusedChild == null) {
+      _backNode.requestFocus();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final detail = ref.watch(gameDetailProvider(widget.gameId));
+    final local = ref.watch(localStateProvider(widget.gameId)).value;
+    final transferring = ref
+        .watch(activeDownloadsProvider)
+        .any(
+          (p) =>
+              p.gameId == widget.gameId &&
+              p.status != GameProgressStatus.complete,
+        );
+    // Offline, or nothing left to fetch: the bottom bar's only button is
+    // disabled and takes no focus, so Back becomes the landing spot.
+    if (detail.value case final game? when local != null) {
+      if (!bottomBarTakesFocus(
+        game,
+        local,
+        offline: ref.watch(isOfflineProvider),
+        transferring: transferring,
+      )) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _focusBackIfIdle(),
+        );
+      }
+    }
     // Back sits above all three branches — the screen has no AppBar, and the
     // skeleton and error states used to offer no way out but the system
     // gesture (with three-button navigation: none at all).
@@ -76,7 +135,8 @@ class GameDetailScreen extends ConsumerWidget {
           error: (error, _) => Scaffold(
             body: _Error(
               message: humanizeError(error),
-              onRetry: () => ref.invalidate(gameDetailProvider(gameId)),
+              onRetry: () =>
+                  ref.invalidate(gameDetailProvider(widget.gameId)),
             ),
           ),
           data: (game) => _Detail(game: game),
@@ -86,6 +146,7 @@ class GameDetailScreen extends ConsumerWidget {
           left: 12,
           child: CircleIconButton(
             key: const Key('back-button'),
+            focusNode: _backNode,
             icon: Icons.arrow_back_rounded,
             tooltip: 'Back',
             onPressed: () => context.pop(),
@@ -116,6 +177,7 @@ class _DetailState extends ConsumerState<_Detail> {
   /// Start: Play when the game is installed, otherwise the download the
   /// bottom bar is offering (nothing when there is none).
   void _primaryAction() {
+    if (isTyping()) return;
     if (_playKey.currentState case final play?) {
       play.playNow();
       return;
@@ -783,7 +845,11 @@ class _Error extends StatelessWidget {
               const SizedBox(height: 16),
               SizedBox(
                 width: 160,
-                child: PrimaryButton(label: 'Retry', onPressed: onRetry),
+                child: PrimaryButton(
+                  label: 'Retry',
+                  autofocus: true,
+                  onPressed: onRetry,
+                ),
               ),
             ],
           ),

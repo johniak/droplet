@@ -21,6 +21,7 @@ import 'package:go_router/go_router.dart';
 import '../fakes/fake_device_index.dart';
 import '../fakes/fake_downloader_port.dart';
 import '../fakes/fake_permissions_port.dart';
+import '../helpers/focus.dart';
 
 const detail = GameDetail(
   id: 7,
@@ -83,6 +84,44 @@ Widget build(
 
 void main() {
   _transferTests();
+
+  test('the bottom bar takes the focus unless its only button is disabled', () {
+    const none = LocalGameState(
+      status: InstallStatus.none,
+      updateAvailable: false,
+      missing: [],
+      presentPaths: [],
+    );
+    const installed = LocalGameState(
+      status: InstallStatus.installed,
+      updateAvailable: false,
+      missing: [],
+      presentPaths: ['/roms/snes/Mario/m.sfc'],
+    );
+    bool takes(LocalGameState local, {bool offline = false, bool busy = false}) =>
+        bottomBarTakesFocus(
+          detail,
+          local,
+          offline: offline,
+          transferring: busy,
+        );
+    expect(takes(installed), isTrue);
+    expect(takes(none, busy: true), isTrue);
+    expect(takes(none), isTrue);
+    expect(takes(none, offline: true), isFalse);
+    // Everything already on disk: nothing left to fetch, so no button.
+    expect(
+      takes(
+        const LocalGameState(
+          status: InstallStatus.partial,
+          updateAvailable: false,
+          missing: [],
+          presentPaths: ['/roms/snes/Mario/m.sfc'],
+        ),
+      ),
+      isFalse,
+    );
+  });
   testWidgets('not installed shows download with size', (tester) async {
     await tester.pumpWidget(
       build(
@@ -209,6 +248,7 @@ void main() {
     await tester.tap(find.text('Delete from device'));
     await tester.pumpAndSettle();
     // Delete is autofocused, so the pad confirms without moving first.
+    expect((focusedAncestor<TextButton>()!.child! as Text).data, 'Delete');
     await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonA);
     await tester.pumpAndSettle();
     expect(rom.existsSync(), false);

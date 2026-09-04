@@ -133,6 +133,26 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('a surface with no action keeps the focus but ignores taps', (
+    tester,
+  ) async {
+    // What a busy PrimaryButton looks like: still the selected thing on
+    // screen, just inert until the launch finishes.
+    final node = FocusNode();
+    addTearDown(node.dispose);
+    await tester.pumpWidget(
+      _wrap(FocusGlow(focusNode: node, onTap: null, child: const Text('Go'))),
+    );
+    node.requestFocus();
+    await tester.pumpAndSettle();
+    expect(node.hasFocus, isTrue);
+    expect(_ring(tester, find.byType(FocusGlow)).border, isNotNull);
+    await tester.tap(find.text('Go'), warnIfMissed: false);
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonA);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('disabled takes no focus and ignores taps', (tester) async {
     var taps = 0;
     final node = FocusNode();

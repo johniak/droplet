@@ -16,10 +16,12 @@ gałką. Fokus jest zawsze widoczny i zawsze na czymś sensownym.
 - `onGenericMotionEvent`: źródło `SOURCE_JOYSTICK`/`SOURCE_GAMEPAD`.
   Lewa gałka `AXIS_X/AXIS_Y` i HAT `AXIS_HAT_X/AXIS_HAT_Y` → syntetyczne
   `KeyEvent` D-pada (`KEYCODE_DPAD_LEFT/RIGHT/UP/DOWN`) wysyłane przez
-  `dispatchKeyEvent`. Martwa strefa 0.5; kierunek trzymany → pierwsze
+  `dispatchKeyEvent`. Histereza: kierunek załącza się powyżej 0.6 i trzyma
+  się, aż jego oś spadnie poniżej 0.4 (jeden próg = seria fałszywych skoków
+  na zużytej gałce i na skosie); kierunek trzymany → pierwsze
   powtórzenie po 400 ms, kolejne co 120 ms (Handler); puszczenie → `ACTION_UP`
   i stop powtarzania. Prawa gałka `AXIS_Z/AXIS_RZ` → `KEYCODE_PAGE_UP/PAGE_DOWN`
-  (oś pionowa; ta sama martwa strefa i repeat; pozioma ignorowana).
+  (oś pionowa; ta sama histereza i repeat; pozioma ignorowana).
 - Jeżeli urządzenie samo tłumaczy gałkę na D-pad (przychodzą prawdziwe
   `KEYCODE_DPAD_*` z tego samego `deviceId`), syntetyczne nie są generowane
   podwójnie: syntetyczne zdarzenia mają `source = SOURCE_KEYBOARD` i flagę
@@ -39,7 +41,7 @@ we wszystkich zakładkach; ekran gry (poza paskiem) też jest pod shellem.
 | `gameButtonRight1` | `NextTabIntent` | `shell.goBranch((i+1) mod 3)` |
 | `gameButtonY` | `FocusSearchIntent` | fokus na pole szukania bieżącego ekranu (Home/System), gdzie indziej nic |
 | `gameButtonSelect` | `OpenSettingsIntent` | `goBranch(2)` |
-| `gameButtonStart` | `PrimaryActionIntent` | ekran gry: Play jeśli jest, inaczej Download; poza ekranem gry nic |
+| `gameButtonStart` | `PrimaryActionIntent` | ekran gry: Play jeśli jest, inaczej Download; poza ekranem gry nic. Start i Select są ignorowane, gdy fokus trzyma pole tekstowe |
 | `gameButtonA` | `ActivateIntent` | domyślne Fluttera (już działa) |
 | `gameButtonB` | — | Android zamienia na Back; pola tekstowe: zdejmujemy fokus zamiast wpisywać |
 | `arrow*` / D-pad | `DirectionalFocusIntent` | domyślne Fluttera |
@@ -96,8 +98,8 @@ FocusGlow(
 - **Home**: `autofocus` na pierwszym kafelku pierwszej półki (po załadowaniu
   danych); gdy biblioteka pusta: przycisk „Retry”/nic. Pole szukania **nie**
   ma `autofocus` i nie odzyskuje fokusu po powrocie z ekranu gry: przy tapie
-  na kafelek `FocusManager.instance.primaryFocus?.unfocus()` przed nawigacją,
-  a ekran gry ustawia własny fokus. Z ostatniej półki dół → `GlassBar`.
+  na kafelek zdejmujemy fokus tylko z pola szukania (`isTyping()`), dzięki
+  czemu powrót z ekranu gry wraca na ten sam kafelek.
 - **System**: pierwszy kafelek siatki; chipy filtrów w kolejności czytania
   nad siatką; przycisk wstecz przez B.
 - **Ekran gry**: fokus na głównym przycisku: Play jeśli jest, inaczej
@@ -115,8 +117,9 @@ FocusGlow(
   wyników (jeśli są) albo z powrotem na pierwszą półkę. Implementacja:
   `SearchField` ma `FocusNode` z `onKeyEvent`: `gameButtonB`/`escape` →
   `unfocus()` + `KeyEventResult.handled`.
-- `GlassBar`: pozycje w jednej grupie; lewo/prawo między zakładkami, góra
-  wraca do treści; A wybiera.
+- `GlassBar`: poza nawigacją fokusem (`ExcludeFocus`) — fokus kierunkowy nie
+  wychodzi poza scope trasy, więc pasek i tak byłby nieosiągalny; zakładki
+  zmienia L1/R1 (i dotyk).
 
 ## 5. Ustawienia → Controller
 

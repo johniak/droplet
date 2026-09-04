@@ -181,6 +181,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     final rows = find.byType(GlassPanel);
+    expect(focusedAncestor<GlassPanel>(), same(tester.widget(rows.first)));
     expect(hasGlow(tester, rows.first), isTrue);
     expect(hasGlow(tester, rows.at(1)), isFalse);
   });

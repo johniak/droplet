@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:droplet/app/input/gamepad.dart';
+import 'package:droplet/app/widgets/circle_icon_button.dart';
 import 'package:droplet/app/widgets/primary_button.dart';
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/local_state.dart';
@@ -91,6 +92,7 @@ void main() {
     await tester.pumpWidget(_padApp(port, _none));
     await tester.pumpAndSettle();
     expect(find.textContaining('Download ·'), findsOneWidget);
+    expect(focusedAncestor<PrimaryButton>()?.label, startsWith('Download ·'));
     expect(hasGlow(tester, find.byType(PrimaryButton)), isTrue);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonStart);
@@ -114,6 +116,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    // The Download button is disabled, so it takes no focus — Back does,
+    // otherwise the screen would open with the pad pointing at nothing.
+    expect(focusedAncestor<CircleIconButton>(), isNotNull);
     await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonStart);
     await tester.pumpAndSettle();
     expect(port.enqueued, isEmpty);

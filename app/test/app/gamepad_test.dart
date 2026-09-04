@@ -68,6 +68,26 @@ void main() {
     );
   });
 
+  testWidgets('Select is ignored while a text field has the focus', (
+    tester,
+  ) async {
+    int? tapped;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GamepadShortcuts(
+          currentIndex: 0,
+          onTab: (i) => tapped = i,
+          child: const Scaffold(body: TextField(autofocus: true)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(isTyping(), isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonSelect);
+    await tester.pumpAndSettle();
+    expect(tapped, isNull);
+  });
+
   testWidgets('a screen below the shell handles Y itself', (tester) async {
     var searched = 0;
     await tester.pumpWidget(
