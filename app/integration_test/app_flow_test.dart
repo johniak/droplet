@@ -1,6 +1,7 @@
 import 'package:droplet/core/api/api_client.dart';
 import 'package:droplet/main.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,6 +38,17 @@ void main() {
 
     await pumpUntil(tester, find.text('Super Mario World'));
 
+    // The pad alone: the first card of the first shelf holds the focus, so A
+    // opens a game without touching the screen. The detail screen hides the
+    // nav bar, which is how we know we got there.
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonA);
+    await tester.pumpAndSettle();
+    await pumpUntil(tester, find.byKey(const Key('back-button')));
+    expect(find.byKey(const Key('nav-settings')), findsNothing);
+    await tester.tap(find.byKey(const Key('back-button')));
+    await tester.pumpAndSettle();
+    await pumpUntil(tester, find.text('Super Mario World'));
+
     // The system shelf header leads to the system view. The home screen has
     // many Scrollables (a vertical list + a horizontal list in each shelf) —
     // the outer list needs to be targeted explicitly, because the default
@@ -60,9 +72,14 @@ void main() {
     await tester.pumpAndSettle();
     await pumpUntil(tester, find.text('Hollow Knight'));
 
+    // R1 walks the tabs: Library → Downloads → Settings.
     await pumpUntil(tester, find.byKey(const Key('nav-settings')));
-    await tester.tap(find.byKey(const Key('nav-settings')));
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonRight1);
     await tester.pumpAndSettle();
+    await pumpUntil(tester, find.text('Nothing active'));
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonRight1);
+    await tester.pumpAndSettle();
+    await pumpUntil(tester, find.text('Sign out'));
 
     // Emulators: the test device has none installed, so every system row
     // says which ones it would take.
