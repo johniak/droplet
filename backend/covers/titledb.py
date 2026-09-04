@@ -2,7 +2,10 @@
 
 libretro-thumbnails nie ma repozytorium Switcha, a nazwy dumpów niosą title id,
 więc zamiast zgadywać po tytule bierzemy ikonę eShopu dokładnie tej gry.
-Plik `US.en.json` ma ~90 MB — trzymamy go w cache i czytamy strumieniowo
+titledb jest podzielone na regiony, a dump z Europy ma inne title id niż to
+samo wydanie z USA — dlatego regiony przeglądamy po kolei, aż wszystkie
+szukane id się znajdą. Każdy plik ma ~90 MB, więc kolejny region ściągamy
+dopiero wtedy, gdy poprzedni czegoś nie znalazł, i czytamy strumieniowo
 (ijson), wyciągając tylko potrzebne wpisy.
 """
 
@@ -19,21 +22,31 @@ from library.scanner.switch import parse_switch
 
 from .paths import _base
 
-TITLEDB_URL = "https://raw.githubusercontent.com/blawar/titledb/master/US.en.json"
+TITLEDB_BASE = "https://raw.githubusercontent.com/blawar/titledb/master"
+
+#: Regiony w kolejności przeglądania. US pokrywa większość biblioteki, GB
+#: łapie wydania europejskie.
+TITLEDB_REGIONS = ("US.en", "GB.en")
+
+TITLEDB_URL = f"{TITLEDB_BASE}/{TITLEDB_REGIONS[0]}.json"
 TITLEDB_TTL = 7 * 24 * 3600
 
 
-def titledb_path() -> Path:
-    return _base() / "index" / "titledb.US.en.json"
+def region_url(region: str) -> str:
+    return f"{TITLEDB_BASE}/{region}.json"
 
 
-def ensure_titledb() -> Path:
+def titledb_path(region: str = TITLEDB_REGIONS[0]) -> Path:
+    return _base() / "index" / f"titledb.{region}.json"
+
+
+def ensure_titledb(region: str = TITLEDB_REGIONS[0]) -> Path:
     """Świeża kopia titledb na dysku; przy błędzie sieci zostaje stara, jeśli jest."""
-    path = titledb_path()
+    path = titledb_path(region)
     if path.exists() and time.time() - path.stat().st_mtime < TITLEDB_TTL:
         return path
     try:
-        with requests.get(TITLEDB_URL, timeout=300, stream=True) as resp:
+        with requests.get(region_url(region), timeout=300, stream=True) as resp:
             resp.raise_for_status()
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp = path.with_suffix(".part")
@@ -48,13 +61,10 @@ def ensure_titledb() -> Path:
     return path
 
 
-def icon_urls(title_ids: set[str]) -> dict[str, str]:
-    """title id → URL ikony (albo banera, gdy ikony brak) dla podanych gier."""
-    wanted = {t.upper() for t in title_ids}
+def _icon_urls_in(region: str, wanted: set[str]) -> dict[str, str]:
+    """Ikony (albo banery) z jednego regionu — tylko dla `wanted`."""
     found: dict[str, str] = {}
-    if not wanted:
-        return found
-    with ensure_titledb().open("rb") as fh:
+    with ensure_titledb(region).open("rb") as fh:
         for _, entry in ijson.kvitems(fh, ""):
             tid = (entry.get("id") or "").upper()
             if tid in wanted and tid not in found:
@@ -63,6 +73,28 @@ def icon_urls(title_ids: set[str]) -> dict[str, str]:
                     found[tid] = url
                 if len(found) == len(wanted):
                     break
+    return found
+
+
+def icon_urls(title_ids: set[str]) -> dict[str, str]:
+    """title id → URL ikony (albo banera, gdy ikony brak) dla podanych gier.
+
+    Kolejny region ściągamy tylko wtedy, gdy poprzednie czegoś nie znalazły;
+    błąd sieci na regionie zapasowym nie unieważnia tego, co już mamy.
+    """
+    missing = {t.upper() for t in title_ids}
+    found: dict[str, str] = {}
+    for i, region in enumerate(TITLEDB_REGIONS):
+        if not missing:
+            break
+        try:
+            hits = _icon_urls_in(region, missing)
+        except requests.RequestException:
+            if i == 0:
+                raise
+            break
+        found.update(hits)
+        missing -= hits.keys()
     return found
 
 

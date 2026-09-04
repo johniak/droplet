@@ -16,6 +16,8 @@ from covers.titledb import base_title_id, download_image, ensure_titledb, icon_u
 from library.models import Game, GameFile, System
 
 TID = "0100633007D48000"
+EU_TID = "01003D100E9C6000"
+EU_ICON = "https://img-eshop.example/eu-icon.jpg"
 ICON = "https://img-eshop.example/hk-icon.jpg"
 BANNER = "https://img-eshop.example/other-banner.jpg"
 
@@ -107,8 +109,36 @@ def test_ensure_titledb_raises_without_any_copy(data_dir):
         ensure_titledb()
 
 
+def _gb_db():
+    """Ten sam tytuł co w US, ale wydanie europejskie ma inne title id."""
+    return json.dumps({"70010000009999": {"id": EU_TID, "iconUrl": EU_ICON}})
+
+
+@responses.activate
+def test_icon_urls_falls_back_to_the_next_region(data_dir):
+    responses.get(titledb.TITLEDB_URL, body=_db())
+    responses.get(titledb.region_url("GB.en"), body=_gb_db())
+    assert icon_urls({TID, EU_TID}) == {TID: ICON, EU_TID: EU_ICON}
+    assert titledb.titledb_path("GB.en").exists()
+
+
+@responses.activate
+def test_icon_urls_keeps_what_it_has_when_the_next_region_is_down(data_dir):
+    responses.get(titledb.TITLEDB_URL, body=_db())
+    responses.get(titledb.region_url("GB.en"), body=requests.ConnectionError("down"))
+    assert icon_urls({TID, EU_TID}) == {TID: ICON}
+
+
+@responses.activate
+def test_icon_urls_never_opens_the_next_region_when_all_ids_are_found(data_dir):
+    responses.get(titledb.TITLEDB_URL, body=_db())
+    # brak zarejestrowanego GB.en: sięgnięcie po nie wywołałoby błąd
+    assert icon_urls({TID}) == {TID: ICON}
+
+
 @responses.activate
 def test_icon_urls_streams_and_falls_back_to_banner(data_dir):
+    responses.get(titledb.region_url("GB.en"), body=_gb_db())
     responses.get(titledb.TITLEDB_URL, body=_db())
     urls = icon_urls({TID, "0100633007d49000", "0100633007D4A000", "0100000000000099"})
     assert urls == {TID: ICON, "0100633007D49000": BANNER}
