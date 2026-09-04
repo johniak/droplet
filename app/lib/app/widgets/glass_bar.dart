@@ -3,6 +3,7 @@ import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 
 import '../tokens.dart';
+import 'focus_glow.dart';
 
 /// The floating bottom navigation — the only BackdropFilter outside the hero.
 class GlassBar extends StatelessWidget {
@@ -39,20 +40,24 @@ class GlassBar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(kRadiusBar),
                   border: Border.all(color: kGlassBorder),
                 ),
-                child: Row(
-                  children: [
-                    for (var i = 0; i < items.length; i++)
-                      Expanded(
-                        child: _Tab(
-                          key: Key(items[i].key),
-                          icon: items[i].icon,
-                          label: items[i].label,
-                          selected: i == currentIndex,
-                          badge: i == 1 ? badge : 0,
-                          onTap: () => onTap(i),
+                // Its own traversal group: left/right walks the three tabs
+                // instead of escaping sideways into the content above.
+                child: FocusTraversalGroup(
+                  child: Row(
+                    children: [
+                      for (var i = 0; i < items.length; i++)
+                        Expanded(
+                          child: _Tab(
+                            key: Key(items[i].key),
+                            icon: items[i].icon,
+                            label: items[i].label,
+                            selected: i == currentIndex,
+                            badge: i == 1 ? badge : 0,
+                            onTap: () => onTap(i),
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -89,9 +94,10 @@ class _Tab extends StatelessWidget {
         child: iconWidget,
       );
     }
-    return InkWell(
+    return FocusGlow(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(kRadiusBar),
+      scale: 1,
+      borderRadius: kRadiusBar,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

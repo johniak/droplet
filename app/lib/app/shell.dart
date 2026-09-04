@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/downloads/providers.dart';
+import 'input/gamepad.dart';
 import 'theme.dart';
 import 'widgets/glass_bar.dart';
 
@@ -16,18 +17,26 @@ class AppShell extends ConsumerWidget {
   final StatefulNavigationShell shell;
   final bool hideBar;
 
+  void _goTab(int i) =>
+      shell.goBranch(i, initialLocation: i == shell.currentIndex);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) => AppBackground(
     child: Scaffold(
       extendBody: true,
-      body: shell,
+      // Above the branches, so L1/R1/Select/Y/Start work on every screen —
+      // the game screen included, since it lives under the shell too.
+      body: GamepadShortcuts(
+        currentIndex: shell.currentIndex,
+        onTab: _goTab,
+        child: shell,
+      ),
       bottomNavigationBar: hideBar
           ? null
           : GlassBar(
               currentIndex: shell.currentIndex,
               badge: ref.watch(activeCountProvider),
-              onTap: (i) =>
-                  shell.goBranch(i, initialLocation: i == shell.currentIndex),
+              onTap: _goTab,
             ),
     ),
   );
