@@ -28,6 +28,19 @@ class _BranchHostState extends State<BranchHost> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // The first branch pushes its routes while our scope has no focus yet,
+    // so the primary focus would sit above the shortcuts until the first
+    // D-pad press — Select or L1 right after launch would do nothing.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final scope = _scopes[widget.index];
+      if (!scope.hasFocus) scope.requestFocus();
+    });
+  }
+
+  @override
   void didUpdateWidget(BranchHost oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.index == widget.index) return;

@@ -30,6 +30,36 @@ void main() {
     FocusManager.instance.highlightStrategy = FocusHighlightStrategy.automatic;
   });
 
+  testWidgets('the shown branch holds the focus from the start', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_host(0, a, b));
+    await tester.pumpAndSettle();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'branch 0');
+  });
+
+  testWidgets('a branch that already has the focus is left alone', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BranchHost(
+          index: 0,
+          children: [
+            Focus(
+              focusNode: a,
+              autofocus: true,
+              child: const SizedBox(width: 10, height: 10),
+            ),
+            Focus(focusNode: b, child: const SizedBox(width: 10, height: 10)),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(a.hasPrimaryFocus, isTrue);
+  });
+
   testWidgets('only the shown branch can take the focus', (tester) async {
     await tester.pumpWidget(_host(0, a, b));
     b.requestFocus();
