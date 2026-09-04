@@ -27,6 +27,33 @@ void main() {
     expect(trackColor.resolve({}), kGlass);
   });
 
+  test('buttons get an accent ring and tint while focused', () {
+    final theme = buildTheme();
+    for (final style in [
+      theme.elevatedButtonTheme.style!,
+      theme.textButtonTheme.style!,
+      theme.iconButtonTheme.style!,
+    ]) {
+      expect(
+        style.overlayColor!.resolve({WidgetState.focused}),
+        kAccent.withValues(alpha: 0.18),
+      );
+      expect(style.overlayColor!.resolve({}), isNull);
+      expect(
+        style.side!.resolve({WidgetState.focused}),
+        const BorderSide(color: kAccent, width: 2),
+      );
+      expect(style.side!.resolve({}), isNull);
+    }
+    // An outlined button keeps its outline when nothing is focused.
+    final outlined = theme.outlinedButtonTheme.style!;
+    expect(
+      outlined.side!.resolve({}),
+      const BorderSide(color: kGlassBorder),
+    );
+    expect(theme.focusColor, kGlass);
+  });
+
   testWidgets('AppBackground paints a gradient behind its child', (
     tester,
   ) async {

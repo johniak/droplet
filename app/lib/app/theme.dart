@@ -4,6 +4,24 @@ import 'tokens.dart';
 
 export 'tokens.dart';
 
+/// Focus for the Material buttons: the accent ring `FocusGlow` draws around
+/// the glass surfaces, so a pad never loses track of where it is.
+///
+/// [idle] keeps the border a button already had when nothing is focused —
+/// without it an `OutlinedButton` would lose its outline entirely.
+ButtonStyle focusableButtonStyle({BorderSide? idle}) => ButtonStyle(
+  overlayColor: WidgetStateProperty.resolveWith(
+    (s) => s.contains(WidgetState.focused)
+        ? kAccent.withValues(alpha: 0.18)
+        : null,
+  ),
+  side: WidgetStateProperty.resolveWith(
+    (s) => s.contains(WidgetState.focused)
+        ? const BorderSide(color: kAccent, width: 2)
+        : idle,
+  ),
+);
+
 ThemeData buildTheme() {
   final base = ThemeData.dark(useMaterial3: true);
   final scheme = base.colorScheme.copyWith(
@@ -72,6 +90,16 @@ ThemeData buildTheme() {
     ),
     progressIndicatorTheme: const ProgressIndicatorThemeData(color: kAccent),
     dividerColor: kGlassBorder,
+    elevatedButtonTheme: ElevatedButtonThemeData(style: focusableButtonStyle()),
+    textButtonTheme: TextButtonThemeData(style: focusableButtonStyle()),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: focusableButtonStyle(
+        idle: const BorderSide(color: kGlassBorder),
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(style: focusableButtonStyle()),
+    // `DropdownButton` reads its focus tint straight off the theme.
+    focusColor: kGlass,
   );
 }
 
