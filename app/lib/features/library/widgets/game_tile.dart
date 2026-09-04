@@ -99,11 +99,14 @@ class GameTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => FocusGlow(
     autofocus: autofocus,
+    ring: false,
     onTap: () => openGame(context, route ?? '/game/${game.id}'),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        CoverThumb(game: game, hero: hero),
+        FocusRing(
+          child: CoverThumb(game: game, hero: hero),
+        ),
         const SizedBox(height: 8),
         Text(
           game.title,
@@ -145,11 +148,12 @@ class ShelfCard extends StatelessWidget {
     width: width,
     child: FocusGlow(
       autofocus: autofocus,
+      ring: false,
       onTap: () => openGame(context, '/game/${game.id}'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CoverThumb(game: game),
+          FocusRing(child: CoverThumb(game: game)),
           const SizedBox(height: 6),
           Text(
             game.title,

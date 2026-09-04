@@ -52,6 +52,7 @@ class PrimaryButton extends StatelessWidget {
         // edge, and the ripple is clipped by the InkWell's own radius anyway.
         child: FocusGlow(
           scale: 1,
+          fill: false,
           borderRadius: kRadiusCard,
           autofocus: autofocus,
           // A button that has an action stays focusable even while it is
@@ -73,7 +74,11 @@ class PrimaryButton extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       if (icon != null) ...[
-                        Icon(icon, size: 20, color: ghost ? kText : Colors.white),
+                        Icon(
+                          icon,
+                          size: 20,
+                          color: ghost ? kText : Colors.white,
+                        ),
                         const SizedBox(width: 8),
                       ],
                       Text(

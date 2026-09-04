@@ -79,6 +79,9 @@ class Shelf extends StatelessWidget {
           child: FocusTraversalGroup(
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
+              // The focus ring, the 1.04 scale and the halo all reach past
+              // the card's box; a clipping shelf cuts them off at the top.
+              clipBehavior: Clip.none,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: shown.length + (overflow ? 1 : 0),
               itemBuilder: (_, i) => Padding(

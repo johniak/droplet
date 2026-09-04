@@ -4,6 +4,10 @@ const kBgTop = Color(0xFF1E2A55);
 const kBgMid = Color(0xFF0D1020);
 const kBgBottom = Color(0xFF090B14);
 const kAccent = Color(0xFF7C9DFF);
+
+/// The pad's focus ring — near white with the accent's tint, so it reads on
+/// any cover; the accent itself only glows around it.
+const kFocusRing = Color(0xFFE4EBFF);
 const kAccentAlt = Color(0xFF9B6BFF);
 const kText = Color(0xFFEEF1FF);
 const kTextDim = Color(0xFF8E96B8);

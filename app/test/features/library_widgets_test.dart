@@ -24,13 +24,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 GameSummary g(int id, String title, {bool cover = false}) => GameSummary(
-      id: id,
-      title: title,
-      systemCode: 'snes',
-      hasCover: cover,
-      totalSize: 1024,
-      folder: title,
-    );
+  id: id,
+  title: title,
+  systemCode: 'snes',
+  hasCover: cover,
+  totalSize: 1024,
+  folder: title,
+);
 
 LocalGameState local(InstallStatus status, {bool update = false}) =>
     LocalGameState(
@@ -41,25 +41,25 @@ LocalGameState local(InstallStatus status, {bool update = false}) =>
     );
 
 GoRouter _router(Widget home) => GoRouter(
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (_, __) => Scaffold(body: home),
       routes: [
         GoRoute(
-          path: '/',
-          builder: (_, __) => Scaffold(body: home),
-          routes: [
-            GoRoute(
-              path: 'game/:id',
-              builder: (_, s) =>
-                  Scaffold(body: Text('Game ${s.pathParameters['id']}')),
-            ),
-            GoRoute(
-              path: 'x/:id',
-              builder: (_, s) =>
-                  Scaffold(body: Text('X ${s.pathParameters['id']}')),
-            ),
-          ],
+          path: 'game/:id',
+          builder: (_, s) =>
+              Scaffold(body: Text('Game ${s.pathParameters['id']}')),
+        ),
+        GoRoute(
+          path: 'x/:id',
+          builder: (_, s) =>
+              Scaffold(body: Text('X ${s.pathParameters['id']}')),
         ),
       ],
-    );
+    ),
+  ],
+);
 
 Widget _app(Widget home, {List<Override> overrides = const []}) =>
     ProviderScope(
@@ -111,7 +111,10 @@ void main() {
     for (final element in find.byType(CachedNetworkImage).evaluate()) {
       final image = element.widget as CachedNetworkImage;
       expect(image.placeholder!(element, image.imageUrl), isA<Widget>());
-      expect(image.errorWidget!(element, image.imageUrl, 'boom'), isA<Widget>());
+      expect(
+        image.errorWidget!(element, image.imageUrl, 'boom'),
+        isA<Widget>(),
+      );
     }
     final fits = [
       for (final e in find.byType(CachedNetworkImage).evaluate())
@@ -153,9 +156,9 @@ void main() {
           child: GameTile(game: g(9, 'Zelda', cover: true)),
         ),
         overrides: [
-          localStateProvider(9).overrideWith(
-            (ref) async => local(InstallStatus.none),
-          ),
+          localStateProvider(
+            9,
+          ).overrideWith((ref) async => local(InstallStatus.none)),
         ],
       ),
     );
@@ -175,12 +178,12 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            localStateProvider(11).overrideWith(
-              (ref) async => local(InstallStatus.none),
-            ),
-            localStateProvider(12).overrideWith(
-              (ref) async => local(InstallStatus.none),
-            ),
+            localStateProvider(
+              11,
+            ).overrideWith((ref) async => local(InstallStatus.none)),
+            localStateProvider(
+              12,
+            ).overrideWith((ref) async => local(InstallStatus.none)),
           ],
           child: MaterialApp(
             home: Scaffold(
@@ -210,9 +213,9 @@ void main() {
       _app(
         SizedBox(width: 180, height: 300, child: GameTile(game: g(7, 'Mario'))),
         overrides: [
-          localStateProvider(7).overrideWith(
-            (ref) async => local(InstallStatus.none),
-          ),
+          localStateProvider(
+            7,
+          ).overrideWith((ref) async => local(InstallStatus.none)),
         ],
       ),
     );
@@ -233,9 +236,9 @@ void main() {
           child: GameTile(game: g(7, 'Mario'), route: '/x/7'),
         ),
         overrides: [
-          localStateProvider(7).overrideWith(
-            (ref) async => local(InstallStatus.none),
-          ),
+          localStateProvider(
+            7,
+          ).overrideWith((ref) async => local(InstallStatus.none)),
         ],
       ),
     );
@@ -257,18 +260,18 @@ void main() {
           ],
         ),
         overrides: [
-          localStateProvider(1).overrideWith(
-            (ref) async => local(InstallStatus.installed),
-          ),
+          localStateProvider(
+            1,
+          ).overrideWith((ref) async => local(InstallStatus.installed)),
           localStateProvider(2).overrideWith(
             (ref) async => local(InstallStatus.partial, update: true),
           ),
-          localStateProvider(3).overrideWith(
-            (ref) async => local(InstallStatus.partial),
-          ),
-          localStateProvider(4).overrideWith(
-            (ref) async => local(InstallStatus.none),
-          ),
+          localStateProvider(
+            3,
+          ).overrideWith((ref) async => local(InstallStatus.partial)),
+          localStateProvider(
+            4,
+          ).overrideWith((ref) async => local(InstallStatus.none)),
         ],
       ),
     );
@@ -337,9 +340,9 @@ void main() {
         ),
         overrides: [
           for (final game in games)
-            localStateProvider(game.id).overrideWith(
-              (ref) async => local(InstallStatus.none),
-            ),
+            localStateProvider(
+              game.id,
+            ).overrideWith((ref) async => local(InstallStatus.none)),
         ],
       ),
     );
@@ -360,14 +363,27 @@ void main() {
       _app(
         Shelf(title: 'PSX', games: [g(1, 'Tekken')]),
         overrides: [
-          localStateProvider(1).overrideWith(
-            (ref) async => local(InstallStatus.none),
-          ),
+          localStateProvider(
+            1,
+          ).overrideWith((ref) async => local(InstallStatus.none)),
         ],
       ),
     );
     await tester.pumpAndSettle();
     expect(find.textContaining('All'), findsNothing);
+    // The focus ring of the first card must not be cut off at the shelf's
+    // top edge.
+    expect(
+      tester
+          .widget<ListView>(
+            find.descendant(
+              of: find.byType(Shelf),
+              matching: find.byType(ListView),
+            ),
+          )
+          .clipBehavior,
+      Clip.none,
+    );
     // 'Tekken' without a cover renders twice: once as the title on the
     // cover placeholder, once as the tile caption (same as in the GameTile
     // test above).
@@ -387,9 +403,9 @@ void main() {
             onSeeAll: () => seeAll++,
           ),
           overrides: [
-            localStateProvider(1).overrideWith(
-              (ref) async => local(InstallStatus.none),
-            ),
+            localStateProvider(
+              1,
+            ).overrideWith((ref) async => local(InstallStatus.none)),
           ],
         ),
       );
@@ -401,36 +417,35 @@ void main() {
     },
   );
 
-  testWidgets(
-    'Shelf without onSeeAll leaves the title non-interactive',
-    (tester) async {
-      await tester.pumpWidget(
-        _app(
-          Shelf(title: 'PSX', games: [g(1, 'Tekken')]),
-          overrides: [
-            localStateProvider(1).overrideWith(
-              (ref) async => local(InstallStatus.none),
-            ),
-          ],
-        ),
-      );
-      await tester.pumpAndSettle();
-      // No onSeeAll means no navigation to assert — this only needs to not
-      // throw when the header (still just a plain title) is tapped.
-      await tester.tap(find.text('PSX'));
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
-    },
-  );
+  testWidgets('Shelf without onSeeAll leaves the title non-interactive', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        Shelf(title: 'PSX', games: [g(1, 'Tekken')]),
+        overrides: [
+          localStateProvider(
+            1,
+          ).overrideWith((ref) async => local(InstallStatus.none)),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    // No onSeeAll means no navigation to assert — this only needs to not
+    // throw when the header (still just a plain title) is tapped.
+    await tester.tap(find.text('PSX'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('ShelfCard navigates on tap', (tester) async {
     await tester.pumpWidget(
       _app(
         Shelf(title: 'SNES', games: [g(5, 'Mario')]),
         overrides: [
-          localStateProvider(5).overrideWith(
-            (ref) async => local(InstallStatus.none),
-          ),
+          localStateProvider(
+            5,
+          ).overrideWith((ref) async => local(InstallStatus.none)),
         ],
       ),
     );
@@ -446,9 +461,9 @@ void main() {
         GamesGrid(games: [g(1, 'A'), g(2, 'B')]),
         overrides: [
           for (final id in [1, 2])
-            localStateProvider(id).overrideWith(
-              (ref) async => local(InstallStatus.none),
-            ),
+            localStateProvider(
+              id,
+            ).overrideWith((ref) async => local(InstallStatus.none)),
         ],
       ),
     );
@@ -477,9 +492,7 @@ void main() {
 
   testWidgets('GamesGrid honours an explicit padding', (tester) async {
     await tester.pumpWidget(
-      _app(
-        const GamesGrid(games: [], padding: EdgeInsets.all(4)),
-      ),
+      _app(const GamesGrid(games: [], padding: EdgeInsets.all(4))),
     );
     await tester.pumpAndSettle();
     final grid = tester.widget<GridView>(find.byType(GridView));
@@ -502,9 +515,9 @@ void main() {
         ),
         overrides: [
           for (final id in [1, 2])
-            localStateProvider(id).overrideWith(
-              (ref) async => local(InstallStatus.installed),
-            ),
+            localStateProvider(
+              id,
+            ).overrideWith((ref) async => local(InstallStatus.installed)),
         ],
       ),
     );
@@ -512,9 +525,7 @@ void main() {
     expect(find.byType(InstallBadge), findsOneWidget);
     expect(
       find.descendant(
-        of: find.byWidgetPredicate(
-          (w) => w is CoverThumb && !w.showBadge,
-        ),
+        of: find.byWidgetPredicate((w) => w is CoverThumb && !w.showBadge),
         matching: find.byType(InstallBadge),
       ),
       findsNothing,
@@ -524,14 +535,11 @@ void main() {
   testWidgets('GamesGrid honours routeFor for custom routes', (tester) async {
     await tester.pumpWidget(
       _app(
-        GamesGrid(
-          games: [g(1, 'A')],
-          routeFor: (id) => '/x/$id',
-        ),
+        GamesGrid(games: [g(1, 'A')], routeFor: (id) => '/x/$id'),
         overrides: [
-          localStateProvider(1).overrideWith(
-            (ref) async => local(InstallStatus.none),
-          ),
+          localStateProvider(
+            1,
+          ).overrideWith((ref) async => local(InstallStatus.none)),
         ],
       ),
     );
@@ -590,17 +598,15 @@ void main() {
     expect(container.read(sortProvider), LibrarySort.recentlyAdded);
   });
 
-  testWidgets('tiles are square for every system', (
-    tester,
-  ) async {
+  testWidgets('tiles are square for every system', (tester) async {
     GameSummary g(int id, String system) => GameSummary(
-          id: id,
-          title: 'G$id',
-          systemCode: system,
-          hasCover: false,
-          totalSize: 1,
-          folder: 'G$id',
-        );
+      id: id,
+      title: 'G$id',
+      systemCode: system,
+      hasCover: false,
+      totalSize: 1,
+      folder: 'G$id',
+    );
     await tester.pumpWidget(
       _app(
         Row(
@@ -622,14 +628,14 @@ void main() {
     tester,
   ) async {
     GameProgress p(int id, GameProgressStatus status) => GameProgress(
-          gameId: id,
-          title: 'G',
-          systemCode: 'snes',
-          folder: 'G',
-          hasCover: false,
-          progress: 0.3,
-          status: status,
-        );
+      gameId: id,
+      title: 'G',
+      systemCode: 'snes',
+      folder: 'G',
+      hasCover: false,
+      progress: 0.3,
+      status: status,
+    );
     await tester.pumpWidget(
       _app(
         const Row(
@@ -647,9 +653,9 @@ void main() {
               p(3, GameProgressStatus.complete),
             ],
           ),
-          localStateProvider(3).overrideWith(
-            (ref) async => local(InstallStatus.installed),
-          ),
+          localStateProvider(
+            3,
+          ).overrideWith((ref) async => local(InstallStatus.installed)),
         ],
       ),
     );

@@ -5,26 +5,38 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 BoxDecoration _ring(WidgetTester tester, Finder inside) =>
-    tester.widget<DecoratedBox>(
-      find.descendant(
-        of: inside,
-        matching: find.byKey(const Key('focus-glow-ring')),
-      ),
-    ).decoration as BoxDecoration;
+    tester
+            .widget<DecoratedBox>(
+              find.descendant(
+                of: inside,
+                matching: find.byKey(const Key('focus-glow-ring')),
+              ),
+            )
+            .decoration
+        as BoxDecoration;
 
-Widget _wrap(Widget child) =>
-    MaterialApp(theme: buildTheme(), home: Scaffold(body: Center(child: child)));
+Widget _wrap(Widget child) => MaterialApp(
+  theme: buildTheme(),
+  home: Scaffold(body: Center(child: child)),
+);
 
 void main() {
   // The glow follows Flutter's focus highlight mode; tests that assert on it
   // force the "key/pad" mode, and one test below checks the touch behaviour.
-  setUp(() => FocusManager.instance.highlightStrategy =
-      FocusHighlightStrategy.alwaysTraditional);
-  tearDown(() => FocusManager.instance.highlightStrategy =
-      FocusHighlightStrategy.automatic);
+  setUp(
+    () => FocusManager.instance.highlightStrategy =
+        FocusHighlightStrategy.alwaysTraditional,
+  );
+  tearDown(
+    () => FocusManager.instance.highlightStrategy =
+        FocusHighlightStrategy.automatic,
+  );
+
+  _ringTests();
 
   testWidgets('no glow in touch mode until a key is pressed', (tester) async {
-    FocusManager.instance.highlightStrategy = FocusHighlightStrategy.alwaysTouch;
+    FocusManager.instance.highlightStrategy =
+        FocusHighlightStrategy.alwaysTouch;
     final node = FocusNode();
     addTearDown(node.dispose);
     await tester.pumpWidget(
@@ -68,10 +80,11 @@ void main() {
     node.requestFocus();
     await tester.pumpAndSettle();
     expect(node.hasFocus, isTrue);
-    final decoration = _ring(tester, glow);
-    expect(decoration.border, isNotNull);
-    expect(decoration.boxShadow, isNotNull);
-    expect(tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale, 1.04);
+    expect(_ring(tester, glow).border, isNotNull);
+    expect(
+      tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale,
+      1.04,
+    );
 
     await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonA);
     await tester.pumpAndSettle();
@@ -174,5 +187,97 @@ void main() {
     expect(_ring(tester, find.byType(FocusGlow)).border, isNull);
     await tester.tap(find.text('Go'), warnIfMissed: false);
     expect(taps, 0);
+  });
+}
+
+void _ringTests() {
+  BoxDecoration halo(WidgetTester tester, Finder inside) =>
+      tester
+              .widget<DecoratedBox>(
+                find.descendant(
+                  of: inside,
+                  matching: find.byKey(const Key('focus-glow-halo')),
+                ),
+              )
+              .decoration
+          as BoxDecoration;
+
+  testWidgets('a flat surface lights up with a halo and a wash underneath', (
+    tester,
+  ) async {
+    final node = FocusNode();
+    addTearDown(node.dispose);
+    await tester.pumpWidget(
+      _wrap(FocusGlow(focusNode: node, onTap: () {}, child: const Text('Row'))),
+    );
+    final glow = find.byType(FocusGlow);
+    expect(halo(tester, glow).color, isNull);
+    expect(halo(tester, glow).boxShadow, isNull);
+    node.requestFocus();
+    await tester.pumpAndSettle();
+    expect(halo(tester, glow).color, isNotNull);
+    expect(halo(tester, glow).boxShadow, hasLength(2));
+    expect(_ring(tester, glow).border, isNotNull);
+    expect(_ring(tester, glow).boxShadow, isNull);
+  });
+
+  testWidgets('fill: false keeps the halo but skips the wash', (tester) async {
+    final node = FocusNode();
+    addTearDown(node.dispose);
+    await tester.pumpWidget(
+      _wrap(
+        FocusGlow(
+          focusNode: node,
+          fill: false,
+          onTap: () {},
+          child: const Text('Go'),
+        ),
+      ),
+    );
+    node.requestFocus();
+    await tester.pumpAndSettle();
+    final glow = find.byType(FocusGlow);
+    expect(halo(tester, glow).color, isNull);
+    expect(halo(tester, glow).boxShadow, hasLength(2));
+  });
+
+  testWidgets('ring: false hands the ring to a FocusRing inside', (
+    tester,
+  ) async {
+    final node = FocusNode();
+    addTearDown(node.dispose);
+    await tester.pumpWidget(
+      _wrap(
+        FocusGlow(
+          focusNode: node,
+          ring: false,
+          onTap: () {},
+          child: const Column(
+            children: [
+              FocusRing(child: Text('Cover')),
+              Text('Caption'),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(find.byKey(const Key('focus-glow-ring')), findsOneWidget);
+    final cover = find.byType(FocusRing);
+    expect(_ring(tester, cover).border, isNull);
+    node.requestFocus();
+    await tester.pumpAndSettle();
+    expect(_ring(tester, cover).border, isNotNull);
+    expect(halo(tester, cover).boxShadow, hasLength(2));
+    expect(halo(tester, cover).color, isNull);
+    expect(
+      tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale,
+      1.04,
+    );
+  });
+
+  testWidgets('a FocusRing with no FocusGlow above stays dark', (tester) async {
+    await tester.pumpWidget(_wrap(const FocusRing(child: Text('Alone'))));
+    expect(_ring(tester, find.byType(FocusRing)).border, isNull);
+    expect(FocusGlow.highlighted(tester.element(find.text('Alone'))), isFalse);
   });
 }
