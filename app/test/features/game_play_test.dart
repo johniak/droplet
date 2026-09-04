@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:droplet/app/input/gamepad.dart';
 import 'package:droplet/app/widgets/primary_button.dart';
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/local_state.dart';
@@ -23,6 +24,7 @@ import 'package:shared_preferences_platform_interface/shared_preferences_async_p
 import '../fakes/fake_device_index.dart';
 import '../fakes/fake_downloader_port.dart';
 import '../fakes/fake_launcher_port.dart';
+import '../helpers/focus.dart';
 
 GameFileModel _file(String name, FileRole role) => GameFileModel(
   id: 1,
@@ -88,6 +90,7 @@ Widget _app({
   required GameDetail game,
   required LocalGameState state,
   required FakeLauncherPort port,
+  bool pad = false,
 }) => ProviderScope(
   overrides: [
     gameDetailProvider(7).overrideWith((ref) async => game),
@@ -99,7 +102,14 @@ Widget _app({
     ),
     deviceIndexProvider.overrideWith(() => FakeDeviceIndex({})),
   ],
-  child: MaterialApp.router(routerConfig: _router()),
+  // The shell carries the Start shortcut in the real app.
+  child: pad
+      ? GamepadShortcuts(
+          currentIndex: 0,
+          onTab: (_) {},
+          child: MaterialApp.router(routerConfig: _router()),
+        )
+      : MaterialApp.router(routerConfig: _router()),
 );
 
 void main() {
@@ -121,6 +131,32 @@ void main() {
     expect(request.package, 'dev.eden.eden_emulator');
     expect(request.dataMode, DataMode.provider);
     expect(request.romPath, '/roms/switch/Hollow Knight/hk.nsp');
+  });
+
+  testWidgets('Play takes the focus and Start presses it', (tester) async {
+    final port = FakeLauncherPort(installed: {'dev.eden.eden_emulator'});
+    await tester.pumpWidget(
+      _app(game: _game(), state: _installed, port: port, pad: true),
+    );
+    await tester.pumpAndSettle();
+    expect(hasGlow(tester, find.byKey(const Key('play-button'))), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonStart);
+    await tester.pumpAndSettle();
+    expect(port.launched, hasLength(1));
+  });
+
+  testWidgets('Start on an installed game without an emulator does nothing', (
+    tester,
+  ) async {
+    final port = FakeLauncherPort();
+    await tester.pumpWidget(
+      _app(game: _game(), state: _installed, port: port, pad: true),
+    );
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonStart);
+    await tester.pumpAndSettle();
+    expect(port.launched, isEmpty);
   });
 
   testWidgets('no emulator: the link leads to the settings screen', (

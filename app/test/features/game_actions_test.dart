@@ -10,6 +10,7 @@ import 'package:droplet/features/game/game_detail_screen.dart';
 import 'package:droplet/features/game/providers.dart';
 import 'package:droplet/features/library/providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:droplet/core/downloads/download_manager.dart';
 import 'package:droplet/features/downloads/providers.dart';
@@ -185,6 +186,32 @@ void main() {
     expect(gameDir.existsSync(), false);
     // After deletion the device index recomputes without asking the server.
     expect(index.refreshes, 1);
+  });
+
+  testWidgets('A confirms the delete dialog straight away', (tester) async {
+    final root = Directory.systemTemp.createTempSync();
+    addTearDown(() => root.deleteSync(recursive: true));
+    final gameDir = Directory('${root.path}/snes/Mario')
+      ..createSync(recursive: true);
+    final rom = File('${gameDir.path}/m.sfc')..writeAsStringSync('rom');
+    await tester.pumpWidget(
+      build(
+        LocalGameState(
+          status: InstallStatus.installed,
+          updateAvailable: false,
+          missing: const [],
+          presentPaths: [rom.path],
+        ),
+        baseDir: root.path,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete from device'));
+    await tester.pumpAndSettle();
+    // Delete is autofocused, so the pad confirms without moving first.
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonA);
+    await tester.pumpAndSettle();
+    expect(rom.existsSync(), false);
   });
 
   testWidgets('the delete dialog can be dismissed', (tester) async {

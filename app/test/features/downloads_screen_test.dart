@@ -10,8 +10,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:droplet/app/widgets/glass_panel.dart';
+
 import '../fakes/fake_downloader_port.dart';
 import '../fakes/fake_permissions_port.dart';
+import '../helpers/focus.dart';
 
 GoRouter _router() => GoRouter(
       initialLocation: '/downloads',
@@ -160,6 +163,29 @@ void main() {
     await tester.tap(find.text('Mario').first);
     await tester.pumpAndSettle();
     expect(find.text('Game 7'), findsOneWidget);
+  });
+
+  testWidgets('the pad lands on the first row', (tester) async {
+    await tester.pumpWidget(
+      _screen([
+        at(GameProgressStatus.running),
+        at(GameProgressStatus.paused, id: 8),
+      ], manager),
+    );
+    await tester.pumpAndSettle();
+    final rows = find.byType(GlassPanel);
+    expect(hasGlow(tester, rows.first), isTrue);
+    expect(hasGlow(tester, rows.at(1)), isFalse);
+  });
+
+  testWidgets('with nothing active the first finished row takes the focus', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _screen([at(GameProgressStatus.complete)], manager),
+    );
+    await tester.pumpAndSettle();
+    expect(hasGlow(tester, find.byType(GlassPanel).first), isTrue);
   });
 
   testWidgets('pause reaches the manager', (tester) async {

@@ -72,6 +72,7 @@ Future<bool> confirmAndDelete(
           child: const Text('Cancel'),
         ),
         TextButton(
+          autofocus: true,
           onPressed: () => Navigator.of(context).pop(true),
           child: const Text('Delete'),
         ),

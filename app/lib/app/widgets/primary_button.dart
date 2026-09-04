@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../tokens.dart';
+import 'focus_glow.dart';
 
 class PrimaryButton extends StatelessWidget {
   const PrimaryButton({
@@ -10,6 +11,7 @@ class PrimaryButton extends StatelessWidget {
     this.ghost = false,
     this.busy = false,
     this.icon,
+    this.autofocus = false,
   });
 
   final String label;
@@ -21,10 +23,12 @@ class PrimaryButton extends StatelessWidget {
   /// default action (Play).
   final IconData? icon;
 
+  /// The screen's primary control takes the focus when it opens.
+  final bool autofocus;
+
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null && !busy;
-    final radius = BorderRadius.circular(kRadiusCard);
     return Opacity(
       opacity: enabled ? 1 : 0.55,
       child: Container(
@@ -33,7 +37,7 @@ class PrimaryButton extends StatelessWidget {
           gradient: ghost ? null : kPrimaryGradient,
           color: ghost ? kGlass : null,
           border: ghost ? Border.all(color: kGlassBorder) : null,
-          borderRadius: radius,
+          borderRadius: BorderRadius.circular(kRadiusCard),
           boxShadow: ghost || !enabled
               ? null
               : [
@@ -44,44 +48,40 @@ class PrimaryButton extends StatelessWidget {
                   ),
                 ],
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: enabled ? onPressed : null,
-            borderRadius: radius,
-            child: Center(
-              child: busy
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: kText,
-                      ),
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (icon != null) ...[
-                          Icon(
-                            icon,
-                            size: 20,
-                            color: ghost ? kText : Colors.white,
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                        Text(
-                          label,
-                          style: TextStyle(
-                            color: ghost ? kText : Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+        // No clip here: the focus ring's glow has to reach past the button's
+        // edge, and the ripple is clipped by the InkWell's own radius anyway.
+        child: FocusGlow(
+          scale: 1,
+          borderRadius: kRadiusCard,
+          autofocus: autofocus,
+          onTap: enabled ? onPressed : null,
+          child: Center(
+            child: busy
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: kText,
                     ),
-            ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (icon != null) ...[
+                        Icon(icon, size: 20, color: ghost ? kText : Colors.white),
+                        const SizedBox(width: 8),
+                      ],
+                      Text(
+                        label,
+                        style: TextStyle(
+                          color: ghost ? kText : Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ),
       ),

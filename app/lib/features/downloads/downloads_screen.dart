@@ -44,7 +44,8 @@ class DownloadsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             if (all.isEmpty) const _Empty(),
-            for (final p in active) _DownloadCard(progress: p),
+            for (var i = 0; i < active.length; i++)
+              _DownloadCard(progress: active[i], autofocus: i == 0),
             if (finished.isNotEmpty) ...[
               SectionLabel(
                 'Finished',
@@ -52,7 +53,11 @@ class DownloadsScreen extends ConsumerWidget {
                 onTrailingTap: () =>
                     ref.read(downloadManagerProvider).clearFinished(),
               ),
-              for (final p in finished) _DownloadCard(progress: p),
+              for (var i = 0; i < finished.length; i++)
+                _DownloadCard(
+                  progress: finished[i],
+                  autofocus: active.isEmpty && i == 0,
+                ),
             ],
           ],
         ),
@@ -83,9 +88,12 @@ class _Empty extends StatelessWidget {
 }
 
 class _DownloadCard extends ConsumerWidget {
-  const _DownloadCard({required this.progress});
+  const _DownloadCard({required this.progress, this.autofocus = false});
 
   final GameProgress progress;
+
+  /// The topmost row — where the pad lands when the tab opens.
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -94,6 +102,7 @@ class _DownloadCard extends ConsumerWidget {
     return GlassPanel(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(10),
+      autofocus: autofocus,
       onTap: () => context.go('/game/${progress.gameId}'),
       child: Row(
         children: [

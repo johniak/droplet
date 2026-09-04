@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:droplet/app/input/gamepad.dart';
+import 'package:droplet/app/widgets/primary_button.dart';
 import 'package:droplet/core/api/models.dart';
 import 'package:droplet/core/downloads/local_state.dart';
 import 'package:droplet/core/downloads/storage_settings.dart';
@@ -12,11 +14,13 @@ import 'package:droplet/features/game/game_detail_screen.dart';
 import 'package:droplet/features/game/providers.dart';
 import 'package:droplet/features/library/providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../fakes/fake_downloader_port.dart';
 import '../fakes/fake_permissions_port.dart';
+import '../helpers/focus.dart';
 
 const _file = GameFileModel(
   id: 1,
@@ -50,7 +54,64 @@ class _Session extends SessionController {
       const Session(serverUrl: 'http://nas:8000', token: 't');
 }
 
+/// The detail screen under the shell's gamepad shortcuts, so Start reaches
+/// the screen's own PrimaryActionIntent handler.
+Widget _padApp(FakeDownloaderPort port, LocalGameState state) => ProviderScope(
+  overrides: [
+    sessionProvider.overrideWith(_Session.new),
+    gameDetailProvider(7).overrideWith((ref) async => _game),
+    localStateProvider(7).overrideWith((ref) async => state),
+    storageSettingsProvider.overrideWith(
+      (ref) async => StorageSettings('/roms', const {}),
+    ),
+    downloaderPortProvider.overrideWithValue(port),
+    permissionsPortProvider.overrideWithValue(
+      FakePermissionsPort(granted: true),
+    ),
+  ],
+  child: MaterialApp(
+    home: GamepadShortcuts(
+      currentIndex: 0,
+      onTab: (_) {},
+      child: const GameDetailScreen(gameId: 7),
+    ),
+  ),
+);
+
 void main() {
+  testWidgets('Download takes the focus and Start presses it', (tester) async {
+    final port = FakeDownloaderPort();
+    await tester.pumpWidget(_padApp(port, _none));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Download ·'), findsOneWidget);
+    expect(hasGlow(tester, find.byType(PrimaryButton)), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonStart);
+    await tester.pumpAndSettle();
+    expect(port.enqueued.single.url, 'http://nas:8000/api/files/1/download');
+  });
+
+  testWidgets('Start does nothing when there is nothing left to fetch', (
+    tester,
+  ) async {
+    final port = FakeDownloaderPort();
+    await tester.pumpWidget(
+      _padApp(
+        port,
+        const LocalGameState(
+          status: InstallStatus.partial,
+          updateAvailable: false,
+          missing: [],
+          presentPaths: ['/roms/snes/Mario/m.sfc'],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.gameButtonStart);
+    await tester.pumpAndSettle();
+    expect(port.enqueued, isEmpty);
+  });
+
   testWidgets('tapping download enqueues the selected files', (tester) async {
     final port = FakeDownloaderPort();
     await tester.pumpWidget(

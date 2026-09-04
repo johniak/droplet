@@ -25,6 +25,9 @@ class FoldersScreen extends ConsumerWidget {
               children: [
                 CircleIconButton(
                   key: const Key('back-button'),
+                  // The rows below hold text fields and dropdowns; Back is
+                  // the safe place for the pad to land.
+                  autofocus: true,
                   icon: Icons.arrow_back_rounded,
                   tooltip: 'Back',
                   onPressed: () => context.pop(),

@@ -23,6 +23,7 @@ import 'package:shared_preferences_platform_interface/shared_preferences_async_p
 import '../fakes/fake_device_index.dart';
 import '../fakes/fake_downloader_port.dart';
 import '../fakes/fake_permissions_port.dart';
+import '../helpers/focus.dart';
 
 const systems = [
   SystemModel(id: 1, code: 'snes', name: 'SNES', gameCount: 2),
@@ -182,6 +183,27 @@ void main() {
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
     expect(await repo.load(), isNull);
+  });
+
+  testWidgets('the pad lands on Sign out and finds the Controller card', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_screen(repo: await _signedIn()));
+    await tester.pumpAndSettle();
+    expect(
+      hasGlow(
+        tester,
+        find.ancestor(
+          of: find.text('Sign out'),
+          matching: find.byType(SettingsRow),
+        ),
+      ),
+      isTrue,
+    );
+    await tester.scrollUntilVisible(find.text('Controller'), 200);
+    expect(find.text('Switch tab'), findsOneWidget);
+    expect(find.text('L1 / R1'), findsOneWidget);
+    expect(find.text('Play or download'), findsOneWidget);
   });
 
   testWidgets('offline status and unknown free space', (tester) async {

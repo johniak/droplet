@@ -30,6 +30,9 @@ class EmulatorsScreen extends ConsumerWidget {
               children: [
                 CircleIconButton(
                   key: const Key('back-button'),
+                  // The rows below hold text fields and dropdowns; Back is
+                  // the safe place for the pad to land.
+                  autofocus: true,
                   icon: Icons.arrow_back_rounded,
                   tooltip: 'Back',
                   onPressed: () => context.pop(),
@@ -127,6 +130,7 @@ class _SystemRow extends ConsumerWidget {
       trailing: DropdownButton<String>(
         key: Key('emulator-${system.code}'),
         value: effective?.id,
+        focusColor: kGlass,
         underline: const SizedBox.shrink(),
         style: const TextStyle(color: kText, fontSize: 14),
         dropdownColor: kBgMid,

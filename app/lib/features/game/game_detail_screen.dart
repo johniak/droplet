@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/input/gamepad.dart';
 import '../../app/tokens.dart';
 import '../../app/widgets/circle_icon_button.dart';
 import '../../app/widgets/glass_panel.dart';
@@ -107,7 +108,26 @@ class _Detail extends ConsumerStatefulWidget {
 class _DetailState extends ConsumerState<_Detail> {
   late final Set<int> _selected = defaultSelection(widget.game.files);
 
+  /// The Play control, when the game is installed — Start goes through it.
+  final _playKey = GlobalKey<_PlayControlState>();
+
   GameDetail get game => widget.game;
+
+  /// Start: Play when the game is installed, otherwise the download the
+  /// bottom bar is offering (nothing when there is none).
+  void _primaryAction() {
+    if (_playKey.currentState case final play?) {
+      play.playNow();
+      return;
+    }
+    final state = ref.read(localStateProvider(game.id)).value;
+    if (state == null ||
+        ref.read(isOfflineProvider) ||
+        bytesToFetch(game, _selected, state) == 0) {
+      return;
+    }
+    _download(state);
+  }
 
   void _toggle(GameFileModel file, bool? on) => setState(() {
         if (on ?? false) {
@@ -153,7 +173,16 @@ class _DetailState extends ConsumerState<_Detail> {
     for (final file in game.files) {
       grouped.putIfAbsent(labelFor(file), () => []).add(file);
     }
-    return Scaffold(
+    return Actions(
+      actions: {
+        PrimaryActionIntent: CallbackAction<PrimaryActionIntent>(
+          onInvoke: (_) {
+            _primaryAction();
+            return null;
+          },
+        ),
+      },
+      child: Scaffold(
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(child: _Hero(game: game)),
@@ -221,12 +250,14 @@ class _DetailState extends ConsumerState<_Detail> {
           child: _Actions(
             game: game,
             state: state,
+            playKey: _playKey,
             toFetch: bytesToFetch(game, _selected, state),
             offline: ref.watch(isOfflineProvider),
             onDownload: () => _download(state),
             onDelete: () => confirmAndDelete(context, ref, game, state),
           ),
         ),
+      ),
       ),
     );
   }
@@ -461,6 +492,7 @@ class _Actions extends ConsumerWidget {
   const _Actions({
     required this.game,
     required this.state,
+    required this.playKey,
     required this.toFetch,
     required this.offline,
     required this.onDownload,
@@ -469,6 +501,7 @@ class _Actions extends ConsumerWidget {
 
   final GameDetail game;
   final LocalGameState state;
+  final GlobalKey<_PlayControlState> playKey;
   final int toFetch;
   final bool offline;
   final VoidCallback onDownload;
@@ -502,20 +535,31 @@ class _Actions extends ConsumerWidget {
         .watch(activeDownloadsProvider)
         .where((p) => p.gameId == game.id && p.status != GameProgressStatus.complete)
         .firstOrNull;
+    // Play owns the focus whenever it is there; otherwise the row below it
+    // does (spec §4). The test is the catalogue, not the resolved emulator:
+    // that answer arrives a frame or two later, and by then the row below
+    // would already have taken the focus and would never hand it back.
+    final playing = boot != null && catalogFor(game.systemCode).isNotEmpty;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (boot != null) ...[
-          _PlayControl(game: game, file: boot),
+          _PlayControl(key: playKey, game: game, file: boot),
           const SizedBox(height: 8),
         ],
         if (transfer != null)
-          _TransferControls(progress: transfer)
+          _TransferControls(progress: transfer, autofocus: !playing)
         else if (installed)
-          PrimaryButton(label: 'Delete from device', onPressed: onDelete, ghost: true)
+          PrimaryButton(
+            label: 'Delete from device',
+            onPressed: onDelete,
+            ghost: true,
+            autofocus: !playing,
+          )
         else ...[
           PrimaryButton(
             label: label,
+            autofocus: !playing,
             onPressed: offline || toFetch == 0 ? null : onDownload,
           ),
           if (state.presentPaths.isNotEmpty)
@@ -545,9 +589,12 @@ class _Actions extends ConsumerWidget {
 /// Progress bar plus the controls of a download in flight: Pause/Resume and
 /// Cancel while it runs, Retry and Cancel once it failed.
 class _TransferControls extends ConsumerWidget {
-  const _TransferControls({required this.progress});
+  const _TransferControls({required this.progress, this.autofocus = false});
 
   final GameProgress progress;
+
+  /// Set when there is no Play button above to take the focus instead.
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -583,18 +630,21 @@ class _TransferControls extends ConsumerWidget {
                   ? PrimaryButton(
                       key: const Key('transfer-retry'),
                       label: 'Retry',
+                      autofocus: autofocus,
                       onPressed: () => manager.retryGame(id),
                     )
                   : paused
                       ? PrimaryButton(
                           key: const Key('transfer-resume'),
                           label: 'Resume',
+                          autofocus: autofocus,
                           onPressed: () => manager.resumeGame(id),
                         )
                       : PrimaryButton(
                           key: const Key('transfer-pause'),
                           label: 'Pause',
                           ghost: true,
+                          autofocus: autofocus,
                           onPressed: () => manager.pauseGame(id),
                         ),
             ),
@@ -618,7 +668,7 @@ class _TransferControls extends ConsumerWidget {
 /// device is still being asked which emulators it has — a button that
 /// flashes "Set up emulator" on every open would only mislead.
 class _PlayControl extends ConsumerStatefulWidget {
-  const _PlayControl({required this.game, required this.file});
+  const _PlayControl({super.key, required this.game, required this.file});
 
   final GameDetail game;
   final GameFileModel file;
@@ -632,6 +682,14 @@ class _PlayControlState extends ConsumerState<_PlayControl> {
   bool _busy = false;
 
   GameDetail get game => widget.game;
+
+  /// Start pressed anywhere on the screen: launch, unless there is no
+  /// emulator to launch with or a launch is already in flight.
+  void playNow() {
+    final spec = ref.read(effectiveEmulatorProvider(game.systemCode)).value;
+    if (spec == null || _busy) return;
+    _play(spec);
+  }
 
   Future<void> _play(EmulatorSpec spec) async {
     setState(() => _busy = true);
@@ -688,12 +746,14 @@ class _PlayControlState extends ConsumerState<_PlayControl> {
     if (spec == null) {
       return TextButton(
         key: const Key('setup-emulator'),
+        autofocus: true,
         onPressed: () => context.go('/settings/emulators'),
         child: const Text('Set up emulator'),
       );
     }
     return PrimaryButton(
       key: const Key('play-button'),
+      autofocus: true,
       label: 'Play',
       icon: Icons.play_arrow_rounded,
       busy: _busy,

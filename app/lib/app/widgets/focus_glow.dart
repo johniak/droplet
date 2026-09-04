@@ -22,7 +22,9 @@ class FocusGlow extends StatefulWidget {
     this.enabled = true,
   });
 
-  final VoidCallback onTap;
+  /// Null disables the surface just like `enabled: false` does — a button
+  /// with nothing to do must not swallow the focus.
+  final VoidCallback? onTap;
   final Widget child;
   final bool autofocus;
   final FocusNode? focusNode;
@@ -40,6 +42,8 @@ class FocusGlow extends StatefulWidget {
 
 class _FocusGlowState extends State<FocusGlow> {
   bool _focused = false;
+
+  bool get _enabled => widget.enabled && widget.onTap != null;
 
   void _onFocusChange(bool focused) {
     setState(() => _focused = focused);
@@ -61,14 +65,14 @@ class _FocusGlowState extends State<FocusGlow> {
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(widget.borderRadius);
     return FocusableActionDetector(
-      enabled: widget.enabled,
+      enabled: _enabled,
       autofocus: widget.autofocus,
       focusNode: widget.focusNode,
       onFocusChange: _onFocusChange,
       actions: {
         ActivateIntent: CallbackAction<ActivateIntent>(
           onInvoke: (_) {
-            widget.onTap();
+            widget.onTap?.call();
             return null;
           },
         ),
@@ -100,7 +104,7 @@ class _FocusGlowState extends State<FocusGlow> {
               // here would make every surface take two D-pad presses.
               canRequestFocus: false,
               focusColor: Colors.transparent,
-              onTap: widget.enabled ? widget.onTap : null,
+              onTap: _enabled ? widget.onTap : null,
               borderRadius: radius,
               child: widget.child,
             ),

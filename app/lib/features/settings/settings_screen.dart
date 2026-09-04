@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/tokens.dart';
+import '../../app/widgets/focus_glow.dart';
 import '../../app/widgets/glass_panel.dart';
 import '../../app/widgets/pill.dart';
 import '../../app/widgets/section_label.dart';
@@ -23,7 +24,7 @@ import '../../core/session/providers.dart';
 import '../game/providers.dart';
 import '../library/providers.dart';
 
-const appVersion = '0.6.4';
+const appVersion = '0.7.0';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -54,6 +55,8 @@ class SettingsScreen extends ConsumerWidget {
           _SystemFilesCard(),
           SectionLabel('Device'),
           _DeviceCard(),
+          SectionLabel('Controller'),
+          _ControllerCard(),
           SectionLabel('About'),
           GlassPanel(
             padding: EdgeInsets.zero,
@@ -68,6 +71,51 @@ class SettingsScreen extends ConsumerWidget {
   );
 }
 
+/// What the gamepad does, in two columns — a static cheat sheet, not a
+/// detected device (spec §5).
+class _ControllerCard extends StatelessWidget {
+  const _ControllerCard();
+
+  static const _bindings = [
+    ('A', 'Select'),
+    ('B', 'Back'),
+    ('L1 / R1', 'Switch tab'),
+    ('Y', 'Search'),
+    ('Start', 'Play or download'),
+    ('Select', 'Settings'),
+    ('Left stick / D-pad', 'Move'),
+    ('Right stick', 'Scroll'),
+  ];
+
+  @override
+  Widget build(BuildContext context) => GlassPanel(
+    child: Column(
+      children: [
+        for (final (button, what) in _bindings)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    button,
+                    style: const TextStyle(color: kText, fontSize: 13),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    what,
+                    style: const TextStyle(color: kTextDim, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
 /// One row of a settings card.
 class SettingsRow extends StatelessWidget {
   const SettingsRow({
@@ -77,6 +125,7 @@ class SettingsRow extends StatelessWidget {
     this.leading,
     this.trailing,
     this.onTap,
+    this.autofocus = false,
   });
 
   final String title;
@@ -85,38 +134,48 @@ class SettingsRow extends StatelessWidget {
   final Widget? trailing;
   final VoidCallback? onTap;
 
+  /// The first tappable row of a settings screen — where the pad lands.
+  final bool autofocus;
+
   @override
-  Widget build(BuildContext context) => Material(
-    type: MaterialType.transparency,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            if (leading != null) ...[leading!, const SizedBox(width: 10)],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+  Widget build(BuildContext context) {
+    final row = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          if (leading != null) ...[leading!, const SizedBox(width: 10)],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(color: kText, fontSize: 14)),
+                if (subtitle != null)
                   Text(
-                    title,
-                    style: const TextStyle(color: kText, fontSize: 14),
+                    subtitle!,
+                    style: const TextStyle(color: kTextDim, fontSize: 12),
                   ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle!,
-                      style: const TextStyle(color: kTextDim, fontSize: 12),
-                    ),
-                ],
-              ),
+              ],
             ),
-            if (trailing != null) trailing!,
-          ],
-        ),
+          ),
+          if (trailing != null) trailing!,
+        ],
       ),
-    ),
-  );
+    );
+    // A row without an action is not a target: it keeps the Material its
+    // trailing controls need, but never takes the focus.
+    return Material(
+      type: MaterialType.transparency,
+      child: onTap == null
+          ? row
+          : FocusGlow(
+              scale: 1,
+              borderRadius: kRadiusCard,
+              autofocus: autofocus,
+              onTap: onTap,
+              child: row,
+            ),
+    );
+  }
 }
 
 class _Divider extends StatelessWidget {
@@ -169,6 +228,9 @@ class _ServerCard extends ConsumerWidget {
           ),
           const _Divider(),
           SettingsRow(
+            // The connected/offline row above is not tappable, so this is
+            // the screen's first target.
+            autofocus: true,
             title: 'Sign out',
             trailing: const Icon(Icons.logout, size: 18, color: kTextDim),
             onTap: () => ref.read(sessionProvider.notifier).signOut(),
@@ -334,6 +396,7 @@ class _BaseDirDialogState extends ConsumerState<_BaseDirDialog> {
         child: const Text('Cancel'),
       ),
       TextButton(
+        autofocus: true,
         onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
         child: const Text('Save'),
       ),
@@ -631,6 +694,7 @@ class _UnknownRow extends ConsumerWidget {
           ),
           TextButton(
             key: const Key('unknown-delete-all'),
+            autofocus: true,
             onPressed: manifest.isEmpty
                 ? null
                 : () => Navigator.of(context).pop(true),
