@@ -94,6 +94,16 @@ void main() {
     await tester.scrollUntilVisible(find.text('Sign out'), -200);
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
+    // The row only asks; the dialog's own Sign out button does it.
+    expect(find.text('Sign out?'), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Sign out'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await pumpUntil(tester, find.text('Sign in'));
     expect(find.text('Sign in'), findsOneWidget);
   });
 }
