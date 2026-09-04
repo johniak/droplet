@@ -100,10 +100,10 @@ void main() {
     );
     await tester.tap(dropdown);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Citra').last);
+    await tester.tap(find.text('Citra MMJ').last);
     await tester.pumpAndSettle();
-    expect(await repo.choice('n3ds'), 'citra');
-    expect(tester.widget<DropdownButton<String>>(dropdown).value, 'citra');
+    expect(await repo.choice('n3ds'), 'citra-mmj');
+    expect(tester.widget<DropdownButton<String>>(dropdown).value, 'citra-mmj');
   });
 
   testWidgets('Grant stores the picked tree; a cancelled pick changes nothing',
