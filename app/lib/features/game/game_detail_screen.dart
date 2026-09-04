@@ -26,6 +26,7 @@ import '../../core/launch/launch_plan.dart';
 import '../../core/launch/launch_request.dart';
 import '../../core/platform/launcher_port.dart';
 import '../../core/session/providers.dart';
+import '../downloads/providers.dart';
 import '../library/providers.dart';
 import '../library/widgets/cover_image.dart';
 import 'delete_dialog.dart';
@@ -494,6 +495,13 @@ class _Actions extends ConsumerWidget {
     // Play sits above the download/delete row: it is what someone opening an
     // installed game came for, and it needs the full width for itself.
     final boot = state.status == InstallStatus.installed ? bootFile(game) : null;
+    // A download in flight (or one that failed) owns the bar: progress and
+    // its controls replace the Download button until it finishes or is
+    // cancelled — the manager drops the entry when the files are in place.
+    final transfer = ref
+        .watch(activeDownloadsProvider)
+        .where((p) => p.gameId == game.id && p.status != GameProgressStatus.complete)
+        .firstOrNull;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -501,7 +509,9 @@ class _Actions extends ConsumerWidget {
           _PlayControl(game: game, file: boot),
           const SizedBox(height: 8),
         ],
-        if (installed)
+        if (transfer != null)
+          _TransferControls(progress: transfer)
+        else if (installed)
           PrimaryButton(label: 'Delete from device', onPressed: onDelete, ghost: true)
         else ...[
           PrimaryButton(
@@ -527,6 +537,78 @@ class _Actions extends ConsumerWidget {
             style: const TextStyle(color: kTextDim, fontSize: 11),
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// Progress bar plus the controls of a download in flight: Pause/Resume and
+/// Cancel while it runs, Retry and Cancel once it failed.
+class _TransferControls extends ConsumerWidget {
+  const _TransferControls({required this.progress});
+
+  final GameProgress progress;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final manager = ref.read(downloadManagerProvider);
+    final id = progress.gameId;
+    final failed = progress.status == GameProgressStatus.failed;
+    final paused = progress.status == GameProgressStatus.paused;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            key: const Key('transfer-bar'),
+            value: failed ? 1 : progress.progress.clamp(0.0, 1.0),
+            minHeight: 6,
+            color: failed ? kDanger : kAccent,
+            backgroundColor: kGlassBorder,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          progressSubtitle(progress),
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: kTextDim, fontSize: 12),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: failed
+                  ? PrimaryButton(
+                      key: const Key('transfer-retry'),
+                      label: 'Retry',
+                      onPressed: () => manager.retryGame(id),
+                    )
+                  : paused
+                      ? PrimaryButton(
+                          key: const Key('transfer-resume'),
+                          label: 'Resume',
+                          onPressed: () => manager.resumeGame(id),
+                        )
+                      : PrimaryButton(
+                          key: const Key('transfer-pause'),
+                          label: 'Pause',
+                          ghost: true,
+                          onPressed: () => manager.pauseGame(id),
+                        ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: PrimaryButton(
+                key: const Key('transfer-cancel'),
+                label: 'Cancel',
+                ghost: true,
+                onPressed: () => manager.cancelGame(id),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }

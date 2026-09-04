@@ -14,6 +14,8 @@ import 'package:droplet/features/library/widgets/install_badge.dart';
 import 'package:droplet/features/library/widgets/search_field.dart';
 import 'package:droplet/features/library/widgets/shelf.dart';
 import 'package:droplet/features/library/widgets/sort_menu.dart';
+import 'package:droplet/core/downloads/download_manager.dart';
+import 'package:droplet/features/downloads/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -593,5 +595,52 @@ void main() {
         (e.widget as AspectRatio).aspectRatio,
     ];
     expect(ratios, [1, 1]);
+  });
+
+  testWidgets('InstallBadge shows a progress ring while a download runs', (
+    tester,
+  ) async {
+    GameProgress p(int id, GameProgressStatus status) => GameProgress(
+          gameId: id,
+          title: 'G',
+          systemCode: 'snes',
+          folder: 'G',
+          hasCover: false,
+          progress: 0.3,
+          status: status,
+        );
+    await tester.pumpWidget(
+      _app(
+        const Row(
+          children: [
+            InstallBadge(gameId: 1),
+            InstallBadge(gameId: 2),
+            InstallBadge(gameId: 3),
+          ],
+        ),
+        overrides: [
+          activeDownloadsProvider.overrideWith(
+            (ref) => [
+              p(1, GameProgressStatus.running),
+              p(2, GameProgressStatus.failed),
+              p(3, GameProgressStatus.complete),
+            ],
+          ),
+          localStateProvider(3).overrideWith(
+            (ref) async => local(InstallStatus.installed),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final rings = find.byType(CircularProgressIndicator);
+    expect(rings, findsNWidgets(2));
+    final values = [
+      for (final e in rings.evaluate())
+        (e.widget as CircularProgressIndicator).value,
+    ];
+    expect(values, [0.3, 1]);
+    // the finished one falls back to the on-disk state
+    expect(find.byIcon(Icons.check_rounded), findsOneWidget);
   });
 }

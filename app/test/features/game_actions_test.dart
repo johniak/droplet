@@ -11,11 +11,15 @@ import 'package:droplet/features/game/providers.dart';
 import 'package:droplet/features/library/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:droplet/core/downloads/download_manager.dart';
+import 'package:droplet/features/downloads/providers.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import '../fakes/fake_device_index.dart';
 import '../fakes/fake_downloader_port.dart';
+import '../fakes/fake_permissions_port.dart';
 
 const detail = GameDetail(
   id: 7,
@@ -57,8 +61,14 @@ GoRouter _router() => GoRouter(
 
 late FakeDeviceIndex index;
 
-Widget build(LocalGameState state, {String baseDir = '/roms'}) => ProviderScope(
+Widget build(
+  LocalGameState state, {
+  String baseDir = '/roms',
+  List<Override> extra = const [],
+}) =>
+    ProviderScope(
       overrides: [
+        ...extra,
         gameDetailProvider(7).overrideWith((ref) async => detail),
         localStateProvider(7).overrideWith((ref) async => state),
         downloaderPortProvider.overrideWithValue(FakeDownloaderPort()),
@@ -71,6 +81,7 @@ Widget build(LocalGameState state, {String baseDir = '/roms'}) => ProviderScope(
     );
 
 void main() {
+  _transferTests();
   testWidgets('not installed shows download with size', (tester) async {
     await tester.pumpWidget(
       build(
@@ -270,5 +281,91 @@ void main() {
       ['${dir.path}/missing.sfc'],
       gameDir: '${dir.path}/also-missing',
     );
+  });
+
+}
+
+class _SpyManager extends DownloadManager {
+  _SpyManager()
+      : super(FakeDownloaderPort(), FakePermissionsPort(granted: true),
+            onGameChanged: (_) {});
+  final calls = <String>[];
+  @override
+  Future<void> pauseGame(int gameId) async => calls.add('pause $gameId');
+  @override
+  Future<void> resumeGame(int gameId) async => calls.add('resume $gameId');
+  @override
+  Future<void> cancelGame(int gameId) async => calls.add('cancel $gameId');
+  @override
+  Future<void> retryGame(int gameId) async => calls.add('retry $gameId');
+}
+
+GameProgress _transfer(GameProgressStatus status, {double progress = 0.4}) =>
+    GameProgress(
+      gameId: 7,
+      title: 'Hollow Knight',
+      systemCode: 'switch',
+      folder: 'Hollow Knight',
+      hasCover: false,
+      progress: progress,
+      status: status,
+      bytesDone: 40,
+      bytesTotal: 100,
+      speedBytesPerSec: 10,
+    );
+
+const _none = LocalGameState(
+  status: InstallStatus.none,
+  updateAvailable: false,
+  missing: [],
+  presentPaths: [],
+);
+
+void _transferTests() {
+  Future<_SpyManager> pump(WidgetTester tester, GameProgressStatus status) async {
+    final manager = _SpyManager();
+    await tester.pumpWidget(
+      build(_none, extra: [
+        activeDownloadsProvider.overrideWith((ref) => [_transfer(status)]),
+        downloadManagerProvider.overrideWithValue(manager),
+      ]),
+    );
+    await tester.pumpAndSettle();
+    return manager;
+  }
+
+  testWidgets('a running download replaces the Download button with progress',
+      (tester) async {
+    final manager = await pump(tester, GameProgressStatus.running);
+    expect(find.textContaining('Download ·'), findsNothing);
+    expect(find.byKey(const Key('transfer-bar')), findsOneWidget);
+    expect(find.text('40 B / 100 B · 10 B/s'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('transfer-pause')));
+    await tester.tap(find.byKey(const Key('transfer-cancel')));
+    expect(manager.calls, ['pause 7', 'cancel 7']);
+  });
+
+  testWidgets('a paused download offers Resume', (tester) async {
+    final manager = await pump(tester, GameProgressStatus.paused);
+    expect(find.text('Paused · 40 B / 100 B'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('transfer-resume')));
+    expect(manager.calls, ['resume 7']);
+  });
+
+  testWidgets('a failed download offers Retry and a full red bar', (tester) async {
+    final manager = await pump(tester, GameProgressStatus.failed);
+    expect(find.text('Download failed — retry'), findsOneWidget);
+    final bar = tester.widget<LinearProgressIndicator>(
+      find.byKey(const Key('transfer-bar')),
+    );
+    expect(bar.value, 1);
+    await tester.tap(find.byKey(const Key('transfer-retry')));
+    expect(manager.calls, ['retry 7']);
+  });
+
+  testWidgets('a completed entry no longer owns the bar', (tester) async {
+    await pump(tester, GameProgressStatus.complete);
+    expect(find.byKey(const Key('transfer-bar')), findsNothing);
+    expect(find.textContaining('Download ·'), findsOneWidget);
   });
 }
